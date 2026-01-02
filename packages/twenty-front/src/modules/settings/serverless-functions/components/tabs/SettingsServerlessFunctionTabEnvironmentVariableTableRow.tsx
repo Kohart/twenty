@@ -1,12 +1,12 @@
-import { EnvironmentVariable } from '@/settings/serverless-functions/components/tabs/SettingsServerlessFunctionTabEnvironmentVariablesSection';
-import { TextInputV2 } from '@/ui/input/components/TextInputV2';
+import { TextInput } from '@/ui/input/components/TextInput';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
-import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
+import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
-import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
+import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
 import styled from '@emotion/styled';
+import { t } from '@lingui/core/macro';
 import { useState } from 'react';
 import {
   IconCheck,
@@ -14,10 +14,11 @@ import {
   IconPencil,
   IconTrash,
   IconX,
-  LightIconButton,
-  MenuItem,
   OverflowingTextWithTooltip,
-} from 'twenty-ui';
+} from 'twenty-ui/display';
+import { LightIconButton } from 'twenty-ui/input';
+import { MenuItem } from 'twenty-ui/navigation';
+import type { ApplicationVariable } from '~/generated/graphql';
 
 const StyledEditModeTableRow = styled(TableRow)`
   grid-template-columns: 180px auto 56px;
@@ -33,42 +34,42 @@ export const SettingsServerlessFunctionTabEnvironmentVariableTableRow = ({
   onDelete,
   initialEditMode = false,
 }: {
-  envVariable: EnvironmentVariable;
-  onChange: (newEnvVariable: EnvironmentVariable) => void;
+  envVariable: ApplicationVariable;
+  onChange: (newEnvVariable: ApplicationVariable) => void;
   onDelete: () => void;
   initialEditMode?: boolean;
 }) => {
   const [editedEnvVariable, setEditedEnvVariable] = useState(envVariable);
   const [editMode, setEditMode] = useState(initialEditMode);
   const dropDownId = `settings-environment-variable-dropdown-${envVariable.id}`;
-  const { closeDropdown } = useDropdown(dropDownId);
+  const { closeDropdown } = useCloseDropdown();
 
   return editMode ? (
     <StyledEditModeTableRow>
       <TableCell>
-        <TextInputV2
+        <TextInput
           autoFocus
           value={editedEnvVariable.key}
           onChange={(newKey) =>
             setEditedEnvVariable({ ...editedEnvVariable, key: newKey })
           }
-          placeholder="Name"
+          placeholder={t`Name`}
           fullWidth
         />
       </TableCell>
       <TableCell>
-        <TextInputV2
+        <TextInput
           value={editedEnvVariable.value}
           onChange={(newValue) =>
             setEditedEnvVariable({ ...editedEnvVariable, value: newValue })
           }
-          placeholder="Value"
+          placeholder={t`Value`}
           fullWidth
         />
       </TableCell>
       <TableCell>
         <LightIconButton
-          accent={'tertiary'}
+          accent="tertiary"
           Icon={IconX}
           onClick={() => {
             if (envVariable.key === '' && envVariable.value === '') {
@@ -79,7 +80,7 @@ export const SettingsServerlessFunctionTabEnvironmentVariableTableRow = ({
           }}
         />
         <LightIconButton
-          accent={'tertiary'}
+          accent="tertiary"
           Icon={IconCheck}
           disabled={
             editedEnvVariable.key === '' || editedEnvVariable.value === ''
@@ -101,40 +102,36 @@ export const SettingsServerlessFunctionTabEnvironmentVariableTableRow = ({
       </TableCell>
       <TableCell>
         <Dropdown
-          dropdownMenuWidth="100px"
           dropdownId={dropDownId}
           clickableComponent={
             <LightIconButton
-              aria-label="Env Variable Options"
+              aria-label={t`Env Variable Options`}
               Icon={IconDotsVertical}
               accent="tertiary"
             />
           }
           dropdownComponents={
-            <DropdownMenu disableBlur disableBorder width="auto">
+            <DropdownContent>
               <DropdownMenuItemsContainer>
                 <MenuItem
-                  text={'Edit'}
+                  text={t`Edit`}
                   LeftIcon={IconPencil}
                   onClick={() => {
                     setEditMode(true);
-                    closeDropdown();
+                    closeDropdown(dropDownId);
                   }}
                 />
                 <MenuItem
-                  text={'Delete'}
+                  text={t`Delete`}
                   LeftIcon={IconTrash}
                   onClick={() => {
                     onDelete();
-                    closeDropdown();
+                    closeDropdown(dropDownId);
                   }}
                 />
               </DropdownMenuItemsContainer>
-            </DropdownMenu>
+            </DropdownContent>
           }
-          dropdownHotkeyScope={{
-            scope: dropDownId,
-          }}
         />
       </TableCell>
     </StyledTableRow>

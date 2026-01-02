@@ -1,11 +1,11 @@
-import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
-import { ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
+import { type FieldMetadata } from '@/object-record/record-field/ui/types/FieldMetadata';
+import { type ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
 import { mapArrayToObject } from '~/utils/array/mapArrayToObject';
 import { moveArrayItem } from '~/utils/array/moveArrayItem';
-import { isDefined } from '~/utils/isDefined';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
-import { ViewField } from '../types/ViewField';
+import { isDefined } from 'twenty-shared/utils';
+import { type ViewField } from '@/views/types/ViewField';
 
 export const mapViewFieldsToColumnDefinitions = ({
   columnDefinitions,
@@ -39,7 +39,6 @@ export const mapViewFieldsToColumnDefinitions = ({
         fieldMetadataId: viewField.fieldMetadataId,
         label: correspondingColumnDefinition.label,
         metadata: correspondingColumnDefinition.metadata,
-        infoTooltipContent: correspondingColumnDefinition.infoTooltipContent,
         iconName: correspondingColumnDefinition.iconName,
         type: correspondingColumnDefinition.type,
         position: isLabelIdentifier ? 0 : viewField.position,
@@ -47,10 +46,14 @@ export const mapViewFieldsToColumnDefinitions = ({
         isLabelIdentifier,
         isVisible: isLabelIdentifier || viewField.isVisible,
         viewFieldId: viewField.id,
+        isUIReadOnly: correspondingColumnDefinition.metadata.isUIReadOnly,
         isSortable: correspondingColumnDefinition.isSortable,
         isFilterable: correspondingColumnDefinition.isFilterable,
         defaultValue: correspondingColumnDefinition.defaultValue,
-        settings: correspondingColumnDefinition.metadata.settings,
+        settings:
+          'settings' in correspondingColumnDefinition.metadata
+            ? correspondingColumnDefinition.metadata.settings
+            : undefined,
       } as ColumnDefinition<FieldMetadata>;
     })
     .filter(isDefined);

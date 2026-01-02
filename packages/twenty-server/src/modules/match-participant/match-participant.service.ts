@@ -1,16 +1,56 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 
-import { Any, EntityManager, Repository } from 'typeorm';
+import chunk from 'lodash.chunk';
+import { isDefined } from 'twenty-shared/utils';
+import { Any, In } from 'typeorm';
 
-import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { ScopedWorkspaceContextFactory } from 'src/engine/twenty-orm/factories/scoped-workspace-context.factory';
-import { TwentyORMManager } from 'src/engine/twenty-orm/twenty-orm.manager';
+import { type WorkspaceEntityManager } from 'src/engine/twenty-orm/entity-manager/workspace-entity-manager';
+import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
+import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
-import { CalendarEventParticipantWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-event-participant.workspace-entity';
-import { MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
-import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
+import { type CalendarEventParticipantWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-event-participant.workspace-entity';
+import { addPersonEmailFiltersToQueryBuilder } from 'src/modules/match-participant/utils/add-person-email-filters-to-query-builder';
+import { findPersonByPrimaryOrAdditionalEmail } from 'src/modules/match-participant/utils/find-person-by-primary-or-additional-email';
+import { type MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
+import { type PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
+
+type ObjectMetadataName = 'messageParticipant' | 'calendarEventParticipant';
+
+type MatchParticipantsForWorkspaceMembersArgs = {
+  participantMatching: {
+    workspaceMemberIds: string[];
+  };
+  objectMetadataName: ObjectMetadataName;
+  workspaceId: string;
+};
+
+type MatchParticipantsForPeopleArgs = {
+  participantMatching: {
+    personIds: string[];
+    personEmails: string[];
+  };
+  objectMetadataName: ObjectMetadataName;
+  workspaceId: string;
+};
+
+type MatchParticipantsArgs<
+  ParticipantWorkspaceEntity extends
+    | Pick<
+        CalendarEventParticipantWorkspaceEntity,
+        'id' | 'handle' | 'workspaceMemberId' | 'personId' | 'calendarEventId'
+      >
+    | Pick<
+        MessageParticipantWorkspaceEntity,
+        'id' | 'handle' | 'workspaceMemberId' | 'personId' | 'messageId'
+      >,
+> = {
+  participants: ParticipantWorkspaceEntity[];
+  objectMetadataName: ObjectMetadataName;
+  transactionManager?: WorkspaceEntityManager;
+  matchWith: 'workspaceMemberOnly' | 'personOnly' | 'workspaceMemberAndPerson';
+  workspaceId: string;
+};
 
 @Injectable()
 export class MatchParticipantService<
@@ -20,216 +60,245 @@ export class MatchParticipantService<
 > {
   constructor(
     private readonly workspaceEventEmitter: WorkspaceEventEmitter,
-    private readonly twentyORMManager: TwentyORMManager,
-    private readonly scopedWorkspaceContextFactory: ScopedWorkspaceContextFactory,
-    @InjectRepository(FieldMetadataEntity, 'metadata')
-    private readonly fieldMetadataRepository: Repository<FieldMetadataEntity>,
+    private readonly globalWorkspaceOrmManager: GlobalWorkspaceOrmManager,
   ) {}
 
   private async getParticipantRepository(
+    workspaceId: string,
     objectMetadataName: 'messageParticipant' | 'calendarEventParticipant',
   ) {
     if (objectMetadataName === 'messageParticipant') {
-      return await this.twentyORMManager.getRepository<MessageParticipantWorkspaceEntity>(
+      return await this.globalWorkspaceOrmManager.getRepository<MessageParticipantWorkspaceEntity>(
+        workspaceId,
         objectMetadataName,
       );
     }
 
-    return await this.twentyORMManager.getRepository<CalendarEventParticipantWorkspaceEntity>(
+    return await this.globalWorkspaceOrmManager.getRepository<CalendarEventParticipantWorkspaceEntity>(
+      workspaceId,
       objectMetadataName,
     );
   }
 
-  public async matchParticipants(
-    participants: ParticipantWorkspaceEntity[],
-    objectMetadataName: 'messageParticipant' | 'calendarEventParticipant',
-    transactionManager?: EntityManager,
-  ) {
-    const participantRepository =
-      await this.getParticipantRepository(objectMetadataName);
-
-    const workspaceId = this.scopedWorkspaceContextFactory.create().workspaceId;
-
-    if (!workspaceId) {
-      throw new Error('Workspace ID is required');
+  public async matchParticipants({
+    participants,
+    objectMetadataName,
+    transactionManager,
+    matchWith = 'workspaceMemberAndPerson',
+    workspaceId,
+  }: MatchParticipantsArgs<ParticipantWorkspaceEntity>) {
+    if (participants.length === 0) {
+      return;
     }
 
-    const participantIds = participants.map((participant) => participant.id);
-    const uniqueParticipantsHandles = [
-      ...new Set(participants.map((participant) => participant.handle)),
-    ];
-
     const personRepository =
-      await this.twentyORMManager.getRepository<PersonWorkspaceEntity>(
+      await this.globalWorkspaceOrmManager.getRepository<PersonWorkspaceEntity>(
+        workspaceId,
         'person',
+        { shouldBypassPermissionChecks: true },
       );
 
-    const people = await personRepository.find(
-      {
-        where: {
-          emails: Any(uniqueParticipantsHandles),
-        },
-      },
-      transactionManager,
+    const participantRepository = await this.getParticipantRepository(
+      workspaceId,
+      objectMetadataName,
     );
 
     const workspaceMemberRepository =
-      await this.twentyORMManager.getRepository<WorkspaceMemberWorkspaceEntity>(
+      await this.globalWorkspaceOrmManager.getRepository<WorkspaceMemberWorkspaceEntity>(
+        workspaceId,
         'workspaceMember',
+        { shouldBypassPermissionChecks: true },
       );
 
-    const workspaceMembers = await workspaceMemberRepository.find(
-      {
-        where: {
-          userEmail: Any(uniqueParticipantsHandles),
-        },
-      },
-      transactionManager,
-    );
+    const chunkSize = 200;
+    const chunkedParticipants = chunk(participants, chunkSize);
 
-    for (const handle of uniqueParticipantsHandles) {
-      const person = people.find(
-        (person) => person.emails?.primaryEmail === handle,
-      );
+    for (const participants of chunkedParticipants) {
+      const uniqueParticipantsHandles = [
+        ...new Set(participants.map((participant) => participant.handle)),
+      ].filter(isDefined);
 
-      const workspaceMember = workspaceMembers.find(
-        (workspaceMember) => workspaceMember.userEmail === handle,
-      );
+      const queryBuilder = addPersonEmailFiltersToQueryBuilder({
+        queryBuilder: personRepository.createQueryBuilder('person'),
+        emails: uniqueParticipantsHandles,
+      });
 
-      await participantRepository.update(
+      const people = await queryBuilder
+        .orderBy('person.createdAt', 'ASC')
+        .getMany();
+
+      const workspaceMembers = await workspaceMemberRepository.find(
         {
-          id: Any(participantIds),
-          handle,
-        },
-        {
-          personId: person?.id,
-          workspaceMemberId: workspaceMember?.id,
+          where: {
+            userEmail: Any(uniqueParticipantsHandles),
+          },
         },
         transactionManager,
       );
-    }
 
-    const matchedParticipants = await participantRepository.find(
-      {
-        where: {
-          id: Any(participantIds),
-          handle: Any(uniqueParticipantsHandles),
-        },
-      },
-      transactionManager,
-    );
+      const partipantsToBeUpdated = participants
+        .map((participant) => ({
+          ...participant,
+          handle: participant.handle ?? '',
+        }))
+        .map((participant) => {
+          const person = findPersonByPrimaryOrAdditionalEmail({
+            people,
+            email: participant.handle,
+          });
 
-    this.workspaceEventEmitter.emitCustomBatchEvent(
-      `${objectMetadataName}_matched`,
-      [
-        {
-          workspaceMemberId: null,
-          participants: matchedParticipants,
-        },
-      ],
-      workspaceId,
-    );
-  }
+          const workspaceMember = workspaceMembers.find(
+            (workspaceMember) =>
+              workspaceMember.userEmail === participant.handle,
+          );
 
-  public async matchParticipantsAfterPersonOrWorkspaceMemberCreation(
-    handle: string,
-    objectMetadataName: 'messageParticipant' | 'calendarEventParticipant',
-    personId?: string,
-    workspaceMemberId?: string,
-  ) {
-    const participantRepository =
-      await this.getParticipantRepository(objectMetadataName);
+          const shouldMatchWithPerson =
+            matchWith === 'workspaceMemberAndPerson' ||
+            matchWith === 'personOnly';
 
-    const workspaceId = this.scopedWorkspaceContextFactory.create().workspaceId;
+          const shouldMatchWithWorkspaceMember =
+            matchWith === 'workspaceMemberAndPerson' ||
+            matchWith === 'workspaceMemberOnly';
 
-    if (!workspaceId) {
-      throw new Error('Workspace ID is required');
-    }
+          const newParticipant = {
+            ...participant,
+            ...(shouldMatchWithPerson && {
+              personId: isDefined(person) ? person.id : null,
+            }),
+            ...(shouldMatchWithWorkspaceMember && {
+              workspaceMemberId: isDefined(workspaceMember)
+                ? workspaceMember.id
+                : null,
+            }),
+          };
 
-    const participantsToUpdate = await participantRepository.find({
-      where: {
-        handle,
-      },
-    });
+          if (
+            newParticipant.personId === participant.personId &&
+            newParticipant.workspaceMemberId === participant.workspaceMemberId
+          ) {
+            return null;
+          }
 
-    const participantIdsToUpdate = participantsToUpdate.map(
-      (participant) => participant.id,
-    );
+          return newParticipant;
+        })
+        .filter(isDefined);
 
-    if (personId) {
-      await participantRepository.update(
-        {
-          id: Any(participantIdsToUpdate),
-        },
-        {
-          person: {
-            id: personId,
-          },
-        },
+      await participantRepository.updateMany(
+        partipantsToBeUpdated.map((participant) => ({
+          criteria: participant.id,
+          partialEntity: participant,
+        })),
       );
-
-      const updatedParticipants = await participantRepository.find({
-        where: {
-          id: Any(participantIdsToUpdate),
-        },
-      });
 
       this.workspaceEventEmitter.emitCustomBatchEvent(
         `${objectMetadataName}_matched`,
         [
           {
-            workspaceId,
-            name: `${objectMetadataName}_matched`,
             workspaceMemberId: null,
-            participants: updatedParticipants,
+            participants: partipantsToBeUpdated,
           },
         ],
         workspaceId,
       );
     }
-
-    if (workspaceMemberId) {
-      await participantRepository.update(
-        {
-          id: Any(participantIdsToUpdate),
-        },
-        {
-          workspaceMember: {
-            id: workspaceMemberId,
-          },
-        },
-      );
-    }
   }
 
-  public async unmatchParticipants(
-    handle: string,
-    objectMetadataName: 'messageParticipant' | 'calendarEventParticipant',
-    personId?: string,
-    workspaceMemberId?: string,
-  ) {
-    const participantRepository =
-      await this.getParticipantRepository(objectMetadataName);
+  public async matchParticipantsForWorkspaceMembers({
+    participantMatching,
+    objectMetadataName,
+    workspaceId,
+  }: MatchParticipantsForWorkspaceMembersArgs) {
+    const authContext = buildSystemAuthContext(workspaceId);
 
-    if (personId) {
-      await participantRepository.update(
-        {
-          handle,
-        },
-        {
-          person: null,
-        },
-      );
-    }
-    if (workspaceMemberId) {
-      await participantRepository.update(
-        {
-          handle,
-        },
-        {
-          workspaceMember: null,
-        },
-      );
-    }
+    await this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      authContext,
+      async () => {
+        const participantRepository = await this.getParticipantRepository(
+          workspaceId,
+          objectMetadataName,
+        );
+
+        const participants = await participantRepository.find({
+          where: {
+            workspaceMemberId: In(participantMatching.workspaceMemberIds),
+          },
+        });
+
+        const tobeRematchedParticipants = participants.map((participant) => {
+          return {
+            ...participant,
+            workspaceMemberId: null,
+          };
+        });
+
+        await this.matchParticipants({
+          matchWith: 'workspaceMemberOnly',
+          participants:
+            tobeRematchedParticipants as ParticipantWorkspaceEntity[],
+          objectMetadataName,
+          workspaceId,
+        });
+      },
+    );
+  }
+
+  public async matchParticipantsForPeople({
+    participantMatching,
+    objectMetadataName,
+    workspaceId,
+  }: MatchParticipantsForPeopleArgs) {
+    const authContext = buildSystemAuthContext(workspaceId);
+
+    await this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      authContext,
+      async () => {
+        const participantRepository = await this.getParticipantRepository(
+          workspaceId,
+          objectMetadataName,
+        );
+
+        let participantsMatchingPersonEmails: ParticipantWorkspaceEntity[] = [];
+        let participantsMatchingPersonId: ParticipantWorkspaceEntity[] = [];
+
+        if (participantMatching.personIds.length > 0) {
+          participantsMatchingPersonId = (await participantRepository.find({
+            where: {
+              personId: In(participantMatching.personIds),
+            },
+          })) as ParticipantWorkspaceEntity[];
+        }
+
+        if (participantMatching.personEmails.length > 0) {
+          participantsMatchingPersonEmails = (await participantRepository.find({
+            where: {
+              handle: In(participantMatching.personEmails),
+            },
+          })) as ParticipantWorkspaceEntity[];
+        }
+
+        const uniqueParticipants = [
+          ...new Set([
+            ...participantsMatchingPersonId,
+            ...participantsMatchingPersonEmails,
+          ]),
+        ];
+
+        const tobeRematchedParticipants = uniqueParticipants.map(
+          (participant) => {
+            return {
+              ...participant,
+              personId: null,
+            };
+          },
+        );
+
+        await this.matchParticipants({
+          matchWith: 'personOnly',
+          participants: tobeRematchedParticipants,
+          objectMetadataName,
+          workspaceId,
+        });
+      },
+    );
   }
 }

@@ -1,7 +1,7 @@
 import { useTheme } from '@emotion/react';
 
-import IconGoogleRaw from '@ui/display/icon/assets/google.svg?react';
-import { IconComponentProps } from '@ui/display/icon/types/IconComponent';
+import IconGoogleRaw from '@assets/icons/google.svg?react';
+import { type IconComponentProps } from '@ui/display/icon/types/IconComponent';
 
 type IconGoogleProps = Pick<IconComponentProps, 'size'>;
 

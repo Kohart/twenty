@@ -4,25 +4,6 @@ type TransformToString<T, Keys extends keyof T> = {
   [P in keyof T]: P extends Keys ? string : T[P];
 };
 
-// Overload for an array of T
-export function transformMetadataForComparison<T, Keys extends keyof T>(
-  fieldMetadataCollection: T[],
-  options: {
-    shouldIgnoreProperty?: (property: string, originalMetadata?: T) => boolean;
-    propertiesToStringify?: readonly Keys[];
-    keyFactory: (datum: T) => string;
-  },
-): Record<string, TransformToString<T, Keys>>;
-
-// Overload for a single T object
-export function transformMetadataForComparison<T, Keys extends keyof T>(
-  fieldMetadataCollection: T,
-  options: {
-    shouldIgnoreProperty?: (property: string, originalMetadata?: T) => boolean;
-    propertiesToStringify?: readonly Keys[];
-  },
-): TransformToString<T, Keys>;
-
 export function transformMetadataForComparison<T, Keys extends keyof T>(
   metadata: T[] | T,
   options: {
@@ -51,10 +32,12 @@ export function transformMetadataForComparison<T, Keys extends keyof T>(
       ) {
         const orderedValue = orderObjectProperties(datum[property] as object);
 
+        // @ts-expect-error legacy noImplicitAny
         transformedField[property as string] = JSON.stringify(
           orderedValue,
         ) as T[Keys];
       } else {
+        // @ts-expect-error legacy noImplicitAny
         transformedField[property as string] = datum[property];
       }
     }

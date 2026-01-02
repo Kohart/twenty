@@ -1,6 +1,7 @@
 import {
-  WorkspaceMemberDateFormatEnum,
-  WorkspaceMemberTimeFormatEnum,
+  type WorkspaceMemberDateFormatEnum,
+  type WorkspaceMemberNumberFormatEnum,
+  type WorkspaceMemberTimeFormatEnum,
 } from '~/generated/graphql';
 
 export type ColorScheme = 'Dark' | 'Light' | 'System';
@@ -15,7 +16,7 @@ export type WorkspaceMember = {
   };
   avatarUrl?: string | null;
   locale: string | null;
-  colorScheme?: ColorScheme;
+  colorScheme: ColorScheme;
   createdAt: string;
   updatedAt: string;
   userEmail: string;
@@ -23,6 +24,8 @@ export type WorkspaceMember = {
   timeZone?: string | null;
   dateFormat?: WorkspaceMemberDateFormatEnum | null;
   timeFormat?: WorkspaceMemberTimeFormatEnum | null;
+  numberFormat?: WorkspaceMemberNumberFormatEnum | null;
+  calendarStartDay?: number | null;
 };
 
 export type WorkspaceInvitation = {

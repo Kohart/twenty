@@ -1,44 +1,60 @@
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { settingsObjectIndexesFamilyState } from '@/settings/data-model/object-details/states/settingsObjectIndexesFamilyState';
-import { TextInput } from '@/ui/input/components/TextInput';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { SortableTableHeader } from '@/ui/layout/table/components/SortableTableHeader';
 import { Table } from '@/ui/layout/table/components/Table';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableHeader } from '@/ui/layout/table/components/TableHeader';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
 import { useSortedArray } from '@/ui/layout/table/hooks/useSortedArray';
-import { TableMetadata } from '@/ui/layout/table/types/TableMetadata';
+import { type TableMetadata } from '@/ui/layout/table/types/TableMetadata';
 import styled from '@emotion/styled';
+import { msg } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react/macro';
 import { isNonEmptyArray } from '@sniptt/guards';
 import { useEffect, useMemo, useState } from 'react';
 import { useRecoilState } from 'recoil';
-import { IconSearch, IconSquareKey } from 'twenty-ui';
-import { SettingsObjectIndexesTableItem } from '~/pages/settings/data-model/types/SettingsObjectIndexesTableItem';
+import { IconSearch, IconSquareKey } from 'twenty-ui/display';
+import { type SettingsObjectIndexesTableItem } from '~/pages/settings/data-model/types/SettingsObjectIndexesTableItem';
+import { normalizeSearchText } from '~/utils/normalizeSearchText';
 
 export const StyledObjectIndexTableRow = styled(TableRow)`
   grid-template-columns: 350px 70px 80px;
 `;
 
-const SETTINGS_OBJECT_DETAIL_TABLE_METADATA_STANDARD: TableMetadata<SettingsObjectIndexesTableItem> =
-  {
+const StyledSearchInput = styled(SettingsTextInput)`
+  padding-bottom: ${({ theme }) => theme.spacing(2)};
+  width: 100%;
+`;
+
+export type SettingsObjectIndexTableProps = {
+  objectMetadataItem: ObjectMetadataItem;
+};
+
+export const SettingsObjectIndexTable = ({
+  objectMetadataItem,
+}: SettingsObjectIndexTableProps) => {
+  const { t } = useLingui();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const tableMetadata: TableMetadata<SettingsObjectIndexesTableItem> = {
     tableId: 'settingsObjectIndexs',
     fields: [
       {
-        fieldLabel: 'Fields',
+        fieldLabel: msg`Fields`,
         fieldName: 'indexFields',
         fieldType: 'string',
         align: 'left',
       },
       {
-        fieldLabel: '',
+        fieldLabel: msg`Unique`,
         FieldIcon: IconSquareKey,
         fieldName: 'isUnique',
         fieldType: 'string',
         align: 'left',
       },
       {
-        fieldLabel: 'Type',
+        fieldLabel: msg`Type`,
         fieldName: 'indexType',
         fieldType: 'string',
         align: 'right',
@@ -49,19 +65,6 @@ const SETTINGS_OBJECT_DETAIL_TABLE_METADATA_STANDARD: TableMetadata<SettingsObje
       orderBy: 'AscNullsLast',
     },
   };
-
-const StyledSearchInput = styled(TextInput)`
-  padding-bottom: ${({ theme }) => theme.spacing(2)};
-  width: 100%;
-`;
-export type SettingsObjectIndexTableProps = {
-  objectMetadataItem: ObjectMetadataItem;
-};
-
-export const SettingsObjectIndexTable = ({
-  objectMetadataItem,
-}: SettingsObjectIndexTableProps) => {
-  const [searchTerm, setSearchTerm] = useState('');
 
   const [settingsObjectIndexes, setSettingsObjectIndexes] = useRecoilState(
     settingsObjectIndexesFamilyState({
@@ -95,39 +98,40 @@ export const SettingsObjectIndexTable = ({
 
   const sortedActiveObjectSettingsDetailItems = useSortedArray(
     objectSettingsDetailItems,
-    SETTINGS_OBJECT_DETAIL_TABLE_METADATA_STANDARD,
+    tableMetadata,
   );
 
   const filteredActiveItems = useMemo(
     () =>
-      sortedActiveObjectSettingsDetailItems.filter(
-        (item) =>
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.indexType.toLowerCase().includes(searchTerm.toLowerCase()),
-      ),
+      sortedActiveObjectSettingsDetailItems.filter((item) => {
+        const searchNormalized = normalizeSearchText(searchTerm);
+        return (
+          normalizeSearchText(item.name).includes(searchNormalized) ||
+          normalizeSearchText(item.indexType).includes(searchNormalized)
+        );
+      }),
     [sortedActiveObjectSettingsDetailItems, searchTerm],
   );
 
   return (
     <>
       <StyledSearchInput
+        instanceId="object-index-table-search"
         LeftIcon={IconSearch}
-        placeholder="Search an index..."
+        placeholder={t`Search an index...`}
         value={searchTerm}
         onChange={setSearchTerm}
       />
       <Table>
         <StyledObjectIndexTableRow>
-          {SETTINGS_OBJECT_DETAIL_TABLE_METADATA_STANDARD.fields.map((item) => (
+          {tableMetadata.fields.map((item) => (
             <SortableTableHeader
               key={item.fieldName}
               fieldName={item.fieldName}
-              label={item.fieldLabel}
+              label={t(item.fieldLabel)}
               Icon={item.FieldIcon}
-              tableId={SETTINGS_OBJECT_DETAIL_TABLE_METADATA_STANDARD.tableId}
-              initialSort={
-                SETTINGS_OBJECT_DETAIL_TABLE_METADATA_STANDARD.initialSort
-              }
+              tableId={tableMetadata.tableId}
+              initialSort={tableMetadata.initialSort}
             />
           ))}
           <TableHeader></TableHeader>

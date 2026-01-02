@@ -1,3 +1,7 @@
-import { RecordLayoutTab } from '@/ui/layout/tab/types/RecordLayoutTab';
+import { type RecordLayoutTab } from '@/ui/layout/tab-list/types/RecordLayoutTab';
 
-export type RecordLayout = Record<string, RecordLayoutTab | null>;
+export type RecordLayout = {
+  hideSummaryAndFields?: boolean;
+  hideFieldsInSidePanel?: boolean;
+  tabs: Record<string, RecordLayoutTab | null>;
+};

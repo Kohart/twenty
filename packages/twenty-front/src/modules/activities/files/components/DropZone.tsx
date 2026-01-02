@@ -1,9 +1,10 @@
-import { useDropzone } from 'react-dropzone';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconUpload } from 'twenty-ui';
+import { useLingui } from '@lingui/react/macro';
+import { useDropzone } from 'react-dropzone';
 
 import { useSpreadsheetImportInternal } from '@/spreadsheet-import/hooks/useSpreadsheetImportInternal';
+import { IconUpload } from 'twenty-ui/display';
 
 const StyledContainer = styled.div`
   align-items: center;
@@ -40,20 +41,21 @@ const StyledUploadIcon = styled(IconUpload)`
 
 type DropZoneProps = {
   setIsDraggingFile: (drag: boolean) => void;
-  onUploadFile: (file: File) => void;
+  onUploadFiles: (files: File[]) => void;
 };
 
 export const DropZone = ({
   setIsDraggingFile,
-  onUploadFile,
+  onUploadFiles,
 }: DropZoneProps) => {
+  const { t } = useLingui();
   const theme = useTheme();
   const { maxFileSize } = useSpreadsheetImportInternal();
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     noClick: true,
     noKeyboard: true,
-    maxFiles: 1,
+    multiple: true,
     maxSize: maxFileSize,
     onDragEnter: () => {
       setIsDraggingFile(true);
@@ -64,8 +66,8 @@ export const DropZone = ({
     onDrop: () => {
       setIsDraggingFile(false);
     },
-    onDropAccepted: async ([file]) => {
-      onUploadFile(file);
+    onDropAccepted: async (files) => {
+      onUploadFiles(files);
       setIsDraggingFile(false);
     },
   });
@@ -85,9 +87,9 @@ export const DropZone = ({
             stroke={theme.icon.stroke.sm}
             size={theme.icon.size.lg}
           />
-          <StyledUploadDragTitle>Upload a file</StyledUploadDragTitle>
+          <StyledUploadDragTitle>{t`Upload files`}</StyledUploadDragTitle>
           <StyledUploadDragSubTitle>
-            Drag and Drop Here
+            {t`Drag and Drop Here`}
           </StyledUploadDragSubTitle>
         </>
       )}

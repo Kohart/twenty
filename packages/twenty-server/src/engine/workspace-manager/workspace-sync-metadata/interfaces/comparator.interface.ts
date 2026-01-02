@@ -1,9 +1,10 @@
-import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { IndexMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
-import { RelationMetadataEntity } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
+import { type FieldMetadataType } from 'twenty-shared/types';
 
-import { ComputedPartialFieldMetadata } from './partial-field-metadata.interface';
-import { ComputedPartialWorkspaceEntity } from './partial-object-metadata.interface';
+import { type FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { type IndexMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
+
+import { type ComputedPartialFieldMetadata } from './partial-field-metadata.interface';
+import { type ComputedPartialWorkspaceEntity } from './partial-object-metadata.interface';
 
 export const enum ComparatorAction {
   SKIP = 'SKIP',
@@ -52,10 +53,33 @@ export type FieldComparatorResult =
     >
   | ComparatorDeleteResult<FieldMetadataEntity>;
 
-export type RelationComparatorResult =
-  | ComparatorCreateResult<Partial<RelationMetadataEntity>>
-  | ComparatorDeleteResult<RelationMetadataEntity>
-  | ComparatorUpdateResult<Partial<RelationMetadataEntity>>;
+export type FieldRelationComparatorResult =
+  | ComparatorSkipResult
+  | ComparatorCreateResult<
+      Partial<
+        ComputedPartialFieldMetadata<
+          FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+        >
+      > & {
+        id: string;
+        type: FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION;
+      }
+    >
+  | ComparatorUpdateResult<
+      Partial<
+        ComputedPartialFieldMetadata<
+          FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+        >
+      > & {
+        id: string;
+        type: FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION;
+      }
+    >
+  | ComparatorDeleteResult<
+      FieldMetadataEntity<
+        FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+      >
+    >;
 
 export type IndexComparatorResult =
   | ComparatorCreateResult<Partial<IndexMetadataEntity>>

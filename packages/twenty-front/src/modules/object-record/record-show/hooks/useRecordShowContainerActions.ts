@@ -1,23 +1,22 @@
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import {
-  RecordUpdateHook,
-  RecordUpdateHookParams,
-} from '@/object-record/record-field/contexts/FieldContext';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { FileFolder } from '~/generated-metadata/graphql';
-import { useUploadImageMutation } from '~/generated/graphql';
+  type RecordUpdateHook,
+  type RecordUpdateHookParams,
+} from '@/object-record/record-field/ui/contexts/FieldContext';
+import {
+  FileFolder,
+  useUploadImageMutation,
+} from '~/generated-metadata/graphql';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 interface UseRecordShowContainerActionsProps {
   objectNameSingular: string;
   objectRecordId: string;
-  recordFromStore: ObjectRecord | null;
 }
 
 export const useRecordShowContainerActions = ({
   objectNameSingular,
   objectRecordId,
-  recordFromStore,
 }: UseRecordShowContainerActionsProps) => {
   const [uploadImage] = useUploadImageMutation();
   const { updateOneRecord } = useUpdateOneRecord({ objectNameSingular });
@@ -45,16 +44,16 @@ export const useRecordShowContainerActions = ({
       },
     });
 
-    const avatarUrl = result?.data?.uploadImage;
+    const avatarSignedFile = result?.data?.uploadImage;
 
-    if (!avatarUrl || isUndefinedOrNull(updateOneRecord) || !recordFromStore) {
+    if (!avatarSignedFile || isUndefinedOrNull(updateOneRecord)) {
       return;
     }
 
     await updateOneRecord({
       idToUpdate: objectRecordId,
       updateOneRecordInput: {
-        avatarUrl,
+        avatarUrl: avatarSignedFile.path,
       },
     });
   };

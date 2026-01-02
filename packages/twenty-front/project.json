@@ -2,13 +2,31 @@
   "name": "twenty-front",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "tags": ["scope:frontend"],
+  "tags": [
+    "scope:frontend"
+  ],
   "targets": {
     "build": {
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "{projectRoot}/build"
-      }
+      },
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "build:sourcemaps": {
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "{projectRoot}/build"
+      },
+      "dependsOn": [
+        "^build"
+      ]
     },
     "serve": {
       "executor": "nx:run-commands",
@@ -33,8 +51,12 @@
     },
     "reset:env": {
       "executor": "nx:run-commands",
-      "inputs": ["{projectRoot}/.env.example"],
-      "outputs": ["{projectRoot}/.env"],
+      "inputs": [
+        "{projectRoot}/.env.example"
+      ],
+      "outputs": [
+        "{projectRoot}/.env"
+      ],
       "cache": true,
       "options": {
         "cwd": "{projectRoot}",
@@ -44,20 +66,14 @@
     "typecheck": {},
     "lint": {
       "options": {
-        "lintFilePatterns": [
-          "{projectRoot}/src/**/*.{ts,tsx,json}",
-          "{projectRoot}/package.json"
-        ],
-        "maxWarnings": 0,
-        "reportUnusedDisableDirectives": "error"
+        "maxWarnings": 0
       },
       "configurations": {
-        "ci": {
-          "eslintConfig": "{projectRoot}/.eslintrc-ci.cjs"
-        },
+        "ci": {},
         "fix": {}
       }
     },
+    "lint:diff-with-main": {},
     "fmt": {
       "options": {
         "files": "src"
@@ -69,49 +85,137 @@
     "test": {},
     "storybook:build": {
       "options": {
-        "env": { "NODE_OPTIONS": "--max_old_space_size=6500" }
+        "env": {
+          "NODE_OPTIONS": "--max_old_space_size=8000"
+        }
       },
       "configurations": {
-        "docs": { "env": { "STORYBOOK_SCOPE": "ui-docs" } },
-        "modules": { "env": { "STORYBOOK_SCOPE": "modules" } },
-        "pages": { "env": { "STORYBOOK_SCOPE": "pages" } },
-        "performance": { "env": { "STORYBOOK_SCOPE": "performance" } }
+        "docs": {
+          "env": {
+            "STORYBOOK_SCOPE": "ui-docs"
+          }
+        },
+        "modules": {
+          "env": {
+            "STORYBOOK_SCOPE": "modules"
+          }
+        },
+        "pages": {
+          "env": {
+            "STORYBOOK_SCOPE": "pages"
+          }
+        },
+        "performance": {
+          "env": {
+            "STORYBOOK_SCOPE": "performance"
+          }
+        }
       }
     },
     "storybook:serve:dev": {
-      "options": { "port": 6006 },
+      "options": {
+        "port": 6006
+      },
       "configurations": {
-        "docs": { "env": { "STORYBOOK_SCOPE": "ui-docs" } },
-        "modules": { "env": { "STORYBOOK_SCOPE": "modules" } },
-        "pages": { "env": { "STORYBOOK_SCOPE": "pages" } },
-        "performance": { "env": { "STORYBOOK_SCOPE": "performance" } }
+        "docs": {
+          "env": {
+            "STORYBOOK_SCOPE": "ui-docs"
+          }
+        },
+        "modules": {
+          "env": {
+            "STORYBOOK_SCOPE": "modules"
+          }
+        },
+        "pages": {
+          "env": {
+            "STORYBOOK_SCOPE": "pages"
+          }
+        },
+        "performance": {
+          "env": {
+            "STORYBOOK_SCOPE": "performance"
+          }
+        }
       }
     },
     "storybook:serve:static": {
-      "options": { "port": 6006 },
+      "options": {
+        "port": 6006
+      },
       "configurations": {
-        "docs": { "env": { "STORYBOOK_SCOPE": "ui-docs" } },
-        "modules": { "env": { "STORYBOOK_SCOPE": "modules" } },
-        "pages": { "env": { "STORYBOOK_SCOPE": "pages" } },
-        "performance": { "env": { "STORYBOOK_SCOPE": "performance" } }
+        "docs": {
+          "env": {
+            "STORYBOOK_SCOPE": "ui-docs"
+          }
+        },
+        "modules": {
+          "env": {
+            "STORYBOOK_SCOPE": "modules"
+          }
+        },
+        "pages": {
+          "env": {
+            "STORYBOOK_SCOPE": "pages"
+          }
+        },
+        "performance": {
+          "env": {
+            "STORYBOOK_SCOPE": "performance"
+          }
+        }
       }
     },
     "storybook:coverage": {
       "configurations": {
         "text": {},
-        "docs": { "env": { "STORYBOOK_SCOPE": "ui-docs" } },
-        "modules": { "env": { "STORYBOOK_SCOPE": "modules" } },
-        "pages": { "env": { "STORYBOOK_SCOPE": "pages" } },
-        "performance": { "env": { "STORYBOOK_SCOPE": "performance" } }
+        "docs": {
+          "env": {
+            "STORYBOOK_SCOPE": "ui-docs"
+          }
+        },
+        "modules": {
+          "env": {
+            "STORYBOOK_SCOPE": "modules"
+          }
+        },
+        "pages": {
+          "env": {
+            "STORYBOOK_SCOPE": "pages"
+          }
+        },
+        "performance": {
+          "env": {
+            "STORYBOOK_SCOPE": "performance"
+          }
+        }
       }
     },
     "storybook:test": {
-      "options": { "port": 6006 },
+      "options": {
+        "port": 6006
+      },
       "configurations": {
-        "docs": { "env": { "STORYBOOK_SCOPE": "ui-docs" } },
-        "modules": { "env": { "STORYBOOK_SCOPE": "modules" } },
-        "pages": { "env": { "STORYBOOK_SCOPE": "pages" } },
-        "performance": { "env": { "STORYBOOK_SCOPE": "performance" } }
+        "docs": {
+          "env": {
+            "STORYBOOK_SCOPE": "ui-docs"
+          }
+        },
+        "modules": {
+          "env": {
+            "STORYBOOK_SCOPE": "modules"
+          }
+        },
+        "pages": {
+          "env": {
+            "STORYBOOK_SCOPE": "pages"
+          }
+        },
+        "performance": {
+          "env": {
+            "STORYBOOK_SCOPE": "performance"
+          }
+        }
       }
     },
     "storybook:serve-and-test:static": {
@@ -119,10 +223,18 @@
         "port": 6006
       },
       "configurations": {
-        "docs": { "scope": "ui-docs" },
-        "modules": { "scope": "modules" },
-        "pages": { "scope": "pages" },
-        "performance": { "scope": "performance" }
+        "docs": {
+          "scope": "ui-docs"
+        },
+        "modules": {
+          "scope": "modules"
+        },
+        "pages": {
+          "scope": "pages"
+        },
+        "performance": {
+          "scope": "performance"
+        }
       }
     },
     "graphql:generate": {
@@ -130,7 +242,7 @@
       "defaultConfiguration": "data",
       "options": {
         "cwd": "{projectRoot}",
-        "command": "dotenv cross-var graphql-codegen -- --config={args.config}"
+        "command": "dotenv graphql-codegen -- --config={args.config}"
       },
       "configurations": {
         "data": {
@@ -144,6 +256,20 @@
     "chromatic": {
       "configurations": {
         "ci": {}
+      }
+    },
+    "lingui:extract": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "lingui extract --overwrite --clean"
+      }
+    },
+    "lingui:compile": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "lingui compile --typescript"
       }
     }
   }

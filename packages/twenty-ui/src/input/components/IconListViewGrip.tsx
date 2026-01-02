@@ -1,5 +1,5 @@
-import IconListViewGripRaw from '@ui/input/components/list-view-grip.svg?react';
-import { IconComponentProps } from '@ui/display/icon/types/IconComponent';
+import IconListViewGripRaw from '@assets/misc/list-view-grip.svg?react';
+import { type IconComponentProps } from '@ui/display/icon/types/IconComponent';
 
 type IconListViewGripProps = Pick<IconComponentProps, 'size' | 'stroke'>;
 

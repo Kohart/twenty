@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
 import { hasFlag } from 'country-flag-icons';
 import * as Flags from 'country-flag-icons/react/3x2';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
+import { useMemo } from 'react';
 
-import { Country } from '@/ui/input/components/internal/types/Country';
+import { type Country } from '@/ui/input/components/internal/types/Country';
 
 export const useCountries = () => {
   return useMemo<Country[]>(() => {

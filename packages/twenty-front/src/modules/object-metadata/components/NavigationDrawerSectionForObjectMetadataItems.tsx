@@ -1,41 +1,38 @@
 import { NavigationDrawerItemForObjectMetadataItem } from '@/object-metadata/components/NavigationDrawerItemForObjectMetadataItem';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { getObjectPermissionsForObject } from '@/object-metadata/utils/getObjectPermissionsForObject';
+import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
 import { NavigationDrawerAnimatedCollapseWrapper } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerAnimatedCollapseWrapper';
 import { NavigationDrawerSection } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSection';
 import { NavigationDrawerSectionTitle } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSectionTitle';
 import { useNavigationSection } from '@/ui/navigation/navigation-drawer/hooks/useNavigationSection';
-import styled from '@emotion/styled';
 import { useRecoilValue } from 'recoil';
 
-const ORDERED_STANDARD_OBJECTS = [
-  'person',
-  'company',
-  'opportunity',
-  'task',
-  'note',
+const ORDERED_STANDARD_OBJECTS: string[] = [
+  CoreObjectNameSingular.Person,
+  CoreObjectNameSingular.Company,
+  CoreObjectNameSingular.Opportunity,
+  CoreObjectNameSingular.Task,
+  CoreObjectNameSingular.Note,
 ];
 
-const StyledObjectsMetaDataItemsWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.betweenSiblingsGap};
-  width: 100%;
-  flex: 1;
-  overflow-y: auto;
-`;
+type NavigationDrawerSectionForObjectMetadataItemsProps = {
+  sectionTitle: string;
+  isRemote: boolean;
+  objectMetadataItems: ObjectMetadataItem[];
+};
 
 export const NavigationDrawerSectionForObjectMetadataItems = ({
   sectionTitle,
   isRemote,
   objectMetadataItems,
-}: {
-  sectionTitle: string;
-  isRemote: boolean;
-  objectMetadataItems: ObjectMetadataItem[];
-}) => {
+}: NavigationDrawerSectionForObjectMetadataItemsProps) => {
   const { toggleNavigationSection, isNavigationSectionOpenState } =
     useNavigationSection('Objects' + (isRemote ? 'Remote' : 'Workspace'));
   const isNavigationSectionOpen = useRecoilValue(isNavigationSectionOpenState);
+
+  const { objectPermissionsByObjectMetadataId } = useObjectPermissions();
 
   const sortedStandardObjectMetadataItems = [...objectMetadataItems]
     .filter((item) => ORDERED_STANDARD_OBJECTS.includes(item.nameSingular))
@@ -68,6 +65,15 @@ export const NavigationDrawerSectionForObjectMetadataItems = ({
     ...sortedCustomObjectMetadataItems,
   ];
 
+  const objectMetadataItemsForNavigationItemsWithReadPermission =
+    objectMetadataItemsForNavigationItems.filter(
+      (objectMetadataItem) =>
+        getObjectPermissionsForObject(
+          objectPermissionsByObjectMetadataId,
+          objectMetadataItem.id,
+        ).canReadObjectRecords,
+    );
+
   return (
     objectMetadataItems.length > 0 && (
       <NavigationDrawerSection>
@@ -77,15 +83,15 @@ export const NavigationDrawerSectionForObjectMetadataItems = ({
             onClick={() => toggleNavigationSection()}
           />
         </NavigationDrawerAnimatedCollapseWrapper>
-        <StyledObjectsMetaDataItemsWrapper>
-          {isNavigationSectionOpen &&
-            objectMetadataItemsForNavigationItems.map((objectMetadataItem) => (
+        {isNavigationSectionOpen &&
+          objectMetadataItemsForNavigationItemsWithReadPermission.map(
+            (objectMetadataItem) => (
               <NavigationDrawerItemForObjectMetadataItem
                 key={`navigation-drawer-item-${objectMetadataItem.id}`}
                 objectMetadataItem={objectMetadataItem}
               />
-            ))}
-        </StyledObjectsMetaDataItemsWrapper>
+            ),
+          )}
       </NavigationDrawerSection>
     )
   );

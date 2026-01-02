@@ -1,12 +1,12 @@
-import { RecordGroupDefinition } from '@/object-record/record-group/types/RecordGroupDefinition';
+import { type RecordGroupDefinition } from '@/object-record/record-group/types/RecordGroupDefinition';
 import { RecordGroupSort } from '@/object-record/record-group/types/RecordGroupSort';
 
 export const sortRecordGroupDefinitions = (
   recordGroupDefinitions: RecordGroupDefinition[],
   recordGroupSort: RecordGroupSort,
 ) => {
-  const visibleGroups = recordGroupDefinitions.filter(
-    (boardGroup) => boardGroup.isVisible,
+  const visibleRecordGroups = recordGroupDefinitions.filter(
+    (recordGroup) => recordGroup.isVisible,
   );
 
   const compareAlphabetical = (a: string, b: string, reverse = false) => {
@@ -17,15 +17,15 @@ export const sortRecordGroupDefinitions = (
 
   switch (recordGroupSort) {
     case RecordGroupSort.Alphabetical:
-      return visibleGroups.sort((a, b) =>
+      return visibleRecordGroups.sort((a, b) =>
         compareAlphabetical(a.title.toLowerCase(), b.title.toLowerCase()),
       );
     case RecordGroupSort.ReverseAlphabetical:
-      return visibleGroups.sort((a, b) =>
+      return visibleRecordGroups.sort((a, b) =>
         compareAlphabetical(a.title.toLowerCase(), b.title.toLowerCase(), true),
       );
     case RecordGroupSort.Manual:
     default:
-      return visibleGroups.sort((a, b) => a.position - b.position);
+      return visibleRecordGroups.sort((a, b) => a.position - b.position);
   }
 };

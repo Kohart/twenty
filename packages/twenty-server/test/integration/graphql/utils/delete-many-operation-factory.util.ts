@@ -1,6 +1,5 @@
 import gql from 'graphql-tag';
-
-import { capitalize } from 'src/utils/capitalize';
+import { capitalize } from 'twenty-shared/utils';
 
 type DeleteManyOperationFactoryParams = {
   objectMetadataSingularName: string;
@@ -17,7 +16,7 @@ export const deleteManyOperationFactory = ({
 }: DeleteManyOperationFactoryParams) => ({
   query: gql`
     mutation Delete${capitalize(objectMetadataPluralName)}(
-      $filter: ${capitalize(objectMetadataSingularName)}FilterInput
+      $filter: ${capitalize(objectMetadataSingularName)}FilterInput!
     ) {
       delete${capitalize(objectMetadataPluralName)}(filter: $filter) {
         ${gqlFields}

@@ -1,5 +1,5 @@
-import { LinkType } from '@ui/navigation/link';
-import { isDefined } from '../isDefined';
+import { type LinkType } from '@ui/navigation';
+import { isDefined } from 'twenty-shared/utils';
 
 type getUrlDisplayValueByUrlTypeProps = {
   type: LinkType;
@@ -29,6 +29,15 @@ export const getDisplayValueByUrlType = ({
       return `@${matches?.[1]}`;
     } else {
       return '@twitter';
+    }
+  }
+
+  if (type === 'facebook') {
+    const matches = href.match(/(?:https?:\/\/)?(?:www.)?facebook.com\/(.+)/);
+    if (isDefined(matches?.[1])) {
+      return decodeURIComponent(matches?.[1]);
+    } else {
+      return 'Facebook';
     }
   }
 };

@@ -1,68 +1,42 @@
 /* @license Enterprise */
 
-import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
+import { GET_AUTHORIZATION_URL_FOR_SSO } from '@/auth/graphql/mutations/getAuthorizationUrlForSSO';
+import { useRedirect } from '@/domain-manager/hooks/useRedirect';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import {
-  FindAvailableSsoIdentityProvidersMutationVariables,
-  GetAuthorizationUrlMutationVariables,
-  useFindAvailableSsoIdentityProvidersMutation,
-  useGetAuthorizationUrlMutation,
-} from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
+import { ApolloError, useApolloClient } from '@apollo/client';
+import { useParams } from 'react-router-dom';
 
 export const useSSO = () => {
-  const { enqueueSnackBar } = useSnackBar();
+  const apolloClient = useApolloClient();
+  const workspaceInviteHash = useParams().workspaceInviteHash;
 
-  const [findAvailableSSOProviderByEmailMutation] =
-    useFindAvailableSsoIdentityProvidersMutation();
-  const [getAuthorizationUrlMutation] = useGetAuthorizationUrlMutation();
-
-  const findAvailableSSOProviderByEmail = async ({
-    email,
-  }: FindAvailableSsoIdentityProvidersMutationVariables['input']) => {
-    return await findAvailableSSOProviderByEmailMutation({
-      variables: {
-        input: { email },
-      },
-    });
-  };
-
-  const getAuthorizationUrlForSSO = async ({
-    identityProviderId,
-  }: GetAuthorizationUrlMutationVariables['input']) => {
-    return await getAuthorizationUrlMutation({
-      variables: {
-        input: { identityProviderId },
-      },
-    });
-  };
-
+  const { enqueueErrorSnackBar } = useSnackBar();
+  const { redirect } = useRedirect();
   const redirectToSSOLoginPage = async (identityProviderId: string) => {
-    const authorizationUrlForSSOResult = await getAuthorizationUrlForSSO({
-      identityProviderId,
-    });
-
-    if (
-      isDefined(authorizationUrlForSSOResult.errors) ||
-      !authorizationUrlForSSOResult.data ||
-      !authorizationUrlForSSOResult.data?.getAuthorizationUrl.authorizationURL
-    ) {
-      return enqueueSnackBar(
-        authorizationUrlForSSOResult.errors?.[0]?.message ?? 'Unknown error',
-        {
-          variant: SnackBarVariant.Error,
+    let authorizationUrlForSSOResult;
+    try {
+      authorizationUrlForSSOResult = await apolloClient.mutate({
+        mutation: GET_AUTHORIZATION_URL_FOR_SSO,
+        variables: {
+          input: {
+            identityProviderId,
+            workspaceInviteHash,
+          },
         },
-      );
+      });
+    } catch (error: any) {
+      return enqueueErrorSnackBar({
+        ...(error instanceof ApolloError ? { apolloError: error } : {}),
+      });
     }
 
-    window.location.href =
-      authorizationUrlForSSOResult.data?.getAuthorizationUrl.authorizationURL;
-    return;
+    redirect(
+      authorizationUrlForSSOResult.data?.getAuthorizationUrlForSSO
+        .authorizationURL,
+    );
   };
 
   return {
     redirectToSSOLoginPage,
-    getAuthorizationUrlForSSO,
-    findAvailableSSOProviderByEmail,
   };
 };

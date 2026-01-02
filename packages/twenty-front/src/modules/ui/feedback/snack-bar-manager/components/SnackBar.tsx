@@ -1,20 +1,21 @@
+import { sanitizeMessageToRenderInSnackbar } from '@/ui/feedback/snack-bar-manager/utils/sanitizeMessageToRenderInSnackbar';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { msg } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react/macro';
 import { isUndefined } from '@sniptt/guards';
-import { ComponentPropsWithoutRef, ReactNode, useMemo } from 'react';
+import { type ComponentPropsWithoutRef, type ReactNode, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { isDefined } from 'twenty-shared/utils';
 import {
   IconAlertTriangle,
   IconInfoCircle,
   IconSquareRoundedCheck,
   IconX,
-  LightButton,
-  LightIconButton,
-  MOBILE_VIEWPORT,
-  ProgressBar,
-  useProgressAnimation,
-} from 'twenty-ui';
-
-import { isDefined } from '~/utils/isDefined';
+} from 'twenty-ui/display';
+import { ProgressBar, useProgressAnimation } from 'twenty-ui/feedback';
+import { LightButton, LightIconButton } from 'twenty-ui/input';
+import { MOBILE_VIEWPORT } from 'twenty-ui/theme';
 
 export enum SnackBarVariant {
   Default = 'default',
@@ -24,19 +25,21 @@ export enum SnackBarVariant {
   Warning = 'warning',
 }
 
-export type SnackBarProps = Pick<
-  ComponentPropsWithoutRef<'div'>,
-  'id' | 'title'
-> & {
+export type SnackBarProps = Pick<ComponentPropsWithoutRef<'div'>, 'id'> & {
   className?: string;
   progress?: number;
   duration?: number;
   icon?: ReactNode;
-  message?: string;
+  message: string;
+  actionText?: string;
+  actionOnClick?: () => void;
+  actionTo?: string;
+  detailedMessage?: string;
   onCancel?: () => void;
   onClose?: () => void;
   role?: 'alert' | 'status';
   variant?: SnackBarVariant;
+  dedupeKey?: string;
 };
 
 const StyledContainer = styled.div`
@@ -73,8 +76,17 @@ const StyledHeader = styled.div`
   display: flex;
   font-weight: ${({ theme }) => theme.font.weight.medium};
   gap: ${({ theme }) => theme.spacing(2)};
-  height: ${({ theme }) => theme.spacing(6)};
   margin-bottom: ${({ theme }) => theme.spacing(1)};
+`;
+
+const StyledMessage = styled.div`
+  color: ${({ theme }) => theme.font.color.secondary};
+  font-size: ${({ theme }) => theme.font.size.sm};
+`;
+
+const StyledIcon = styled.div`
+  align-items: center;
+  display: flex;
 `;
 
 const StyledActions = styled.div`
@@ -92,12 +104,33 @@ const StyledDescription = styled.div`
   width: 200px;
 `;
 
-const defaultTitleByVariant: Record<SnackBarVariant, string> = {
-  [SnackBarVariant.Default]: 'Alert',
-  [SnackBarVariant.Error]: 'Error',
-  [SnackBarVariant.Info]: 'Info',
-  [SnackBarVariant.Success]: 'Success',
-  [SnackBarVariant.Warning]: 'Warning',
+const StyledLink = styled(Link)`
+  display: block;
+  color: ${({ theme }) => theme.font.color.tertiary};
+  font-size: ${({ theme }) => theme.font.size.sm};
+  padding-left: ${({ theme }) => theme.spacing(6)};
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  &:hover {
+    color: ${({ theme }) => theme.font.color.secondary};
+  }
+`;
+
+const StyledActionButton = styled.div`
+  padding-left: ${({ theme }) => theme.spacing(6)};
+`;
+
+const defaultAriaLabelByVariant: Record<
+  SnackBarVariant,
+  ReturnType<typeof msg>
+> = {
+  [SnackBarVariant.Default]: msg`Alert`,
+  [SnackBarVariant.Error]: msg`Error`,
+  [SnackBarVariant.Info]: msg`Info`,
+  [SnackBarVariant.Success]: msg`Success`,
+  [SnackBarVariant.Warning]: msg`Warning`,
 };
 
 export const SnackBar = ({
@@ -107,13 +140,17 @@ export const SnackBar = ({
   icon: iconComponent,
   id,
   message,
+  detailedMessage,
+  actionText,
+  actionOnClick,
+  actionTo,
   onCancel,
   onClose,
   role = 'status',
   variant = SnackBarVariant.Default,
-  title = defaultTitleByVariant[variant],
 }: SnackBarProps) => {
   const theme = useTheme();
+  const { i18n, t } = useLingui();
   const { animation: progressAnimation, value: progressValue } =
     useProgressAnimation({
       autoPlay: isUndefined(overrideProgressValue),
@@ -129,7 +166,7 @@ export const SnackBar = ({
       return iconComponent;
     }
 
-    const ariaLabel = defaultTitleByVariant[variant];
+    const ariaLabel = i18n._(defaultAriaLabelByVariant[variant]);
     const color = theme.snackBar[variant].color;
     const size = theme.icon.size.md;
 
@@ -155,7 +192,7 @@ export const SnackBar = ({
           <IconAlertTriangle {...{ 'aria-label': ariaLabel, color, size }} />
         );
     }
-  }, [iconComponent, theme.icon.size.md, theme.snackBar, variant]);
+  }, [iconComponent, theme.icon.size.md, theme.snackBar, variant, i18n]);
 
   const handleMouseEnter = () => {
     if (progressAnimation?.state === 'running') {
@@ -169,30 +206,47 @@ export const SnackBar = ({
     }
   };
 
+  const sanitizedMessage = sanitizeMessageToRenderInSnackbar(message);
+  const sanitizedDetailedMessage =
+    sanitizeMessageToRenderInSnackbar(detailedMessage);
+
   return (
     <StyledContainer
       aria-live={role === 'alert' ? 'assertive' : 'polite'}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      title={message || title || defaultTitleByVariant[variant]}
-      {...{ className, id, role, variant }}
+      title={sanitizedMessage ?? i18n._(defaultAriaLabelByVariant[variant])}
+      className={className}
+      id={id}
+      role={role}
+      data-globally-prevent-click-outside
     >
       <StyledProgressBar
-        color={theme.snackBar[variant].backgroundColor}
+        barColor={theme.snackBar[variant].backgroundColor}
         value={progressValue}
       />
       <StyledHeader>
-        {icon}
-        {title}
+        <StyledIcon>{icon}</StyledIcon>
+        <StyledMessage>{sanitizedMessage ?? ''}</StyledMessage>
         <StyledActions>
-          {!!onCancel && <LightButton title="Cancel" onClick={onCancel} />}
+          {!!onCancel && <LightButton title={t`Cancel`} onClick={onCancel} />}
 
           {!!onClose && (
-            <LightIconButton title="Close" Icon={IconX} onClick={onClose} />
+            <LightIconButton title={t`Close`} Icon={IconX} onClick={onClose} />
           )}
         </StyledActions>
       </StyledHeader>
-      {message && <StyledDescription>{message}</StyledDescription>}
+      {isDefined(sanitizedDetailedMessage) && (
+        <StyledDescription>{sanitizedDetailedMessage}</StyledDescription>
+      )}
+      {actionText && actionTo && (
+        <StyledLink to={actionTo}>{actionText}</StyledLink>
+      )}
+      {actionText && actionOnClick && !actionTo && (
+        <StyledActionButton>
+          <LightButton title={actionText} onClick={actionOnClick} />
+        </StyledActionButton>
+      )}
     </StyledContainer>
   );
 };

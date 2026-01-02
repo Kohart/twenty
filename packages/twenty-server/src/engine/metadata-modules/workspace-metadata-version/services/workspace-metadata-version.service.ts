@@ -1,29 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { isDefined } from 'twenty-shared/utils';
 import { Repository } from 'typeorm';
 
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
-import { LogExecutionTime } from 'src/engine/decorators/observability/log-execution-time.decorator';
-import { WorkspaceMetadataCacheService } from 'src/engine/metadata-modules/workspace-metadata-cache/services/workspace-metadata-cache.service';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import {
   WorkspaceMetadataVersionException,
   WorkspaceMetadataVersionExceptionCode,
 } from 'src/engine/metadata-modules/workspace-metadata-version/exceptions/workspace-metadata-version.exception';
-import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
+import { WorkspaceCacheStorageService } from 'src/engine/workspace-cache-storage/workspace-cache-storage.service';
 
 @Injectable()
 export class WorkspaceMetadataVersionService {
-  logger = new Logger(WorkspaceMetadataCacheService.name);
+  logger = new Logger(WorkspaceMetadataVersionService.name);
 
   constructor(
-    @InjectRepository(Workspace, 'core')
-    private readonly workspaceRepository: Repository<Workspace>,
-    private readonly workspaceMetadataCacheService: WorkspaceMetadataCacheService,
-    private readonly twentyORMGlobalManager: TwentyORMGlobalManager,
+    @InjectRepository(WorkspaceEntity)
+    private readonly workspaceRepository: Repository<WorkspaceEntity>,
+    private readonly workspaceCacheStorageService: WorkspaceCacheStorageService,
   ) {}
 
-  @LogExecutionTime()
   async incrementMetadataVersion(workspaceId: string): Promise<void> {
     const workspace = await this.workspaceRepository.findOne({
       where: { id: workspaceId },
@@ -31,7 +28,7 @@ export class WorkspaceMetadataVersionService {
 
     const metadataVersion = workspace?.metadataVersion;
 
-    if (metadataVersion === undefined) {
+    if (!isDefined(metadataVersion)) {
       throw new WorkspaceMetadataVersionException(
         'Metadata version not found',
         WorkspaceMetadataVersionExceptionCode.METADATA_VERSION_NOT_FOUND,
@@ -45,8 +42,9 @@ export class WorkspaceMetadataVersionService {
       { metadataVersion: newMetadataVersion },
     );
 
-    await this.workspaceMetadataCacheService.recomputeMetadataCache({
+    await this.workspaceCacheStorageService.setMetadataVersion(
       workspaceId,
-    });
+      newMetadataVersion,
+    );
   }
 }

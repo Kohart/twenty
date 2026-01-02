@@ -24,7 +24,7 @@ export type FieldMetadataDefaultValueFunctionNames =
   (typeof fieldMetadataDefaultValueFunctionName)[keyof typeof fieldMetadataDefaultValueFunctionName];
 
 export class FieldMetadataDefaultValueString {
-  @ValidateIf((object, value) => value !== null)
+  @ValidateIf((_object, value) => value !== null)
   @IsQuotedString()
   value: string | null;
 }
@@ -35,58 +35,69 @@ export class FieldMetadataDefaultValueRawJson {
   value: object | null;
 }
 
+export class FieldMetadataDefaultValueRichTextV2 {
+  @ValidateIf((_object, value) => value !== null)
+  @IsQuotedString()
+  blocknote: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsQuotedString()
+  markdown: string | null;
+}
+
 export class FieldMetadataDefaultValueRichText {
   @ValidateIf((_object, value) => value !== null)
   @IsString()
   value: string | null;
 }
+
 export class FieldMetadataDefaultValueNumber {
-  @ValidateIf((object, value) => value !== null)
+  @ValidateIf((_object, value) => value !== null)
   @IsNumber()
   value: number | null;
 }
 
 export class FieldMetadataDefaultValueBoolean {
-  @ValidateIf((object, value) => value !== null)
+  @ValidateIf((_object, value) => value !== null)
   @IsBoolean()
   value: boolean | null;
 }
 
 export class FieldMetadataDefaultValueStringArray {
-  @ValidateIf((object, value) => value !== null)
+  @ValidateIf((_object, value) => value !== null)
   @IsArray()
   @IsQuotedString({ each: true })
   value: string[] | null;
 }
 
 export class FieldMetadataDefaultValueDateTime {
-  @ValidateIf((object, value) => value !== null)
+  @ValidateIf((_object, value) => value !== null)
   @IsDate()
   value: Date | null;
 }
 
 export class FieldMetadataDefaultValueDate {
-  @ValidateIf((object, value) => value !== null)
+  @ValidateIf((_object, value) => value !== null)
   @IsDate()
   value: Date | null;
 }
 
 export class FieldMetadataDefaultValueCurrency {
-  @ValidateIf((object, value) => value !== null)
+  @ValidateIf((_object, value) => value !== null)
   @IsNumberString()
   amountMicros: string | null;
 
-  @ValidateIf((object, value) => value !== null)
+  @ValidateIf((_object, value) => value !== null)
   @IsQuotedString()
   currencyCode: string | null;
 }
 
 export class FieldMetadataDefaultValueFullName {
-  @ValidateIf((object, value) => value !== null)
+  @ValidateIf((_object, value) => value !== null)
   @IsQuotedString()
   firstName: string | null;
 
-  @ValidateIf((object, value) => value !== null)
+  @ValidateIf((_object, value) => value !== null)
   @IsQuotedString()
   lastName: string | null;
 }
@@ -192,6 +203,10 @@ export class FieldMetadataDefaultValuePhones {
   @ValidateIf((_object, value) => value !== null)
   @IsQuotedString()
   primaryPhoneCountryCode: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsQuotedString()
+  primaryPhoneCallingCode: string | null;
 
   @ValidateIf((_object, value) => value !== null)
   @IsObject()

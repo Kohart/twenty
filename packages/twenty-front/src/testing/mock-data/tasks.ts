@@ -1,6 +1,6 @@
-import { Task } from '@/activities/types/Task';
-import { TaskTarget } from '@/activities/types/TaskTarget';
-import { WorkspaceMember } from '@/workspace-member/types/WorkspaceMember';
+import { type Task } from '@/activities/types/Task';
+import { type TaskTarget } from '@/activities/types/TaskTarget';
+import { type WorkspaceMember } from '@/workspace-member/types/WorkspaceMember';
 
 type MockedTask = Task & { __typename?: string };
 
@@ -25,10 +25,13 @@ export const mockedTasks: Array<MockedTask> = [
     id: '3ecaa1be-aac7-463a-a38e-64078dd451d5',
     createdAt: '2023-04-26T10:12:42.33625+00:00',
     updatedAt: '2023-04-26T10:23:42.33625+00:00',
-    title: 'My very first note',
-    body: null,
+    title: 'My very first task',
+    bodyV2: {
+      blocknote: null,
+      markdown: null,
+    },
     dueAt: '2023-04-26T10:12:42.33625+00:00',
-    status: null,
+    status: 'TODO',
     assignee: workspaceMember,
     assigneeId: workspaceMember.id,
     taskTargets: [

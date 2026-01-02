@@ -1,9 +1,14 @@
 import psl from 'psl';
+import { capitalize } from 'twenty-shared/utils';
 
-import { capitalize } from 'src/utils/capitalize';
+import { isParsedDomain } from 'src/modules/contact-creation-manager/types/is-psl-parsed-domain.type';
 
 export const getCompanyNameFromDomainName = (domainName: string) => {
-  const { sld } = psl.parse(domainName);
+  const result = psl.parse(domainName);
 
-  return sld ? capitalize(sld) : '';
+  if (!isParsedDomain(result)) {
+    return '';
+  }
+
+  return result.sld ? capitalize(result.sld) : '';
 };

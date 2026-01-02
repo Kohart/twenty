@@ -1,88 +1,90 @@
-export const fetchMetadataFields = (objectNamePlural: string) => {
-  const fromRelations = `
-          toObjectMetadata {
-            id
-            dataSourceId
-            nameSingular
-            namePlural
-            isSystem
-            isRemote
-          }
-          toFieldMetadataId
-        `;
+import { hasSelectAllFieldsSelector } from 'src/engine/api/rest/metadata/query-builder/utils/has-select-all-fields-selector.util';
+import { type Selectors } from 'src/engine/api/rest/metadata/types/metadata-query.type';
 
-  const toRelations = `
-          fromObjectMetadata {
-            id
-            dataSourceId
-            nameSingular
-            namePlural
-            isSystem
-            isRemote
-          }
-          fromFieldMetadataId
-        `;
+export const fetchMetadataFields = (
+  objectNamePlural: string,
+  selector: Selectors,
+) => {
+  const defaultFields = `
+    id
+    type
+    name
+    label
+    description
+    icon
+    isCustom
+    isActive
+    isSystem
+    isNullable
+    createdAt
+    updatedAt
+    defaultValue
+    options
+    relation {
+      type
+      targetObjectMetadata {
+        id
+        nameSingular
+        namePlural
+      }
+      targetFieldMetadata {
+        id
+        name
+      }
+      sourceObjectMetadata {
+        id
+        nameSingular
+        namePlural
+      }
+      sourceFieldMetadata {
+        id
+        name
+      }
+    }
+  `;
 
-  const fields = `
-          type
-          name
-          label
-          description
-          icon
-          isCustom
-          isActive
-          isSystem
-          isNullable
-          createdAt
-          updatedAt
-          fromRelationMetadata {
-            id
-            relationType
-            ${fromRelations}
-          }
-          toRelationMetadata {
-            id
-            relationType
-            ${toRelations}
-          }
-          defaultValue
-          options
-        `;
+  const fieldsSelection = hasSelectAllFieldsSelector(selector)
+    ? defaultFields
+    : (selector?.fields?.join('\n') ?? defaultFields);
 
   switch (objectNamePlural) {
-    case 'objects':
-      return `
-          dataSourceId
-          nameSingular
-          namePlural
-          labelSingular
-          labelPlural
-          description
-          icon
-          isCustom
-          isActive
-          isSystem
-          createdAt
-          updatedAt
-          labelIdentifierFieldMetadataId
-          imageIdentifierFieldMetadataId
-          fields(paging: { first: 1000 }) {
-            edges {
-              node {
-                id
-                ${fields}
-              }
+    case 'objects': {
+      const objectsSelection =
+        selector?.objects?.join('\n') ??
+        `
+        nameSingular
+        namePlural
+        labelSingular
+        labelPlural
+        description
+        icon
+        isCustom
+        isActive
+        isSystem
+        createdAt
+        updatedAt
+        labelIdentifierFieldMetadataId
+        imageIdentifierFieldMetadataId
+      `;
+
+      const fieldsPart = selector?.fields
+        ? `
+        fields(paging: { first: 1000 }) {
+          edges {
+            node {
+              ${fieldsSelection}
             }
           }
-        `;
-    case 'fields':
-      return fields;
-    case 'relations':
+        }
+      `
+        : '';
+
       return `
-          id
-          relationType
-          ${fromRelations}
-          ${toRelations}
-        `;
+        ${objectsSelection}
+        ${fieldsPart}
+      `;
+    }
+    case 'fields':
+      return fieldsSelection;
   }
 };

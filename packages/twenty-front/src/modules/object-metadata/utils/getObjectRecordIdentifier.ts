@@ -1,7 +1,7 @@
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { getLabelIdentifierFieldMetadataItem } from '@/object-metadata/utils/getLabelIdentifierFieldMetadataItem';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { ObjectRecordIdentifier } from '@/object-record/types/ObjectRecordIdentifier';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type ObjectRecordIdentifier } from '@/object-record/types/ObjectRecordIdentifier';
 
 import { getAvatarType } from './getAvatarType';
 import { getAvatarUrl } from './getAvatarUrl';
@@ -12,7 +12,13 @@ export const getObjectRecordIdentifier = ({
   objectMetadataItem,
   record,
 }: {
-  objectMetadataItem: ObjectMetadataItem;
+  objectMetadataItem: Pick<
+    ObjectMetadataItem,
+    | 'fields'
+    | 'labelIdentifierFieldMetadataId'
+    | 'nameSingular'
+    | 'imageIdentifierFieldMetadataId'
+  >;
   record: ObjectRecord;
 }): ObjectRecordIdentifier => {
   const labelIdentifierFieldMetadataItem =
@@ -21,7 +27,6 @@ export const getObjectRecordIdentifier = ({
   const labelIdentifierFieldValue = getLabelIdentifierFieldValue(
     record,
     labelIdentifierFieldMetadataItem,
-    objectMetadataItem.nameSingular,
   );
 
   const imageIdentifierFieldMetadata = objectMetadataItem.fields.find(

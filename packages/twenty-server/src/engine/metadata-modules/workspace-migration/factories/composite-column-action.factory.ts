@@ -1,17 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
+import {
+  FieldMetadataType,
+  compositeTypeDefinitions,
+} from 'twenty-shared/types';
 
-import { compositeTypeDefinitions } from 'src/engine/metadata-modules/field-metadata/composite-types';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { type FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { computeCompositeColumnName } from 'src/engine/metadata-modules/field-metadata/utils/compute-column-name.util';
 import { serializeDefaultValue } from 'src/engine/metadata-modules/field-metadata/utils/serialize-default-value';
 import { ColumnActionAbstractFactory } from 'src/engine/metadata-modules/workspace-migration/factories/column-action-abstract.factory';
 import { fieldMetadataTypeToColumnType } from 'src/engine/metadata-modules/workspace-migration/utils/field-metadata-type-to-column-type.util';
 import {
   WorkspaceMigrationColumnActionType,
-  WorkspaceMigrationColumnAlter,
-  WorkspaceMigrationColumnCreate,
+  type WorkspaceMigrationColumnAlter,
+  type WorkspaceMigrationColumnCreate,
 } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
 import {
   WorkspaceMigrationException,
@@ -19,20 +21,22 @@ import {
 } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.exception';
 
 // TODO: could we export this to GraphQL ?
+// TODO: once this module is removed, replace existing usages with CompositeFieldMetadataType from composite-field-metadata-type.type.ts
 export type CompositeFieldMetadataType =
   | FieldMetadataType.ADDRESS
   | FieldMetadataType.CURRENCY
   | FieldMetadataType.FULL_NAME
   | FieldMetadataType.LINKS
   | FieldMetadataType.EMAILS
-  | FieldMetadataType.PHONES;
+  | FieldMetadataType.PHONES
+  | FieldMetadataType.RICH_TEXT_V2;
 
 @Injectable()
 export class CompositeColumnActionFactory extends ColumnActionAbstractFactory<CompositeFieldMetadataType> {
   protected readonly logger = new Logger(CompositeColumnActionFactory.name);
 
   protected handleCreateAction(
-    fieldMetadata: FieldMetadataInterface<CompositeFieldMetadataType>,
+    fieldMetadata: FieldMetadataEntity<CompositeFieldMetadataType>,
   ): WorkspaceMigrationColumnCreate[] {
     const compositeType = compositeTypeDefinitions.get(fieldMetadata.type);
 
@@ -57,6 +61,7 @@ export class CompositeColumnActionFactory extends ColumnActionAbstractFactory<Co
       }
 
       const columnName = computeCompositeColumnName(fieldMetadata, property);
+      // @ts-expect-error legacy noImplicitAny
       const defaultValue = fieldMetadata.defaultValue?.[property.name];
       const serializedDefaultValue = serializeDefaultValue(defaultValue);
       const enumOptions = property.options
@@ -69,7 +74,7 @@ export class CompositeColumnActionFactory extends ColumnActionAbstractFactory<Co
         columnType: fieldMetadataTypeToColumnType(property.type),
         enum: enumOptions,
         isNullable: fieldMetadata.isNullable || !property.isRequired,
-        isUnique: fieldMetadata.isUnique,
+        isUnique: fieldMetadata.isUnique ?? undefined,
         defaultValue: serializedDefaultValue,
         isArray:
           property.type === FieldMetadataType.MULTI_SELECT || property.isArray,
@@ -80,8 +85,8 @@ export class CompositeColumnActionFactory extends ColumnActionAbstractFactory<Co
   }
 
   protected handleAlterAction(
-    currentFieldMetadata: FieldMetadataInterface<CompositeFieldMetadataType>,
-    alteredFieldMetadata: FieldMetadataInterface<CompositeFieldMetadataType>,
+    currentFieldMetadata: FieldMetadataEntity<CompositeFieldMetadataType>,
+    alteredFieldMetadata: FieldMetadataEntity<CompositeFieldMetadataType>,
   ): WorkspaceMigrationColumnAlter[] {
     const currentCompositeType = compositeTypeDefinitions.get(
       currentFieldMetadata.type,
@@ -137,6 +142,7 @@ export class CompositeColumnActionFactory extends ColumnActionAbstractFactory<Co
         alteredProperty,
       );
       const defaultValue =
+        // @ts-expect-error legacy noImplicitAny
         alteredFieldMetadata.defaultValue?.[alteredProperty.name];
       const serializedDefaultValue = serializeDefaultValue(defaultValue);
       const enumOptions = alteredProperty.options
@@ -171,6 +177,7 @@ export class CompositeColumnActionFactory extends ColumnActionAbstractFactory<Co
             currentFieldMetadata.isNullable || !currentProperty.isRequired,
           isUnique: currentFieldMetadata.isUnique ?? false,
           defaultValue: serializeDefaultValue(
+            // @ts-expect-error legacy noImplicitAny
             currentFieldMetadata.defaultValue?.[currentProperty.name],
           ),
           isArray:

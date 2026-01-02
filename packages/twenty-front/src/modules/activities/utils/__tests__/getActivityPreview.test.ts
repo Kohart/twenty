@@ -1,4 +1,4 @@
-import { getActivityPreview } from '../getActivityPreview';
+import { getActivityPreview } from '@/activities/utils/getActivityPreview';
 
 describe('getActivityPreview', () => {
   it('should work for empty body', () => {
@@ -75,7 +75,7 @@ describe('getActivityPreview', () => {
         props: {
           backgroundColor: 'default',
           textAlignment: 'left',
-          url: 'https://favicon.twenty.com/qonto.com',
+          url: 'https://twenty-icons.com/anthropic.com',
           caption: '',
           width: 230,
         },

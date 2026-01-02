@@ -1,61 +1,34 @@
 import { useLocation } from 'react-router-dom';
 import { useSetRecoilState } from 'recoil';
-import {
-  IconChevronLeft,
-  IconSettings,
-  MenuItem,
-  UndecoratedLink,
-} from 'twenty-ui';
 
 import { useObjectNamePluralFromSingular } from '@/object-metadata/hooks/useObjectNamePluralFromSingular';
 
-import { useObjectOptionsForBoard } from '@/object-record/object-options-dropdown/hooks/useObjectOptionsForBoard';
-import { useObjectOptionsForTable } from '@/object-record/object-options-dropdown/hooks/useObjectOptionsForTable';
-import { useOptionsDropdown } from '@/object-record/object-options-dropdown/hooks/useOptionsDropdown';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
-import { SettingsPath } from '@/types/SettingsPath';
-import { DropdownMenuHeader } from '@/ui/layout/dropdown/components/DropdownMenuHeader';
+import { useObjectOptionsDropdown } from '@/object-record/object-options-dropdown/hooks/useObjectOptionsDropdown';
+import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
+import { DropdownMenuHeader } from '@/ui/layout/dropdown/components/DropdownMenuHeader/DropdownMenuHeader';
+import { DropdownMenuHeaderLeftComponent } from '@/ui/layout/dropdown/components/DropdownMenuHeader/internal/DropdownMenuHeaderLeftComponent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
 import { navigationMemorizedUrlState } from '@/ui/navigation/states/navigationMemorizedUrlState';
-import { ScrollWrapper } from '@/ui/utilities/scroll/components/ScrollWrapper';
-import { ViewFieldsVisibilityDropdownSection } from '@/views/components/ViewFieldsVisibilityDropdownSection';
-import { ViewType } from '@/views/types/ViewType';
+import { ViewFieldsHiddenDropdownSection } from '@/views/components/ViewFieldsHiddenDropdownSection';
+import { useLingui } from '@lingui/react/macro';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
+import { IconChevronLeft, IconSettings } from 'twenty-ui/display';
+import { MenuItem, UndecoratedLink } from 'twenty-ui/navigation';
 
 export const ObjectOptionsDropdownHiddenFieldsContent = () => {
-  const {
-    viewType,
-    recordIndexId,
-    objectMetadataItem,
-    onContentChange,
-    closeDropdown,
-  } = useOptionsDropdown();
+  const { t } = useLingui();
+  const { objectMetadataItem, onContentChange, closeDropdown } =
+    useObjectOptionsDropdown();
 
   const { objectNamePlural } = useObjectNamePluralFromSingular({
     objectNameSingular: objectMetadataItem.nameSingular,
   });
 
-  const settingsUrl = getSettingsPagePath(SettingsPath.ObjectDetail, {
-    objectSlug: objectNamePlural,
+  const settingsUrl = getSettingsPath(SettingsPath.ObjectDetail, {
+    objectNamePlural,
   });
-
-  const { handleColumnVisibilityChange, hiddenTableColumns } =
-    useObjectOptionsForTable(recordIndexId);
-
-  const { hiddenBoardFields, handleBoardFieldVisibilityChange } =
-    useObjectOptionsForBoard({
-      objectNameSingular: objectMetadataItem.nameSingular,
-      recordBoardId: recordIndexId,
-      viewBarId: recordIndexId,
-    });
-
-  const hiddenRecordFields =
-    viewType === ViewType.Kanban ? hiddenBoardFields : hiddenTableColumns;
-
-  const handleChangeFieldVisibility =
-    viewType === ViewType.Kanban
-      ? handleBoardFieldVisibilityChange
-      : handleColumnVisibilityChange;
 
   const location = useLocation();
   const setNavigationMemorizedUrl = useSetRecoilState(
@@ -63,27 +36,19 @@ export const ObjectOptionsDropdownHiddenFieldsContent = () => {
   );
 
   return (
-    <>
+    <DropdownContent>
       <DropdownMenuHeader
-        StartIcon={IconChevronLeft}
-        onClick={() => onContentChange('fields')}
-      >
-        Hidden Fields
-      </DropdownMenuHeader>
-      {hiddenRecordFields.length > 0 && (
-        <ScrollWrapper contextProviderName="dropdownMenuItemsContainer">
-          <ViewFieldsVisibilityDropdownSection
-            title="Hidden"
-            fields={hiddenRecordFields}
-            isDraggable={false}
-            onVisibilityChange={handleChangeFieldVisibility}
-            showSubheader={false}
-            showDragGrip={false}
+        StartComponent={
+          <DropdownMenuHeaderLeftComponent
+            onClick={() => onContentChange('fields')}
+            Icon={IconChevronLeft}
           />
-        </ScrollWrapper>
-      )}
+        }
+      >
+        {t`Hidden Fields`}
+      </DropdownMenuHeader>
+      <ViewFieldsHiddenDropdownSection />
       <DropdownMenuSeparator />
-
       <UndecoratedLink
         to={settingsUrl}
         onClick={() => {
@@ -91,10 +56,10 @@ export const ObjectOptionsDropdownHiddenFieldsContent = () => {
           closeDropdown();
         }}
       >
-        <DropdownMenuItemsContainer>
-          <MenuItem LeftIcon={IconSettings} text="Edit Fields" />
+        <DropdownMenuItemsContainer scrollable={false}>
+          <MenuItem LeftIcon={IconSettings} text={t`Edit Fields`} />
         </DropdownMenuItemsContainer>
       </UndecoratedLink>
-    </>
+    </DropdownContent>
   );
 };

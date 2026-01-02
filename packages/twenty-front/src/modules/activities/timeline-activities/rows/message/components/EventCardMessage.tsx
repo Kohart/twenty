@@ -1,16 +1,19 @@
 import styled from '@emotion/styled';
-import { isUndefined } from '@sniptt/guards';
-import { OverflowingTextWithTooltip } from 'twenty-ui';
 
-import { useEmailThread } from '@/activities/emails/hooks/useEmailThread';
-import { EmailThreadMessage } from '@/activities/emails/types/EmailThreadMessage';
-import { EventCardMessageNotShared } from '@/activities/timeline-activities/rows/message/components/EventCardMessageNotShared';
+import { type EmailThreadMessage } from '@/activities/emails/types/EmailThreadMessage';
+import { EventCardMessageBodyNotShared } from '@/activities/timeline-activities/rows/message/components/EventCardMessageBodyNotShared';
+import { EventCardMessageForbidden } from '@/activities/timeline-activities/rows/message/components/EventCardMessageForbidden';
+import { useOpenEmailThreadInCommandMenu } from '@/command-menu/hooks/useOpenEmailThreadInCommandMenu';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
 import { useUpsertRecordsInStore } from '@/object-record/record-store/hooks/useUpsertRecordsInStore';
-import { isDefined } from '~/utils/isDefined';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED } from 'twenty-shared/constants';
+import { isDefined } from 'twenty-shared/utils';
+import { OverflowingTextWithTooltip } from 'twenty-ui/display';
 
-const StyledEventCardMessageContainer = styled.div`
+const StyledEventCardMessageContainer = styled.div<{ canOpen?: boolean }>`
+  cursor: ${({ canOpen }) => (canOpen ? 'pointer' : 'not-allowed')};
   display: flex;
   flex-direction: column;
   width: 380px;
@@ -56,7 +59,9 @@ export const EventCardMessage = ({
   messageId: string;
   authorFullName: string;
 }) => {
-  const { upsertRecords } = useUpsertRecordsInStore();
+  const { t } = useLingui();
+  const { upsertRecordsInStore } = useUpsertRecordsInStore();
+  const { openEmailThreadInCommandMenu } = useOpenEmailThreadInCommandMenu();
 
   const {
     record: message,
@@ -76,11 +81,9 @@ export const EventCardMessage = ({
       },
     },
     onCompleted: (data) => {
-      upsertRecords([data]);
+      upsertRecordsInStore({ partialRecords: [data] });
     },
   });
-
-  const { openEmailThread } = useEmailThread();
 
   if (isDefined(error)) {
     const shouldHideMessageContent = error.graphQLErrors.some(
@@ -88,7 +91,7 @@ export const EventCardMessage = ({
     );
 
     if (shouldHideMessageContent) {
-      return <EventCardMessageNotShared sharedByFullName={authorFullName} />;
+      return <EventCardMessageForbidden notSharedByFullName={authorFullName} />;
     }
 
     const shouldHandleNotFound = error.graphQLErrors.some(
@@ -96,14 +99,26 @@ export const EventCardMessage = ({
     );
 
     if (shouldHandleNotFound) {
-      return <div>Message not found</div>;
+      return (
+        <div>
+          <Trans>Message not found</Trans>
+        </div>
+      );
     }
 
-    return <div>Error loading message</div>;
+    return (
+      <div>
+        <Trans>Error loading message</Trans>
+      </div>
+    );
   }
 
-  if (loading || isUndefined(message)) {
-    return <div>Loading...</div>;
+  if (loading || !isDefined(message)) {
+    return (
+      <div>
+        <Trans>Loading...</Trans>
+      </div>
+    );
   }
 
   const messageParticipantHandles = message.messageParticipants
@@ -111,20 +126,34 @@ export const EventCardMessage = ({
     .filter((handle) => isDefined(handle) && handle !== '')
     .join(', ');
 
+  const canOpen =
+    message.subject !== FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED;
+
+  const handleClick = () => {
+    if (canOpen && isDefined(message.messageThreadId)) {
+      openEmailThreadInCommandMenu(message.messageThreadId);
+    }
+  };
+
   return (
-    <StyledEventCardMessageContainer>
+    <StyledEventCardMessageContainer canOpen={canOpen} onClick={handleClick}>
       <StyledEmailContent>
         <StyledEmailTop>
-          <StyledEmailTitle>{message.subject}</StyledEmailTitle>
+          <StyledEmailTitle>
+            {message.subject !==
+            FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED
+              ? message.subject
+              : t`Subject not shared`}
+          </StyledEmailTitle>
           <StyledEmailParticipants>
             <OverflowingTextWithTooltip text={messageParticipantHandles} />
           </StyledEmailParticipants>
         </StyledEmailTop>
-        <StyledEmailBody
-          onClick={() => openEmailThread(message.messageThreadId)}
-        >
-          {message.text}
-        </StyledEmailBody>
+        {message.text !== FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED ? (
+          <StyledEmailBody>{message.text}</StyledEmailBody>
+        ) : (
+          <EventCardMessageBodyNotShared notSharedByFullName={authorFullName} />
+        )}
       </StyledEmailContent>
     </StyledEventCardMessageContainer>
   );

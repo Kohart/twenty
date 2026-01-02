@@ -1,55 +1,35 @@
-import { GlobalActionMenuEntriesSetter } from '@/action-menu/actions/global-actions/components/GlobalActionMenuEntriesSetter';
-import { RecordActionMenuEntriesSetter } from '@/action-menu/actions/record-actions/components/RecordActionMenuEntriesSetter';
-import { ActionMenuConfirmationModals } from '@/action-menu/components/ActionMenuConfirmationModals';
-import { ActionMenuContext } from '@/action-menu/contexts/ActionMenuContext';
+import { PageHeaderActionMenuButtons } from '@/action-menu/components/PageHeaderActionMenuButtons';
+import { ActionMenuContextProvider } from '@/action-menu/contexts/ActionMenuContextProvider';
+import { contextStoreCurrentObjectMetadataItemIdComponentState } from '@/context-store/states/contextStoreCurrentObjectMetadataItemIdComponentState';
+import { contextStoreTargetedRecordsRuleComponentState } from '@/context-store/states/contextStoreTargetedRecordsRuleComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { useIsMobile } from 'twenty-ui/utilities';
 
-import { contextStoreCurrentObjectMetadataIdComponentState } from '@/context-store/states/contextStoreCurrentObjectMetadataIdComponentState';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { RecordShowPageBaseHeader } from '~/pages/object-record/RecordShowPageBaseHeader';
-
-export const RecordShowActionMenu = ({
-  isFavorite,
-  record,
-  objectMetadataItem,
-  objectNameSingular,
-  handleFavoriteButtonClick,
-}: {
-  isFavorite: boolean;
-  record: ObjectRecord | undefined;
-  objectMetadataItem: ObjectMetadataItem;
-  objectNameSingular: string;
-  handleFavoriteButtonClick: () => void;
-}) => {
-  const contextStoreCurrentObjectMetadataId = useRecoilComponentValueV2(
-    contextStoreCurrentObjectMetadataIdComponentState,
+export const RecordShowActionMenu = () => {
+  const contextStoreCurrentObjectMetadataItemId = useRecoilComponentValue(
+    contextStoreCurrentObjectMetadataItemIdComponentState,
   );
 
-  // TODO: refactor RecordShowPageBaseHeader to use the context store
+  const contextStoreTargetedRecordsRule = useRecoilComponentValue(
+    contextStoreTargetedRecordsRuleComponentState,
+  );
+
+  const hasSelectedRecord =
+    contextStoreTargetedRecordsRule.mode === 'selection' &&
+    contextStoreTargetedRecordsRule.selectedRecordIds.length === 1;
+
+  const isMobile = useIsMobile();
 
   return (
     <>
-      {contextStoreCurrentObjectMetadataId && (
-        <ActionMenuContext.Provider
-          value={{
-            isInRightDrawer: false,
-            onActionExecutedCallback: () => {},
-          }}
+      {hasSelectedRecord && contextStoreCurrentObjectMetadataItemId && (
+        <ActionMenuContextProvider
+          isInRightDrawer={false}
+          displayType="button"
+          actionMenuType="show-page-action-menu"
         >
-          <RecordShowPageBaseHeader
-            {...{
-              isFavorite,
-              record,
-              objectMetadataItem,
-              objectNameSingular,
-              handleFavoriteButtonClick,
-            }}
-          />
-          <ActionMenuConfirmationModals />
-          <RecordActionMenuEntriesSetter />
-          <GlobalActionMenuEntriesSetter />
-        </ActionMenuContext.Provider>
+          {!isMobile && <PageHeaderActionMenuButtons />}
+        </ActionMenuContextProvider>
       )}
     </>
   );

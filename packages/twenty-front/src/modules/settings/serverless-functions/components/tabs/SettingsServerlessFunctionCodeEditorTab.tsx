@@ -1,28 +1,16 @@
 import {
-  File,
+  type File,
   SettingsServerlessFunctionCodeEditor,
 } from '@/settings/serverless-functions/components/SettingsServerlessFunctionCodeEditor';
 import { SETTINGS_SERVERLESS_FUNCTION_TAB_LIST_COMPONENT_ID } from '@/settings/serverless-functions/constants/SettingsServerlessFunctionTabListComponentId';
-import { SettingsServerlessFunctionHotkeyScope } from '@/settings/serverless-functions/types/SettingsServerlessFunctionHotKeyScope';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
-import { SettingsPath } from '@/types/SettingsPath';
-import { TabList } from '@/ui/layout/tab/components/TabList';
-import { useTabList } from '@/ui/layout/tab/hooks/useTabList';
-import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
+import { TabList } from '@/ui/layout/tab-list/components/TabList';
+import { activeTabIdComponentState } from '@/ui/layout/tab-list/states/activeTabIdComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import styled from '@emotion/styled';
-import { useNavigate } from 'react-router-dom';
-import { useRecoilValue } from 'recoil';
-import { Key } from 'ts-key-enum';
-import {
-  Button,
-  CoreEditorHeader,
-  H2Title,
-  IconGitCommit,
-  IconPlayerPlay,
-  IconRestore,
-  Section,
-} from 'twenty-ui';
-import { useHotkeyScopeOnMount } from '~/hooks/useHotkeyScopeOnMount';
+import { t } from '@lingui/core/macro';
+import { H2Title, IconPlayerPlay } from 'twenty-ui/display';
+import { Button, CoreEditorHeader } from 'twenty-ui/input';
+import { Section } from 'twenty-ui/layout';
 
 const StyledTabList = styled(TabList)`
   border-bottom: none;
@@ -31,97 +19,57 @@ const StyledTabList = styled(TabList)`
 export const SettingsServerlessFunctionCodeEditorTab = ({
   files,
   handleExecute,
-  handlePublish,
-  handleReset,
-  resetDisabled,
-  publishDisabled,
   onChange,
-  setIsCodeValid,
+  isTesting = false,
 }: {
   files: File[];
   handleExecute: () => void;
-  handlePublish: () => void;
-  handleReset: () => void;
-  resetDisabled: boolean;
-  publishDisabled: boolean;
   onChange: (filePath: string, value: string) => void;
-  setIsCodeValid: (isCodeValid: boolean) => void;
+  isTesting?: boolean;
 }) => {
-  const { activeTabIdState } = useTabList(
+  const activeTabId = useRecoilComponentValue(
+    activeTabIdComponentState,
     SETTINGS_SERVERLESS_FUNCTION_TAB_LIST_COMPONENT_ID,
   );
-  const activeTabId = useRecoilValue(activeTabIdState);
   const TestButton = (
     <Button
-      title="Test"
+      title={t`Test`}
       variant="primary"
       accent="blue"
       size="small"
       Icon={IconPlayerPlay}
+      disabled={isTesting}
       onClick={handleExecute}
-    />
-  );
-  const PublishButton = (
-    <Button
-      title="Publish"
-      variant="secondary"
-      size="small"
-      Icon={IconGitCommit}
-      onClick={handlePublish}
-      disabled={publishDisabled}
-    />
-  );
-  const ResetButton = (
-    <Button
-      title="Reset"
-      variant="secondary"
-      size="small"
-      Icon={IconRestore}
-      onClick={handleReset}
-      disabled={resetDisabled}
     />
   );
 
   const HeaderTabList = (
     <StyledTabList
-      tabListInstanceId={SETTINGS_SERVERLESS_FUNCTION_TAB_LIST_COMPONENT_ID}
-      tabs={files
-        .filter((file) => file.path !== '.env')
-        .map((file) => {
-          return { id: file.path, title: file.path.split('/').at(-1) || '' };
-        })}
+      tabs={files.map((file) => {
+        return { id: file.path, title: file.path.split('/').at(-1) || '' };
+      })}
+      componentInstanceId={SETTINGS_SERVERLESS_FUNCTION_TAB_LIST_COMPONENT_ID}
     />
-  );
-
-  const navigate = useNavigate();
-  useHotkeyScopeOnMount(
-    SettingsServerlessFunctionHotkeyScope.ServerlessFunctionEditorTab,
-  );
-
-  useScopedHotkeys(
-    [Key.Escape],
-    () => {
-      navigate(getSettingsPagePath(SettingsPath.ServerlessFunctions));
-    },
-    SettingsServerlessFunctionHotkeyScope.ServerlessFunctionEditorTab,
   );
 
   return (
     <Section>
       <H2Title
-        title="Code your function"
-        description="Write your function (in typescript) below"
+        title={t`Code your function`}
+        description={t`Write your function (in typescript) below`}
       />
-      <CoreEditorHeader
-        leftNodes={[HeaderTabList]}
-        rightNodes={[ResetButton, PublishButton, TestButton]}
-      />
+      <CoreEditorHeader leftNodes={[HeaderTabList]} rightNodes={[TestButton]} />
       {activeTabId && (
         <SettingsServerlessFunctionCodeEditor
           files={files}
           currentFilePath={activeTabId}
           onChange={(newCodeValue) => onChange(activeTabId, newCodeValue)}
-          setIsCodeValid={setIsCodeValid}
+          options={{
+            readOnly: true,
+            readOnlyMessage: {
+              value: t`Managed serverless functions are not editable`,
+            },
+          }}
         />
       )}
     </Section>

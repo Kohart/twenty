@@ -1,8 +1,7 @@
-import { CompositeFieldType } from '@/settings/data-model/types/CompositeFieldType';
-import { SettingsFieldType } from '@/settings/data-model/types/SettingsFieldType';
-import { PickLiteral } from '~/types/PickLiteral';
+import { type CompositeFieldType } from '@/settings/data-model/types/CompositeFieldType';
+import { type SettingsFieldType } from '@/settings/data-model/types/SettingsFieldType';
 
-export type SettingsCompositeFieldType = PickLiteral<
+export type SettingsCompositeFieldType = Extract<
   SettingsFieldType,
   CompositeFieldType
 >;

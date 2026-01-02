@@ -1,11 +1,11 @@
-import { Request } from 'express';
+import { cleanServerUrl } from 'src/utils/clean-server-url';
 
-export const getServerUrl = (
-  request: Request,
-  serverUrlEnv: string,
-): string => {
-  if (serverUrlEnv?.endsWith('/'))
-    return serverUrlEnv.substring(0, serverUrlEnv.length - 1);
-
-  return serverUrlEnv || `${request.protocol}://${request.get('host')}`;
+export const getServerUrl = ({
+  serverUrlEnv,
+  serverUrlFallback,
+}: {
+  serverUrlEnv?: string;
+  serverUrlFallback: string;
+}): string => {
+  return cleanServerUrl(serverUrlEnv) || serverUrlFallback;
 };

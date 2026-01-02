@@ -1,15 +1,16 @@
-import { Favorite } from '@/favorites/types/Favorite';
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { ObjectRecordIdentifier } from '@/object-record/types/ObjectRecordIdentifier';
-import { View } from '@/views/types/View';
-import { isDefined } from 'twenty-ui';
-import { getObjectMetadataLabelPluralFromViewId } from './getObjectMetadataLabelPluralFromViewId';
+import { type Favorite } from '@/favorites/types/Favorite';
+import { getObjectMetadataNamePluralFromViewId } from '@/favorites/utils/getObjectMetadataNamePluralFromViewId';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type ObjectRecordIdentifier } from '@/object-record/types/ObjectRecordIdentifier';
+import { type View } from '@/views/types/View';
+import { AppPath } from 'twenty-shared/types';
+import { getAppPath, isDefined } from 'twenty-shared/utils';
 
 export type ProcessedFavorite = Favorite & {
   Icon?: string;
-  objectNameSingular?: string;
+  objectNameSingular: string;
 };
 
 export const sortFavorites = (
@@ -20,16 +21,24 @@ export const sortFavorites = (
     objectNameSingular: string,
   ) => ObjectRecordIdentifier,
   hasLinkToShowPage: boolean,
-  views: View[],
+  views: Pick<View, 'id' | 'name' | 'objectMetadataId' | 'icon'>[],
   objectMetadataItems: ObjectMetadataItem[],
-) => {
+): ProcessedFavorite[] => {
   return favorites
     .map((favorite) => {
-      if (isDefined(favorite.viewId) && isDefined(favorite.workspaceMemberId)) {
-        const { labelPlural, view } = getObjectMetadataLabelPluralFromViewId(
-          views,
+      if (isDefined(favorite.viewId)) {
+        const view = views.find((view) => view.id === favorite.viewId);
+
+        if (!isDefined(view)) {
+          return {
+            ...favorite,
+            objectNameSingular: 'view',
+          };
+        }
+
+        const { namePlural } = getObjectMetadataNamePluralFromViewId(
+          view,
           objectMetadataItems,
-          favorite.viewId,
         );
 
         return {
@@ -40,8 +49,12 @@ export const sortFavorites = (
           avatarType: 'icon',
           avatarUrl: '',
           labelIdentifier: view?.name,
-          link: `/objects/${labelPlural.toLocaleLowerCase()}${favorite.viewId ? `?view=${favorite.viewId}` : ''}`,
-          workspaceMemberId: favorite.workspaceMemberId,
+          link: getAppPath(
+            AppPath.RecordIndexPage,
+            { objectNamePlural: namePlural },
+            favorite.viewId ? { viewId: favorite.viewId } : undefined,
+          ),
+          forWorkspaceMemberId: favorite.forWorkspaceMemberId,
           favoriteFolderId: favorite.favoriteFolderId,
           objectNameSingular: 'view',
           Icon: view?.icon,
@@ -52,14 +65,13 @@ export const sortFavorites = (
         if (isDefined(favorite[relationField.name])) {
           const relationObject = favorite[relationField.name];
 
-          const relationObjectNameSingular =
-            relationField.relationDefinition?.targetObjectMetadata
-              .nameSingular ?? '';
+          const objectNameSingular =
+            relationField.relation?.targetObjectMetadata.nameSingular ?? '';
 
           const objectRecordIdentifier =
             getObjectRecordIdentifierByNameSingular(
               relationObject,
-              relationObjectNameSingular,
+              objectNameSingular,
             );
 
           return {
@@ -73,15 +85,14 @@ export const sortFavorites = (
             link: hasLinkToShowPage
               ? objectRecordIdentifier.linkToShowPage
               : '',
-            workspaceMemberId: favorite.workspaceMemberId,
+            forWorkspaceMemberId: favorite.forWorkspaceMemberId,
             favoriteFolderId: favorite.favoriteFolderId,
-            objectNameSingular: relationObjectNameSingular,
+            objectNameSingular: objectNameSingular,
           } as ProcessedFavorite;
         }
       }
-      return {
-        ...favorite,
-      } as ProcessedFavorite;
+      return null;
     })
+    .filter(isDefined)
     .sort((a, b) => a.position - b.position);
 };

@@ -1,12 +1,12 @@
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 
-import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
+import { type RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
 import {
-  FieldEmailsValue,
-  FieldLinksValue,
-  FieldPhonesValue,
-} from '@/object-record/record-field/types/FieldMetadata';
-import { OrderBy } from '@/types/OrderBy';
+  type FieldEmailsValue,
+  type FieldLinksValue,
+  type FieldPhonesValue,
+} from '@/object-record/record-field/ui/types/FieldMetadata';
+import { type OrderBy } from '@/types/OrderBy';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 export const getOrderByForFieldMetadataType = (
@@ -14,7 +14,7 @@ export const getOrderByForFieldMetadataType = (
   direction: OrderBy | null | undefined,
 ): RecordGqlOperationOrderBy => {
   switch (field.type) {
-    case FieldMetadataType.FullName:
+    case FieldMetadataType.FULL_NAME:
       return [
         {
           [field.name]: {
@@ -23,7 +23,7 @@ export const getOrderByForFieldMetadataType = (
           },
         },
       ];
-    case FieldMetadataType.Currency:
+    case FieldMetadataType.CURRENCY:
       return [
         {
           [field.name]: {
@@ -31,7 +31,7 @@ export const getOrderByForFieldMetadataType = (
           },
         },
       ];
-    case FieldMetadataType.Actor:
+    case FieldMetadataType.ACTOR:
       return [
         {
           [field.name]: {
@@ -39,7 +39,7 @@ export const getOrderByForFieldMetadataType = (
           },
         },
       ];
-    case FieldMetadataType.Links:
+    case FieldMetadataType.LINKS:
       return [
         {
           [field.name]: {
@@ -47,7 +47,7 @@ export const getOrderByForFieldMetadataType = (
           } satisfies { [key in keyof FieldLinksValue]?: OrderBy },
         },
       ];
-    case FieldMetadataType.Emails:
+    case FieldMetadataType.EMAILS:
       return [
         {
           [field.name]: {
@@ -55,7 +55,7 @@ export const getOrderByForFieldMetadataType = (
           } satisfies { [key in keyof FieldEmailsValue]?: OrderBy },
         },
       ];
-    case FieldMetadataType.Phones:
+    case FieldMetadataType.PHONES:
       return [
         {
           [field.name]: {

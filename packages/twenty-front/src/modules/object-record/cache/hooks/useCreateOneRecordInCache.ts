@@ -1,16 +1,16 @@
-import { useApolloClient } from '@apollo/client';
 import gql from 'graphql-tag';
-import { useRecoilValue } from 'recoil';
 
-import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
+import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { mapObjectMetadataToGraphQLQuery } from '@/object-metadata/utils/mapObjectMetadataToGraphQLQuery';
 import { useGetRecordFromCache } from '@/object-record/cache/hooks/useGetRecordFromCache';
 import { getRecordNodeFromRecord } from '@/object-record/cache/utils/getRecordNodeFromRecord';
-import { generateDepthOneRecordGqlFields } from '@/object-record/graphql/utils/generateDepthOneRecordGqlFields';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { generateDepthRecordGqlFieldsFromRecord } from '@/object-record/graphql/record-gql-fields/utils/generateDepthRecordGqlFieldsFromRecord';
+import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { prefillRecord } from '@/object-record/utils/prefillRecord';
-import { capitalize } from '~/utils/string/capitalize';
+import { capitalize } from 'twenty-shared/utils';
 
 export const useCreateOneRecordInCache = <T extends ObjectRecord>({
   objectMetadataItem,
@@ -20,10 +20,23 @@ export const useCreateOneRecordInCache = <T extends ObjectRecord>({
   const getRecordFromCache = useGetRecordFromCache({
     objectNameSingular: objectMetadataItem.nameSingular,
   });
-  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
-  const apolloClient = useApolloClient();
+  const { objectMetadataItems } = useObjectMetadataItems();
+  const { objectPermissionsByObjectMetadataId } = useObjectPermissions();
+
+  const apolloCoreClient = useApolloCoreClient();
 
   return (record: ObjectRecord) => {
+    const prefilledRecord = prefillRecord({
+      objectMetadataItem,
+      input: record,
+    });
+    const recordGqlFields = generateDepthRecordGqlFieldsFromRecord({
+      objectMetadataItems,
+      objectMetadataItem,
+      record: prefilledRecord,
+      depth: 1,
+    });
+
     const fragment = gql`
           fragment Create${capitalize(
             objectMetadataItem.nameSingular,
@@ -33,16 +46,10 @@ export const useCreateOneRecordInCache = <T extends ObjectRecord>({
             objectMetadataItems,
             objectMetadataItem,
             computeReferences: true,
-            recordGqlFields: generateDepthOneRecordGqlFields({
-              objectMetadataItem,
-            }),
+            recordGqlFields,
+            objectPermissionsByObjectMetadataId,
           })}
         `;
-
-    const prefilledRecord = prefillRecord({
-      objectMetadataItem,
-      input: record,
-    });
 
     const recordToCreateWithNestedConnections = getRecordNodeFromRecord({
       record: prefilledRecord,
@@ -55,7 +62,7 @@ export const useCreateOneRecordInCache = <T extends ObjectRecord>({
       ...recordToCreateWithNestedConnections,
     };
 
-    apolloClient.writeFragment({
+    apolloCoreClient.writeFragment({
       id: `${capitalize(objectMetadataItem.nameSingular)}:${record.id}`,
       fragment,
       data: cachedObjectRecord,

@@ -1,77 +1,67 @@
-import { styled } from '@linaria/react';
-import { useMemo } from 'react';
-import { LinkType, RoundedLink, SocialLink, THEME_COMMON } from 'twenty-ui';
+import React, { useMemo } from 'react';
 
-import { FieldLinksValue } from '@/object-record/record-field/types/FieldMetadata';
+import { getFieldLinkDefinedLinks } from '@/object-record/record-field/ui/meta-types/input/utils/getFieldLinkDefinedLinks';
+import { type FieldLinksValue } from '@/object-record/record-field/ui/types/FieldMetadata';
 import { ExpandableList } from '@/ui/layout/expandable-list/components/ExpandableList';
+import {
+  getAbsoluteUrlOrThrow,
+  getUrlHostnameOrThrow,
+  isDefined,
+} from 'twenty-shared/utils';
+import { LinkType, RoundedLink, SocialLink } from 'twenty-ui/navigation';
 import { checkUrlType } from '~/utils/checkUrlType';
-import { isDefined } from '~/utils/isDefined';
-import { getAbsoluteUrl } from '~/utils/url/getAbsoluteUrl';
-import { getUrlHostName } from '~/utils/url/getUrlHostName';
 
 type LinksDisplayProps = {
   value?: FieldLinksValue;
-  isFocused?: boolean;
+  onLinkClick?: (url: string, event: React.MouseEvent<HTMLElement>) => void;
 };
 
-const themeSpacing = THEME_COMMON.spacingMultiplicator;
+export const LinksDisplay = ({ value, onLinkClick }: LinksDisplayProps) => {
+  const links = useMemo(() => {
+    if (!isDefined(value)) {
+      return [];
+    }
 
-const StyledContainer = styled.div`
-  align-items: center;
-  display: flex;
-  gap: ${themeSpacing * 1}px;
-  justify-content: flex-start;
+    return getFieldLinkDefinedLinks(value).map(({ url, label }) => {
+      let absoluteUrl = '';
+      let hostname = '';
+      try {
+        absoluteUrl = getAbsoluteUrlOrThrow(url);
+        hostname = getUrlHostnameOrThrow(absoluteUrl);
+      } catch {
+        absoluteUrl = '';
+        hostname = '';
+      }
+      return {
+        url: absoluteUrl,
+        label: label || hostname,
+        type: checkUrlType(absoluteUrl),
+      };
+    });
+  }, [value]);
 
-  max-width: 100%;
-
-  overflow: hidden;
-
-  width: 100%;
-`;
-
-export const LinksDisplay = ({ value, isFocused }: LinksDisplayProps) => {
-  const links = useMemo(
-    () =>
-      [
-        value?.primaryLinkUrl
-          ? {
-              url: value.primaryLinkUrl,
-              label: value.primaryLinkLabel,
-            }
-          : null,
-        ...(value?.secondaryLinks ?? []),
-      ]
-        .filter(isDefined)
-        .map(({ url, label }) => {
-          const absoluteUrl = getAbsoluteUrl(url);
-          return {
-            url: absoluteUrl,
-            label: label || getUrlHostName(absoluteUrl),
-            type: checkUrlType(absoluteUrl),
-          };
-        }),
-    [value?.primaryLinkLabel, value?.primaryLinkUrl, value?.secondaryLinks],
-  );
-
-  return isFocused ? (
-    <ExpandableList isChipCountDisplayed>
+  return (
+    <ExpandableList>
       {links.map(({ url, label, type }, index) =>
-        type === LinkType.LinkedIn || type === LinkType.Twitter ? (
-          <SocialLink key={index} href={url} type={type} label={label} />
+        type === LinkType.LinkedIn ||
+        type === LinkType.Twitter ||
+        type === LinkType.Facebook ? (
+          <SocialLink
+            key={index}
+            href={url}
+            type={type}
+            label={label}
+            onClick={(event) => onLinkClick?.(url, event)}
+          />
         ) : (
-          <RoundedLink key={index} href={url} label={label} />
+          <RoundedLink
+            key={index}
+            href={url}
+            label={label}
+            onClick={(event) => onLinkClick?.(url, event)}
+          />
         ),
       )}
     </ExpandableList>
-  ) : (
-    <StyledContainer>
-      {links.map(({ url, label, type }, index) =>
-        type === LinkType.LinkedIn || type === LinkType.Twitter ? (
-          <SocialLink key={index} href={url} type={type} label={label} />
-        ) : (
-          <RoundedLink key={index} href={url} label={label} />
-        ),
-      )}
-    </StyledContainer>
   );
 };

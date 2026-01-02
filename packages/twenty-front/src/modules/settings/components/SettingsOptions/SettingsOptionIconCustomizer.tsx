@@ -1,6 +1,6 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconComponent } from 'twenty-ui';
+import { type IconComponent } from 'twenty-ui/display';
 
 type SettingsOptionIconCustomizerProps = {
   Icon: IconComponent;
@@ -24,8 +24,8 @@ export const SettingsOptionIconCustomizer = ({
   return (
     <StyledIconCustomizer zoom={zoom} rotate={rotate}>
       <Icon
-        size={theme.icon.size.xl}
-        color={theme.IllustrationIcon.color.grey}
+        size={theme.icon.size.lg}
+        color={theme.IllustrationIcon.color.gray}
         stroke={theme.icon.stroke.md}
       />
     </StyledIconCustomizer>

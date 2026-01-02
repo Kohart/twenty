@@ -1,7 +1,14 @@
-import { useColumnNewCardActions } from '@/object-record/record-board/record-board-column/hooks/useColumnNewCardActions';
+import { useObjectPermissionsForObject } from '@/object-record/hooks/useObjectPermissionsForObject';
+import { RecordBoardContext } from '@/object-record/record-board/contexts/RecordBoardContext';
+import { RecordBoardColumnContext } from '@/object-record/record-board/record-board-column/contexts/RecordBoardColumnContext';
+import { hasAnySoftDeleteFilterOnViewComponentSelector } from '@/object-record/record-filter/states/hasAnySoftDeleteFilterOnView';
+import { useCreateNewIndexRecord } from '@/object-record/record-table/hooks/useCreateNewIndexRecord';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconPlus } from 'twenty-ui';
+import { t } from '@lingui/core/macro';
+import { useContext } from 'react';
+import { IconPlus } from 'twenty-ui/display';
 
 const StyledNewButton = styled.button`
   align-items: center;
@@ -20,19 +27,47 @@ const StyledNewButton = styled.button`
   }
 `;
 
-export const RecordBoardColumnNewRecordButton = ({
-  columnId,
-}: {
-  columnId: string;
-}) => {
+export const RecordBoardColumnNewRecordButton = () => {
   const theme = useTheme();
 
-  const { handleNewButtonClick } = useColumnNewCardActions(columnId);
+  const { objectMetadataItem, selectFieldMetadataItem } =
+    useContext(RecordBoardContext);
+
+  const { columnDefinition } = useContext(RecordBoardColumnContext);
+
+  const hasAnySoftDeleteFilterOnView = useRecoilComponentValue(
+    hasAnySoftDeleteFilterOnViewComponentSelector,
+  );
+
+  const objectPermissions = useObjectPermissionsForObject(
+    objectMetadataItem.id,
+  );
+
+  const hasObjectUpdatePermissions = objectPermissions.canUpdateObjectRecords;
+
+  const { createNewIndexRecord } = useCreateNewIndexRecord({
+    objectMetadataItem: objectMetadataItem,
+  });
+
+  if (!hasObjectUpdatePermissions) {
+    return null;
+  }
+
+  if (hasAnySoftDeleteFilterOnView) {
+    return null;
+  }
 
   return (
-    <StyledNewButton onClick={() => handleNewButtonClick('last', false)}>
+    <StyledNewButton
+      onClick={() => {
+        createNewIndexRecord({
+          position: 'last',
+          [selectFieldMetadataItem.name]: columnDefinition.value,
+        });
+      }}
+    >
       <IconPlus size={theme.icon.size.md} />
-      New
+      {t`New`}
     </StyledNewButton>
   );
 };

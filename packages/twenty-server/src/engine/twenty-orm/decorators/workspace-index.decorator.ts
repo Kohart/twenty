@@ -1,4 +1,4 @@
-import { IndexType } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
+import { type IndexType } from 'src/engine/metadata-modules/index-metadata/types/indexType.types';
 import { generateDeterministicIndexName } from 'src/engine/metadata-modules/index-metadata/utils/generate-deterministic-index-name';
 import { metadataArgsStorage } from 'src/engine/twenty-orm/storage/metadata-args.storage';
 import { convertClassNameToObjectMetadataName } from 'src/engine/workspace-manager/workspace-sync-metadata/utils/convert-class-to-object-metadata-name.util';
@@ -18,6 +18,7 @@ export function WorkspaceIndex(
     throw new Error('Class level WorkspaceIndex should be used with columns');
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (target: any) => {
     const gate = TypedReflect.getMetadata(
       'workspace:gate-metadata-args',

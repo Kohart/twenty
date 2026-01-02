@@ -1,34 +1,43 @@
-import { UseGuards } from '@nestjs/common';
+import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
 import { Args, Mutation, Resolver } from '@nestjs/graphql';
 
-import { FileUpload, GraphQLUpload } from 'graphql-upload';
+import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
+import { PermissionFlagType } from 'twenty-shared/constants';
 
 import { FileFolder } from 'src/engine/core-modules/file/interfaces/file-folder.interface';
 
+import type { FileUpload } from 'graphql-upload/processRequest.mjs';
+
+import { SignedFileDTO } from 'src/engine/core-modules/file/file-upload/dtos/signed-file.dto';
 import { FileUploadService } from 'src/engine/core-modules/file/file-upload/services/file-upload.service';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
+import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
-import { DemoEnvGuard } from 'src/engine/guards/demo.env.guard';
+import { SettingsPermissionGuard } from 'src/engine/guards/settings-permission.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { streamToBuffer } from 'src/utils/stream-to-buffer';
 
-@UseGuards(WorkspaceAuthGuard, DemoEnvGuard)
+@UseGuards(WorkspaceAuthGuard)
+@UsePipes(ResolverValidationPipe)
+@UseFilters(PreventNestToAutoLogGraphqlErrorsFilter)
 @Resolver()
 export class FileUploadResolver {
   constructor(private readonly fileUploadService: FileUploadService) {}
 
-  @Mutation(() => String)
+  @Mutation(() => SignedFileDTO)
+  @UseGuards(SettingsPermissionGuard(PermissionFlagType.UPLOAD_FILE))
   async uploadFile(
-    @AuthWorkspace() { id: workspaceId }: Workspace,
+    @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
     @Args({ name: 'file', type: () => GraphQLUpload })
     { createReadStream, filename, mimetype }: FileUpload,
     @Args('fileFolder', { type: () => FileFolder, nullable: true })
     fileFolder: FileFolder,
-  ): Promise<string> {
+  ): Promise<SignedFileDTO> {
     const stream = createReadStream();
     const buffer = await streamToBuffer(stream);
 
-    const { path } = await this.fileUploadService.uploadFile({
+    const { files } = await this.fileUploadService.uploadFile({
       file: buffer,
       filename,
       mimeType: mimetype,
@@ -36,21 +45,26 @@ export class FileUploadResolver {
       workspaceId,
     });
 
-    return path;
+    if (!files.length) {
+      throw new Error('Failed to upload file');
+    }
+
+    return files[0];
   }
 
-  @Mutation(() => String)
+  @Mutation(() => SignedFileDTO)
+  @UseGuards(SettingsPermissionGuard(PermissionFlagType.UPLOAD_FILE))
   async uploadImage(
-    @AuthWorkspace() { id: workspaceId }: Workspace,
+    @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
     @Args({ name: 'file', type: () => GraphQLUpload })
     { createReadStream, filename, mimetype }: FileUpload,
     @Args('fileFolder', { type: () => FileFolder, nullable: true })
     fileFolder: FileFolder,
-  ): Promise<string> {
+  ): Promise<SignedFileDTO> {
     const stream = createReadStream();
     const buffer = await streamToBuffer(stream);
 
-    const { paths } = await this.fileUploadService.uploadImage({
+    const { files } = await this.fileUploadService.uploadImage({
       file: buffer,
       filename,
       mimeType: mimetype,
@@ -58,6 +72,10 @@ export class FileUploadResolver {
       workspaceId,
     });
 
-    return paths[0];
+    if (!files.length) {
+      throw new Error('Failed to upload image');
+    }
+
+    return files[0];
   }
 }

@@ -1,15 +1,18 @@
 import { styled } from '@linaria/react';
-import { isNonEmptyString, isUndefined } from '@sniptt/guards';
-import { useContext, useMemo } from 'react';
-import { useRecoilState } from 'recoil';
+import { isNonEmptyString, isNull, isUndefined } from '@sniptt/guards';
+import { useContext } from 'react';
 
 import { invalidAvatarUrlsState } from '@ui/display/avatar/components/states/isInvalidAvatarUrlState';
 import { AVATAR_PROPERTIES_BY_SIZE } from '@ui/display/avatar/constants/AvatarPropertiesBySize';
-import { AvatarSize } from '@ui/display/avatar/types/AvatarSize';
-import { AvatarType } from '@ui/display/avatar/types/AvatarType';
-import { IconComponent } from '@ui/display/icon/types/IconComponent';
+import { type AvatarSize } from '@ui/display/avatar/types/AvatarSize';
+import { type AvatarType } from '@ui/display/avatar/types/AvatarType';
+import { type IconComponent } from '@ui/display/icon/types/IconComponent';
 import { ThemeContext } from '@ui/theme';
-import { Nullable, getImageAbsoluteURI, stringToHslColor } from '@ui/utilities';
+import { stringToThemeColorP3String } from '@ui/utilities';
+import { REACT_APP_SERVER_BASE_URL } from '@ui/utilities/config';
+import { useRecoilState } from 'recoil';
+import { type Nullable } from 'twenty-shared/types';
+import { getImageAbsoluteURI } from 'twenty-shared/utils';
 
 const StyledAvatar = styled.div<{
   size: AvatarSize;
@@ -49,6 +52,12 @@ const StyledImage = styled.img`
   width: 100%;
 `;
 
+const StyledPlaceholderChar = styled.span<{
+  fontWeight: number;
+}>`
+  font-weight: ${({ fontWeight }) => fontWeight};
+`;
+
 export type AvatarProps = {
   avatarUrl?: string | null;
   className?: string;
@@ -81,17 +90,20 @@ export const Avatar = ({
     invalidAvatarUrlsState,
   );
 
-  const avatarImageURI = useMemo(
-    () => getImageAbsoluteURI(avatarUrl),
-    [avatarUrl],
-  );
+  const avatarImageURI = isNonEmptyString(avatarUrl)
+    ? getImageAbsoluteURI({
+        imageUrl: avatarUrl,
+        baseUrl: REACT_APP_SERVER_BASE_URL,
+      })
+    : null;
 
-  const noAvatarUrl = !isNonEmptyString(avatarImageURI);
-
-  const placeholderChar = placeholder?.[0]?.toLocaleUpperCase();
+  const placeholderFirstChar = placeholder?.trim()?.charAt(0);
+  const isPlaceholderFirstCharEmpty =
+    !placeholderFirstChar || placeholderFirstChar === '';
+  const placeholderChar = placeholderFirstChar?.toUpperCase() || '-';
 
   const showPlaceholder =
-    noAvatarUrl || invalidAvatarUrls.includes(avatarImageURI);
+    isNull(avatarImageURI) || invalidAvatarUrls.includes(avatarImageURI);
 
   const handleImageError = () => {
     if (isNonEmptyString(avatarImageURI)) {
@@ -99,10 +111,22 @@ export const Avatar = ({
     }
   };
 
-  const fixedColor =
-    color ?? stringToHslColor(placeholderColorSeed ?? '', 75, 25);
-  const fixedBackgroundColor =
-    backgroundColor ?? stringToHslColor(placeholderColorSeed ?? '', 75, 85);
+  const fixedColor = isPlaceholderFirstCharEmpty
+    ? theme.font.color.tertiary
+    : (color ??
+      stringToThemeColorP3String({
+        string: placeholderColorSeed ?? '',
+        theme,
+        variant: 12,
+      }));
+  const fixedBackgroundColor = isPlaceholderFirstCharEmpty
+    ? theme.background.transparent.light
+    : (backgroundColor ??
+      stringToThemeColorP3String({
+        string: placeholderColorSeed ?? '',
+        theme,
+        variant: 4,
+      }));
 
   const showBackgroundColor = showPlaceholder;
 
@@ -125,7 +149,9 @@ export const Avatar = ({
           size={theme.icon.size.xl}
         />
       ) : showPlaceholder ? (
-        placeholderChar
+        <StyledPlaceholderChar fontWeight={theme.font.weight.medium}>
+          {placeholderChar}
+        </StyledPlaceholderChar>
       ) : (
         <StyledImage src={avatarImageURI} onError={handleImageError} alt="" />
       )}

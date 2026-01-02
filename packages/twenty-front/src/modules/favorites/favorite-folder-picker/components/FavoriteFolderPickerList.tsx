@@ -1,10 +1,11 @@
 import { favoriteFolderPickerCheckedComponentState } from '@/favorites/favorite-folder-picker/states/favoriteFolderPickerCheckedComponentState';
 import { favoriteFolderSearchFilterComponentState } from '@/favorites/favorite-folder-picker/states/favoriteFoldersSearchFilterComponentState';
-import { FavoriteFolder } from '@/favorites/types/FavoriteFolder';
+import { type FavoriteFolder } from '@/favorites/types/FavoriteFolder';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
-import { useRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentStateV2';
+import { useRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentState';
 import styled from '@emotion/styled';
-import { MenuItem, MenuItemMultiSelect } from 'twenty-ui';
+import { useLingui } from '@lingui/react/macro';
+import { MenuItem, MenuItemMultiSelect } from 'twenty-ui/navigation';
 
 const StyledItemsContainer = styled.div`
   width: 100%;
@@ -26,11 +27,12 @@ export const FavoriteFolderPickerList = ({
   folders,
   toggleFolderSelection,
 }: FavoriteFolderPickerListProps) => {
-  const [favoriteFoldersSearchFilter] = useRecoilComponentStateV2(
+  const { t } = useLingui();
+  const [favoriteFoldersSearchFilter] = useRecoilComponentState(
     favoriteFolderSearchFilterComponentState,
   );
 
-  const [favoriteFolderPickerChecked] = useRecoilComponentStateV2(
+  const [favoriteFolderPickerChecked] = useRecoilComponentState(
     favoriteFolderPickerCheckedComponentState,
   );
 
@@ -51,7 +53,7 @@ export const FavoriteFolderPickerList = ({
           key={`menu-${NO_FOLDER_ID}`}
           onSelectChange={() => toggleFolderSelection(NO_FOLDER_ID)}
           selected={favoriteFolderPickerChecked.includes(NO_FOLDER_ID)}
-          text="No folder"
+          text={t`No folder`}
           className="no-folder-menu-item-multi-select"
         />
       )}
@@ -68,7 +70,7 @@ export const FavoriteFolderPickerList = ({
               className="folder-menu-item-multi-select"
             />
           ))
-        : !showNoFolderOption && <MenuItem text="No folders found" />}
+        : !showNoFolderOption && <MenuItem text={t`No folders found`} />}
     </StyledItemsContainer>
   );
 };

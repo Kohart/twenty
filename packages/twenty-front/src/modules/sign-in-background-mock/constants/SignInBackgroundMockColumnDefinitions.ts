@@ -1,53 +1,23 @@
-import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
-import { ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
+/* eslint-disable @nx/workspace-max-consts-per-file */
+import { type FieldMetadata } from '@/object-record/record-field/ui/types/FieldMetadata';
+import { type ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
 import { filterAvailableTableColumns } from '@/object-record/utils/filterAvailableTableColumns';
-import {
-  FieldMetadataType,
-  RelationDefinitionType,
-} from '~/generated-metadata/graphql';
+import { findByProperty } from 'twenty-shared/utils';
+import { FieldMetadataType, RelationType } from '~/generated-metadata/graphql';
+import { getMockCompanyObjectMetadataItem } from '~/testing/mock-data/companies';
+
+const COMPANY_MOCK_OBJECT = getMockCompanyObjectMetadataItem();
 
 export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
   [
     {
       position: 0,
-      fieldMetadataId: '20202020-5e4e-4007-a630-8a2617914889',
-      label: 'Domain Name',
-      size: 100,
-      type: FieldMetadataType.Links,
-      metadata: {
-        fieldName: 'domainName',
-        placeHolder: 'Domain Name',
-        relationObjectMetadataNameSingular: '',
-        relationObjectMetadataNamePlural: '',
-        objectMetadataNameSingular: 'company',
-      },
-      iconName: 'IconLink',
-      isVisible: true,
-      defaultValue: '',
-    },
-    {
-      position: 1,
-      fieldMetadataId: '20202020-7fbd-41ad-b64d-25a15ff62f04',
-      label: 'Employees',
-      size: 100,
-      type: FieldMetadataType.Number,
-      metadata: {
-        fieldName: 'employees',
-        placeHolder: 'Employees',
-        relationObjectMetadataNameSingular: '',
-        relationObjectMetadataNamePlural: '',
-        objectMetadataNameSingular: 'company',
-      },
-      iconName: 'IconUsers',
-      isVisible: true,
-      defaultValue: 0,
-    },
-    {
-      position: 2,
-      fieldMetadataId: 'REPLACE_ME',
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'name'))?.id ??
+        '',
       label: 'Name',
       size: 100,
-      type: FieldMetadataType.Text,
+      type: FieldMetadataType.TEXT,
       metadata: {
         fieldName: 'name',
         placeHolder: 'Name',
@@ -60,28 +30,70 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       defaultValue: '',
     },
     {
-      position: 3,
-      fieldMetadataId: '20202020-e7c8-4771-8cc4-ce0e8c36a3c0',
-      label: 'Favorites',
+      position: 1,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'domainName'))
+          ?.id ?? '',
+      label: 'Domain Name',
       size: 100,
-      type: FieldMetadataType.Relation,
+      type: FieldMetadataType.LINKS,
       metadata: {
-        fieldName: 'favorites',
-        relationType: RelationDefinitionType.OneToMany,
+        fieldName: 'domainName',
+        placeHolder: 'Domain Name',
         relationObjectMetadataNameSingular: '',
         relationObjectMetadataNamePlural: '',
         objectMetadataNameSingular: 'company',
       },
-      iconName: 'IconHeart',
+      iconName: 'IconLink',
+      isVisible: true,
+      defaultValue: '',
+    },
+    {
+      position: 2,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'employees'))
+          ?.id ?? '',
+      label: 'Employees',
+      size: 100,
+      type: FieldMetadataType.NUMBER,
+      metadata: {
+        fieldName: 'employees',
+        placeHolder: 'Employees',
+        relationObjectMetadataNameSingular: '',
+        relationObjectMetadataNamePlural: '',
+        objectMetadataNameSingular: 'company',
+      },
+      iconName: 'IconUsers',
+      isVisible: true,
+      defaultValue: 0,
+    },
+    {
+      position: 3,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'people'))?.id ??
+        '',
+      label: 'People',
+      size: 100,
+      type: FieldMetadataType.RELATION,
+      metadata: {
+        fieldName: 'people',
+        relationType: RelationType.ONE_TO_MANY,
+        relationObjectMetadataNameSingular: '',
+        relationObjectMetadataNamePlural: '',
+        objectMetadataNameSingular: 'company',
+      },
+      iconName: 'IconUsers',
       isVisible: true,
       defaultValue: [],
     },
     {
       position: 4,
-      fieldMetadataId: '20202020-ad10-4117-a039-3f04b7a5f939',
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'address'))
+          ?.id ?? '',
       label: 'Address',
       size: 100,
-      type: FieldMetadataType.Address,
+      type: FieldMetadataType.ADDRESS,
       metadata: {
         fieldName: 'address',
         placeHolder: 'Address',
@@ -95,13 +107,15 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
     },
     {
       position: 5,
-      fieldMetadataId: '20202020-0739-495d-8e70-c0807f6b2268',
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'accountOwner'))
+          ?.id ?? '',
       label: 'Account Owner',
       size: 100,
-      type: FieldMetadataType.Relation,
+      type: FieldMetadataType.RELATION,
       metadata: {
         fieldName: 'accountOwner',
-        relationType: RelationDefinitionType.ManyToOne,
+        relationType: RelationType.MANY_TO_ONE,
         relationObjectMetadataNameSingular: 'workspaceMember',
         relationObjectMetadataNamePlural: 'workspaceMembers',
         objectMetadataNameSingular: 'company',
@@ -112,30 +126,15 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
     },
     {
       position: 6,
-      fieldMetadataId: '20202020-68b4-4c8e-af19-738eba2a42a5',
-      label: 'People',
-      size: 100,
-      type: FieldMetadataType.Relation,
-      metadata: {
-        fieldName: 'people',
-        relationType: RelationDefinitionType.OneToMany,
-        relationObjectMetadataNameSingular: '',
-        relationObjectMetadataNamePlural: '',
-        objectMetadataNameSingular: 'company',
-      },
-      iconName: 'IconUsers',
-      isVisible: true,
-      defaultValue: [],
-    },
-    {
-      position: 7,
-      fieldMetadataId: '20202020-61af-4ffd-b79b-baed6db8ad11',
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'attachments'))
+          ?.id ?? '',
       label: 'Attachments',
       size: 100,
-      type: FieldMetadataType.Relation,
+      type: FieldMetadataType.RELATION,
       metadata: {
         fieldName: 'attachments',
-        relationType: RelationDefinitionType.OneToMany,
+        relationType: RelationType.ONE_TO_MANY,
         relationObjectMetadataNameSingular: '',
         relationObjectMetadataNamePlural: '',
         objectMetadataNameSingular: 'company',
@@ -145,11 +144,13 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       defaultValue: [],
     },
     {
-      position: 8,
-      fieldMetadataId: '20202020-4dc2-47c9-bb15-6e6f19ba9e46',
+      position: 7,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'createdAt'))
+          ?.id ?? '',
       label: 'Creation date',
       size: 100,
-      type: FieldMetadataType.DateTime,
+      type: FieldMetadataType.DATE_TIME,
       metadata: {
         fieldName: 'createdAt',
         placeHolder: 'Creation date',
@@ -162,11 +163,14 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       defaultValue: '',
     },
     {
-      position: 9,
-      fieldMetadataId: '20202020-9e9f-4235-98b2-c76f3e2d281e',
+      position: 8,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(
+          findByProperty('name', 'idealCustomerProfile'),
+        )?.id ?? '',
       label: 'ICP',
       size: 100,
-      type: FieldMetadataType.Boolean,
+      type: FieldMetadataType.BOOLEAN,
       metadata: {
         fieldName: 'idealCustomerProfile',
         placeHolder: 'ICP',
@@ -179,11 +183,13 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       defaultValue: false,
     },
     {
-      position: 10,
-      fieldMetadataId: '20202020-a61d-4b78-b998-3fd88b4f73a1',
+      position: 9,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'linkedinLink'))
+          ?.id ?? '',
       label: 'Linkedin',
       size: 100,
-      type: FieldMetadataType.Links,
+      type: FieldMetadataType.LINKS,
       metadata: {
         fieldName: 'linkedinLink',
         placeHolder: 'Linkedin',
@@ -196,14 +202,16 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       defaultValue: '',
     },
     {
-      position: 11,
-      fieldMetadataId: '20202020-e3fc-46ff-b552-3e757843f06e',
+      position: 10,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'opportunities'))
+          ?.id ?? '',
       label: 'Opportunities',
       size: 100,
-      type: FieldMetadataType.Relation,
+      type: FieldMetadataType.RELATION,
       metadata: {
         fieldName: 'opportunities',
-        relationType: RelationDefinitionType.OneToMany,
+        relationType: RelationType.ONE_TO_MANY,
         relationObjectMetadataNameSingular: '',
         relationObjectMetadataNamePlural: '',
         objectMetadataNameSingular: 'company',
@@ -213,11 +221,13 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       defaultValue: [],
     },
     {
-      position: 12,
-      fieldMetadataId: '20202020-46e3-479a-b8f4-77137c74daa6',
+      position: 11,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'xLink'))?.id ??
+        '',
       label: 'X',
       size: 100,
-      type: FieldMetadataType.Links,
+      type: FieldMetadataType.LINKS,
       metadata: {
         fieldName: 'xLink',
         placeHolder: 'X',
@@ -230,14 +240,17 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       defaultValue: '',
     },
     {
-      position: 13,
-      fieldMetadataId: '20202020-4a2e-4b41-8562-279963e8947e',
+      position: 12,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(
+          findByProperty('name', 'activityTargets'),
+        )?.id ?? '',
       label: 'Activities',
       size: 100,
-      type: FieldMetadataType.Relation,
+      type: FieldMetadataType.RELATION,
       metadata: {
         fieldName: 'activityTargets',
-        relationType: RelationDefinitionType.OneToMany,
+        relationType: RelationType.ONE_TO_MANY,
         relationObjectMetadataNameSingular: '',
         relationObjectMetadataNamePlural: '',
         objectMetadataNameSingular: 'company',
@@ -247,11 +260,14 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       defaultValue: [],
     },
     {
-      position: 14,
-      fieldMetadataId: '20202020-4a5a-466f-92d9-c3870d9502a9',
+      position: 13,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(
+          findByProperty('name', 'annualRecurringRevenue'),
+        )?.id ?? '',
       label: 'ARR',
       size: 100,
-      type: FieldMetadataType.Currency,
+      type: FieldMetadataType.CURRENCY,
       metadata: {
         fieldName: 'annualRecurringRevenue',
         placeHolder: 'ARR',
@@ -262,6 +278,25 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       iconName: 'IconMoneybag',
       isVisible: true,
       defaultValue: 0,
+    },
+    {
+      position: 14,
+      fieldMetadataId:
+        COMPANY_MOCK_OBJECT.fields.find(findByProperty('name', 'favorites'))
+          ?.id ?? '',
+      label: 'Favorites',
+      size: 100,
+      type: FieldMetadataType.RELATION,
+      metadata: {
+        fieldName: 'favorites',
+        relationType: RelationType.ONE_TO_MANY,
+        relationObjectMetadataNameSingular: '',
+        relationObjectMetadataNamePlural: '',
+        objectMetadataNameSingular: 'company',
+      },
+      iconName: 'IconHeart',
+      isVisible: true,
+      defaultValue: [],
     },
   ] satisfies ColumnDefinition<FieldMetadata>[]
 ).filter(filterAvailableTableColumns);

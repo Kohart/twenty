@@ -1,9 +1,11 @@
 import styled from '@emotion/styled';
 import React from 'react';
 
-import { isDefined } from '@ui/utilities';
-
-import { FloatingButtonPosition, FloatingButtonProps } from './FloatingButton';
+import {
+  type FloatingButtonPosition,
+  type FloatingButtonProps,
+} from './FloatingButton';
+import { isDefined } from 'twenty-shared/utils';
 
 const StyledFloatingButtonGroupContainer = styled.div`
   backdrop-filter: blur(20px);

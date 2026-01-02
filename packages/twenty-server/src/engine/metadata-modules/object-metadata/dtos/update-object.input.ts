@@ -1,17 +1,17 @@
 import { Field, InputType } from '@nestjs/graphql';
 
-import { BeforeUpdateOne } from '@ptc-org/nestjs-query-graphql';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
+  ValidateNested,
 } from 'class-validator';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { IsValidMetadataName } from 'src/engine/decorators/metadata/is-valid-metadata-name.decorator';
-import { BeforeUpdateOneObject } from 'src/engine/metadata-modules/object-metadata/hooks/before-update-one-object.hook';
 
 @InputType()
 export class UpdateObjectPayload {
@@ -59,12 +59,12 @@ export class UpdateObjectPayload {
 
   @IsUUID()
   @IsOptional()
-  @Field({ nullable: true })
+  @Field(() => UUIDScalarType, { nullable: true })
   labelIdentifierFieldMetadataId?: string;
 
   @IsUUID()
   @IsOptional()
-  @Field({ nullable: true })
+  @Field(() => UUIDScalarType, { nullable: true })
   imageIdentifierFieldMetadataId?: string;
 
   @IsBoolean()
@@ -74,8 +74,9 @@ export class UpdateObjectPayload {
 }
 
 @InputType()
-@BeforeUpdateOne(BeforeUpdateOneObject)
 export class UpdateOneObjectInput {
+  @Type(() => UpdateObjectPayload)
+  @ValidateNested()
   @Field(() => UpdateObjectPayload)
   update: UpdateObjectPayload;
 

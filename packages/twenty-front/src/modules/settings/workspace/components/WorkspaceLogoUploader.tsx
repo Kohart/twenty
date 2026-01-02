@@ -5,12 +5,13 @@ import { ImageInput } from '@/ui/input/components/ImageInput';
 import {
   useUpdateWorkspaceMutation,
   useUploadWorkspaceLogoMutation,
-} from '~/generated/graphql';
+} from '~/generated-metadata/graphql';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
+import { buildSignedPath } from 'twenty-shared/utils';
 
 export const WorkspaceLogoUploader = () => {
   const [uploadLogo] = useUploadWorkspaceLogoMutation();
-  const [updateWorkspce] = useUpdateWorkspaceMutation();
+  const [updateWorkspace] = useUpdateWorkspaceMutation();
   const [currentWorkspace, setCurrentWorkspace] = useRecoilState(
     currentWorkspaceState,
   );
@@ -29,7 +30,7 @@ export const WorkspaceLogoUploader = () => {
       onCompleted: (data) => {
         setCurrentWorkspace({
           ...currentWorkspace,
-          logo: data.uploadWorkspaceLogo,
+          logo: buildSignedPath(data.uploadWorkspaceLogo),
         });
       },
     });
@@ -39,7 +40,7 @@ export const WorkspaceLogoUploader = () => {
     if (!currentWorkspace?.id) {
       throw new Error('Workspace id not found');
     }
-    await updateWorkspce({
+    await updateWorkspace({
       variables: {
         input: {
           logo: null,

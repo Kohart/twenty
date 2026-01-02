@@ -1,5 +1,5 @@
-import { FieldType } from '@/settings/data-model/types/FieldType';
-import { PickLiteral } from '~/types/PickLiteral';
+import { type FieldType } from '@/settings/data-model/types/FieldType';
+import { type PickLiteral } from '~/types/PickLiteral';
 
 // TODO: add to future fullstack shared package
 export const COMPOSITE_FIELD_TYPES = [
@@ -10,6 +10,7 @@ export const COMPOSITE_FIELD_TYPES = [
   'PHONES',
   'FULL_NAME',
   'ACTOR',
+  'RICH_TEXT_V2',
 ] as const;
 
 type CompositeFieldTypeBaseLiteral = (typeof COMPOSITE_FIELD_TYPES)[number];

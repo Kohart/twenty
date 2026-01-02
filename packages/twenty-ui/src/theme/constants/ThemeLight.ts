@@ -1,4 +1,6 @@
 import { BLUR_LIGHT } from '@ui/theme/constants/BlurLight';
+import { COLOR_LIGHT } from '@ui/theme/constants/ColorsLight';
+import { GRAY_SCALE_LIGHT } from '@ui/theme/constants/GrayScaleLight';
 import { ILLUSTRATION_ICON_LIGHT } from '@ui/theme/constants/IllustrationIconLight';
 import { SNACK_BAR_LIGHT } from '@ui/theme/constants/SnackBarLight';
 import { ACCENT_LIGHT } from './AccentLight';
@@ -24,5 +26,7 @@ export const THEME_LIGHT = {
     tag: TAG_LIGHT,
     code: CODE_LIGHT,
     IllustrationIcon: ILLUSTRATION_ICON_LIGHT,
+    grayScale: GRAY_SCALE_LIGHT,
+    color: COLOR_LIGHT,
   },
 };

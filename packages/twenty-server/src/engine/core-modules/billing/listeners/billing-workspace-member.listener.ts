@@ -1,25 +1,28 @@
+/* @license Enterprise */
+
 import { Injectable } from '@nestjs/common';
 
+import { type ObjectRecordCreateEvent } from 'twenty-shared/database-events';
+
+import { OnDatabaseBatchEvent } from 'src/engine/api/graphql/graphql-query-runner/decorators/on-database-batch-event.decorator';
+import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
 import {
-  UpdateSubscriptionJob,
-  UpdateSubscriptionJobData,
-} from 'src/engine/core-modules/billing/jobs/update-subscription.job';
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
-import { ObjectRecordCreateEvent } from 'src/engine/core-modules/event-emitter/types/object-record-create.event';
+  UpdateSubscriptionQuantityJob,
+  type UpdateSubscriptionQuantityJobData,
+} from 'src/engine/core-modules/billing/jobs/update-subscription-quantity.job';
 import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
-import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/types/workspace-event.type';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/types/workspace-event-batch.type';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
-import { OnDatabaseBatchEvent } from 'src/engine/api/graphql/graphql-query-runner/decorators/on-database-batch-event.decorator';
-import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
 
 @Injectable()
 export class BillingWorkspaceMemberListener {
   constructor(
     @InjectMessageQueue(MessageQueue.billingQueue)
     private readonly messageQueueService: MessageQueueService,
-    private readonly environmentService: EnvironmentService,
+    private readonly twentyConfigService: TwentyConfigService,
   ) {}
 
   @OnDatabaseBatchEvent('workspaceMember', DatabaseEventAction.CREATED)
@@ -29,12 +32,12 @@ export class BillingWorkspaceMemberListener {
       ObjectRecordCreateEvent<WorkspaceMemberWorkspaceEntity>
     >,
   ) {
-    if (!this.environmentService.get('IS_BILLING_ENABLED')) {
+    if (!this.twentyConfigService.get('IS_BILLING_ENABLED')) {
       return;
     }
 
-    await this.messageQueueService.add<UpdateSubscriptionJobData>(
-      UpdateSubscriptionJob.name,
+    await this.messageQueueService.add<UpdateSubscriptionQuantityJobData>(
+      UpdateSubscriptionQuantityJob.name,
       { workspaceId: payload.workspaceId },
     );
   }

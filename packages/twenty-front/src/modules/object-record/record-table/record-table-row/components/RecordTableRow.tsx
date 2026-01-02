@@ -1,32 +1,86 @@
-import { RecordValueSetterEffect } from '@/object-record/record-store/components/RecordValueSetterEffect';
+import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
 import { RecordTableCellCheckbox } from '@/object-record/record-table/record-table-cell/components/RecordTableCellCheckbox';
-import { RecordTableCellGrip } from '@/object-record/record-table/record-table-cell/components/RecordTableCellGrip';
+import { RecordTableCellDragAndDrop } from '@/object-record/record-table/record-table-cell/components/RecordTableCellDragAndDrop';
 import { RecordTableLastEmptyCell } from '@/object-record/record-table/record-table-cell/components/RecordTableLastEmptyCell';
-import { RecordTableCells } from '@/object-record/record-table/record-table-row/components/RecordTableCells';
-import { RecordTableRowWrapper } from '@/object-record/record-table/record-table-row/components/RecordTableRowWrapper';
+import { RecordTablePlusButtonCellPlaceholder } from '@/object-record/record-table/record-table-cell/components/RecordTablePlusButtonCellPlaceholder';
+
+import { RecordTableDraggableTr } from '@/object-record/record-table/record-table-row/components/RecordTableDraggableTr';
+import { RecordTableDraggableTrFirstRowOfGroup } from '@/object-record/record-table/record-table-row/components/RecordTableDraggableTrFirstRowOfGroup';
+import { RecordTableFieldsCells } from '@/object-record/record-table/record-table-row/components/RecordTableFieldsCells';
+import { RecordTableRowArrowKeysEffect } from '@/object-record/record-table/record-table-row/components/RecordTableRowArrowKeysEffect';
+import { RecordTableRowHotkeyEffect } from '@/object-record/record-table/record-table-row/components/RecordTableRowHotkeyEffect';
+import { isRecordTableRowFocusActiveComponentState } from '@/object-record/record-table/states/isRecordTableRowFocusActiveComponentState';
+import { isRecordTableRowFocusedComponentFamilyState } from '@/object-record/record-table/states/isRecordTableRowFocusedComponentFamilyState';
+import { ListenRecordUpdatesEffect } from '@/subscription/components/ListenRecordUpdatesEffect';
+import { getDefaultRecordFieldsToListen } from '@/subscription/utils/getDefaultRecordFieldsToListen.util';
+import { useRecoilComponentFamilyValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyValue';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 
 type RecordTableRowProps = {
   recordId: string;
-  rowIndex: number;
-  isPendingRow?: boolean;
+  rowIndexForFocus: number;
+  rowIndexForDrag: number;
+  isFirstRowOfGroup: boolean;
 };
 
 export const RecordTableRow = ({
   recordId,
-  rowIndex,
-  isPendingRow,
+  rowIndexForFocus,
+  rowIndexForDrag,
+  isFirstRowOfGroup,
 }: RecordTableRowProps) => {
-  return (
-    <RecordTableRowWrapper
+  const { objectNameSingular } = useRecordIndexContextOrThrow();
+  const listenedFields = getDefaultRecordFieldsToListen({
+    objectNameSingular,
+  });
+  const isFocused = useRecoilComponentFamilyValue(
+    isRecordTableRowFocusedComponentFamilyState,
+    rowIndexForFocus,
+  );
+  const isRowFocusActive = useRecoilComponentValue(
+    isRecordTableRowFocusActiveComponentState,
+  );
+
+  return isFirstRowOfGroup ? (
+    <RecordTableDraggableTrFirstRowOfGroup
       recordId={recordId}
-      rowIndex={rowIndex}
-      isPendingRow={isPendingRow}
+      draggableIndex={rowIndexForDrag}
+      focusIndex={rowIndexForFocus}
     >
-      <RecordTableCellGrip />
+      {isRowFocusActive && isFocused && (
+        <>
+          <RecordTableRowHotkeyEffect />
+          <RecordTableRowArrowKeysEffect />
+        </>
+      )}
+      <RecordTableCellDragAndDrop />
       <RecordTableCellCheckbox />
-      <RecordTableCells />
+      <RecordTableFieldsCells />
+      <RecordTablePlusButtonCellPlaceholder />
       <RecordTableLastEmptyCell />
-      <RecordValueSetterEffect recordId={recordId} />
-    </RecordTableRowWrapper>
+      <ListenRecordUpdatesEffect
+        objectNameSingular={objectNameSingular}
+        recordId={recordId}
+        listenedFields={listenedFields}
+      />
+    </RecordTableDraggableTrFirstRowOfGroup>
+  ) : (
+    <RecordTableDraggableTr
+      recordId={recordId}
+      draggableIndex={rowIndexForDrag}
+      focusIndex={rowIndexForFocus}
+    >
+      {isRowFocusActive && isFocused && (
+        <>
+          <RecordTableRowHotkeyEffect />
+          <RecordTableRowArrowKeysEffect />
+        </>
+      )}
+      <RecordTableCellDragAndDrop />
+      <RecordTableCellCheckbox />
+      <RecordTableFieldsCells />
+      <RecordTablePlusButtonCellPlaceholder />
+      <RecordTableLastEmptyCell />
+    </RecordTableDraggableTr>
   );
 };

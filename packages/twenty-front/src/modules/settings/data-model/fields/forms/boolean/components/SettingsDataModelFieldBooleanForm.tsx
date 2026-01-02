@@ -1,11 +1,12 @@
 import { Controller, useFormContext } from 'react-hook-form';
-import { IconCheck, IconX } from 'twenty-ui';
 import { z } from 'zod';
 
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { SettingsOptionCardContentSelect } from '@/settings/components/SettingsOptions/SettingsOptionCardContentSelect';
+import { BOOLEAN_DATA_MODEL_SELECT_OPTIONS } from '@/settings/data-model/fields/forms/boolean/constants/BooleanDataModelSelectOptions';
 import { useBooleanSettingsFormInitialValues } from '@/settings/data-model/fields/forms/boolean/hooks/useBooleanSettingsFormInitialValues';
-import { isDefined } from '~/utils/isDefined';
+import { Select } from '@/ui/input/components/Select';
+import { useLingui } from '@lingui/react/macro';
+import { IconCheck } from 'twenty-ui/display';
 
 export const settingsDataModelFieldBooleanFormSchema = z.object({
   defaultValue: z.boolean(),
@@ -16,19 +17,19 @@ export type SettingsDataModelFieldBooleanFormValues = z.infer<
 >;
 
 type SettingsDataModelFieldBooleanFormProps = {
-  className?: string;
-  fieldMetadataItem: Pick<FieldMetadataItem, 'defaultValue'>;
+  existingFieldMetadataId: string;
+  disabled?: boolean;
 };
 
 export const SettingsDataModelFieldBooleanForm = ({
-  className,
-  fieldMetadataItem,
+  disabled,
+  existingFieldMetadataId,
 }: SettingsDataModelFieldBooleanFormProps) => {
+  const { t } = useLingui();
   const { control } = useFormContext<SettingsDataModelFieldBooleanFormValues>();
 
-  const isEditMode = isDefined(fieldMetadataItem?.defaultValue);
   const { initialDefaultValue } = useBooleanSettingsFormInitialValues({
-    fieldMetadataItem,
+    existingFieldMetadataId,
   });
 
   return (
@@ -39,28 +40,23 @@ export const SettingsDataModelFieldBooleanForm = ({
       render={({ field: { onChange, value } }) => (
         <SettingsOptionCardContentSelect
           Icon={IconCheck}
-          title="Default Value"
-          description="Select the default value for this boolean field"
-          value={value}
-          onChange={onChange}
-          selectClassName={className}
-          // TODO: temporary fix - disabling edition because after editing the defaultValue,
-          // newly created records are not taking into account the updated defaultValue properly.
-          disabled={isEditMode}
-          dropdownId="object-field-default-value-select-boolean"
-          options={[
-            {
-              value: true,
-              label: 'True',
-              Icon: IconCheck,
-            },
-            {
-              value: false,
-              label: 'False',
-              Icon: IconX,
-            },
-          ]}
-        />
+          title={t`Default Value`}
+          description={t`Select the default value for this boolean field`}
+        >
+          <Select<boolean>
+            value={value}
+            onChange={onChange}
+            dropdownId="object-field-default-value-select-boolean"
+            dropdownWidth={120}
+            disabled={disabled}
+            needIconCheck={false}
+            options={BOOLEAN_DATA_MODEL_SELECT_OPTIONS.map((option) => ({
+              ...option,
+              label: t(option.label),
+            }))}
+            selectSizeVariant="small"
+          />
+        </SettingsOptionCardContentSelect>
       )}
     />
   );

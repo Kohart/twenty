@@ -1,10 +1,12 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 
-import { CancelButton } from '../SaveAndCancelButtons/CancelButton';
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
+import { CancelButton } from '@/settings/components/SaveAndCancelButtons/CancelButton';
 
 const meta: Meta<typeof CancelButton> = {
   title: 'Modules/Settings/CancelButton',
   component: CancelButton,
+  decorators: [I18nFrontDecorator],
 };
 
 export default meta;

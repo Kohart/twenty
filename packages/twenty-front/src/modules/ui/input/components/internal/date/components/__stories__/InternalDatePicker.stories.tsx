@@ -1,14 +1,13 @@
 import { useArgs } from '@storybook/preview-api';
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { expect, userEvent, within } from '@storybook/test';
-import { ComponentDecorator } from 'twenty-ui';
+import { Temporal } from 'temporal-polyfill';
+import { ComponentDecorator } from 'twenty-ui/testing';
+import { DateTimePicker } from '@/ui/input/components/internal/date/components/DateTimePicker';
 
-import { isDefined } from '~/utils/isDefined';
-import { InternalDatePicker } from '../InternalDatePicker';
-
-const meta: Meta<typeof InternalDatePicker> = {
+const meta: Meta<typeof DateTimePicker> = {
   title: 'UI/Input/Internal/InternalDatePicker',
-  component: InternalDatePicker,
+  component: DateTimePicker,
   decorators: [ComponentDecorator],
   argTypes: {
     date: { control: 'date' },
@@ -17,17 +16,22 @@ const meta: Meta<typeof InternalDatePicker> = {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const [, updateArgs] = useArgs();
     return (
-      <InternalDatePicker
-        date={isDefined(date) ? new Date(date) : new Date()}
+      <DateTimePicker
+        instanceId="story-date-time-picker"
+        date={date}
         onChange={(newDate) => updateArgs({ date: newDate })}
       />
     );
   },
-  args: { date: new Date('January 1, 2023 02:00:00') },
+  args: {
+    date: Temporal.Instant.from('2023-01-01T02:00:00Z').toZonedDateTimeISO(
+      'UTC',
+    ),
+  },
 };
 
 export default meta;
-type Story = StoryObj<typeof InternalDatePicker>;
+type Story = StoryObj<typeof DateTimePicker>;
 
 export const Default: Story = {};
 
@@ -51,13 +55,13 @@ export const WithOpenMonthSelect: Story = {
       'October',
       'November',
       'December',
-    ].forEach((monthLabel) =>
-      expect(canvas.getByText(monthLabel)).toBeInTheDocument(),
+    ].forEach(async (monthLabel) =>
+      expect(await canvas.findByText(monthLabel)).toBeInTheDocument(),
     );
 
-    await userEvent.click(canvas.getByText('February'));
+    await userEvent.click(await canvas.findByText('February'));
 
-    expect(canvas.getByText('February')).toBeInTheDocument();
+    expect(await canvas.findByText('February')).toBeInTheDocument();
   },
 };
 
@@ -69,12 +73,12 @@ export const WithOpenYearSelect: Story = {
 
     await userEvent.click(yearSelect);
 
-    ['2024', '2025', '2026'].forEach((yearLabel) =>
-      expect(canvas.getByText(yearLabel)).toBeInTheDocument(),
+    ['2024', '2025', '2026'].forEach(async (yearLabel) =>
+      expect(await canvas.findByText(yearLabel)).toBeInTheDocument(),
     );
 
-    await userEvent.click(canvas.getByText('2024'));
+    await userEvent.click(await canvas.findByText('2024'));
 
-    expect(canvas.getByText('2024')).toBeInTheDocument();
+    expect(await canvas.findByText('2024')).toBeInTheDocument();
   },
 };

@@ -1,16 +1,23 @@
 import { SKELETON_LOADER_HEIGHT_SIZES } from '@/activities/components/SkeletonLoader';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { ChangeEvent, ReactNode, useRef } from 'react';
+import { Trans } from '@lingui/react/macro';
+import { type ChangeEvent, type ReactNode, useRef } from 'react';
 import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
-import { AppTooltip, Avatar, AvatarType, IconComponent } from 'twenty-ui';
+import { useRecoilValue } from 'recoil';
+import { isDefined } from 'twenty-shared/utils';
+import {
+  AppTooltip,
+  Avatar,
+  type AvatarType,
+  type IconComponent,
+} from 'twenty-ui/display';
 import { v4 as uuidV4 } from 'uuid';
-
+import { dateLocaleState } from '~/localization/states/dateLocaleState';
 import {
   beautifyExactDateTime,
   beautifyPastDateRelativeToNow,
 } from '~/utils/date-utils';
-import { isDefined } from '~/utils/isDefined';
 
 type ShowPageSummaryCardProps = {
   avatarPlaceholder: string;
@@ -52,7 +59,7 @@ const StyledInfoContainer = styled.div<{ isMobile: boolean }>`
 const StyledDate = styled.div<{ isMobile: boolean }>`
   color: ${({ theme }) => theme.font.color.tertiary};
   cursor: pointer;
-  padding-left: ${({ theme, isMobile }) => (isMobile ? theme.spacing(2) : 0)};
+  padding-left: ${({ theme }) => theme.spacing(1)};
 `;
 
 const StyledTitle = styled.div<{ isMobile: boolean }>`
@@ -61,10 +68,16 @@ const StyledTitle = styled.div<{ isMobile: boolean }>`
   font-size: ${({ theme }) => theme.font.size.xl};
   font-weight: ${({ theme }) => theme.font.weight.semiBold};
   justify-content: ${({ isMobile }) => (isMobile ? 'flex-start' : 'center')};
-  max-width: 90%;
+  width: 90%;
 `;
 
-const StyledAvatarWrapper = styled.div<{ isAvatarEditable: boolean }>`
+const StyledAvatarWrapper = styled.div<{
+  isAvatarEditable: boolean;
+  hasIcon: boolean;
+}>`
+  background-color: ${({ theme, hasIcon }) =>
+    hasIcon ? theme.background.transparent.light : 'unset'};
+  border-radius: ${({ theme }) => theme.border.radius.sm};
   cursor: ${({ isAvatarEditable }) =>
     isAvatarEditable ? 'pointer' : 'default'};
 `;
@@ -110,8 +123,9 @@ export const ShowPageSummaryCard = ({
   loading,
   isMobile = false,
 }: ShowPageSummaryCardProps) => {
+  const { localeCatalog } = useRecoilValue(dateLocaleState);
   const beautifiedCreatedAt =
-    date !== '' ? beautifyPastDateRelativeToNow(date) : '';
+    date !== '' ? beautifyPastDateRelativeToNow(date, localeCatalog) : '';
   const exactCreatedAt = date !== '' ? beautifyExactDateTime(date) : '';
   const dateElementId = `date-id-${uuidV4()}`;
   const inputFileRef = useRef<HTMLInputElement>(null);
@@ -132,7 +146,10 @@ export const ShowPageSummaryCard = ({
 
   return (
     <StyledShowPageSummaryCard isMobile={isMobile}>
-      <StyledAvatarWrapper isAvatarEditable={!!onUploadPicture}>
+      <StyledAvatarWrapper
+        isAvatarEditable={isDefined(onUploadPicture)}
+        hasIcon={isDefined(icon)}
+      >
         <Avatar
           avatarUrl={logoOrAvatar}
           onClick={onUploadPicture ? handleAvatarClick : undefined}
@@ -153,7 +170,7 @@ export const ShowPageSummaryCard = ({
         <StyledTitle isMobile={isMobile}>{title}</StyledTitle>
         {beautifiedCreatedAt && (
           <StyledDate isMobile={isMobile} id={dateElementId}>
-            Added {beautifiedCreatedAt}
+            <Trans>Added {beautifiedCreatedAt}</Trans>
           </StyledDate>
         )}
         <AppTooltip

@@ -1,13 +1,12 @@
-import { Meta, StoryObj } from '@storybook/react';
-import { userEvent, within } from '@storybook/test';
+import { type Meta, type StoryObj } from '@storybook/react';
 
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 
-import { SettingsProfile } from '../SettingsProfile';
+import { SettingsProfile } from '~/pages/settings/SettingsProfile';
 
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/Settings/SettingsProfile',
@@ -27,12 +26,3 @@ export default meta;
 export type Story = StoryObj<typeof SettingsProfile>;
 
 export const Default: Story = {};
-
-export const LogOut: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const logoutButton = await canvas.findByText('Logout');
-
-    await userEvent.click(logoutButton);
-  },
-};

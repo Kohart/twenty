@@ -1,15 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 import {
-  QueueCronJobOptions,
-  QueueJobOptions,
+  type QueueCronJobOptions,
+  type QueueJobOptions,
 } from 'src/engine/core-modules/message-queue/drivers/interfaces/job-options.interface';
 import { MessageQueueDriver } from 'src/engine/core-modules/message-queue/drivers/interfaces/message-queue-driver.interface';
 import {
-  MessageQueueJobData,
-  MessageQueueJob,
+  type MessageQueueJobData,
+  type MessageQueueJob,
 } from 'src/engine/core-modules/message-queue/interfaces/message-queue-job.interface';
-import { MessageQueueWorkerOptions } from 'src/engine/core-modules/message-queue/interfaces/message-queue-worker-options.interface';
+import { type MessageQueueWorkerOptions } from 'src/engine/core-modules/message-queue/interfaces/message-queue-worker-options.interface';
 
 import {
   MessageQueue,
@@ -35,16 +35,38 @@ export class MessageQueueService {
     return this.driver.add(this.queueName, jobName, data, options);
   }
 
-  addCron<T extends MessageQueueJobData | undefined>(
-    jobName: string,
-    data: T,
-    options?: QueueCronJobOptions,
-  ): Promise<void> {
-    return this.driver.addCron(this.queueName, jobName, data, options);
+  addCron<T extends MessageQueueJobData | undefined>({
+    jobName,
+    data,
+    options,
+    jobId,
+  }: {
+    jobName: string;
+    data: T;
+    options: QueueCronJobOptions;
+    jobId?: string;
+  }): Promise<void> {
+    return this.driver.addCron({
+      queueName: this.queueName,
+      jobName,
+      data,
+      options,
+      jobId,
+    });
   }
 
-  removeCron(jobName: string, pattern: string): Promise<void> {
-    return this.driver.removeCron(this.queueName, jobName, pattern);
+  removeCron({
+    jobName,
+    jobId,
+  }: {
+    jobName: string;
+    jobId?: string;
+  }): Promise<void> {
+    return this.driver.removeCron({
+      queueName: this.queueName,
+      jobName,
+      jobId,
+    });
   }
 
   work<T extends MessageQueueJobData>(

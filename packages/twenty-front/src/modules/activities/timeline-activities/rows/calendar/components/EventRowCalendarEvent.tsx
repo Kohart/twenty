@@ -1,14 +1,16 @@
 import styled from '@emotion/styled';
+import { useLingui } from '@lingui/react/macro';
 import { useState } from 'react';
 
 import { EventCardCalendarEvent } from '@/activities/timeline-activities/rows/calendar/components/EventCardCalendarEvent';
 import { EventCard } from '@/activities/timeline-activities/rows/components/EventCard';
 import { EventCardToggleButton } from '@/activities/timeline-activities/rows/components/EventCardToggleButton';
 import {
-  EventRowDynamicComponentProps,
+  type EventRowDynamicComponentProps,
   StyledEventRowItemAction,
   StyledEventRowItemColumn,
 } from '@/activities/timeline-activities/rows/components/EventRowDynamicComponent';
+import { isTimelineActivityWithLinkedRecord } from '@/activities/timeline-activities/types/TimelineActivity';
 
 type EventRowCalendarEventProps = EventRowDynamicComponentProps;
 
@@ -29,6 +31,7 @@ export const EventRowCalendarEvent = ({
   authorFullName,
   labelIdentifierValue,
 }: EventRowCalendarEventProps) => {
+  const { t } = useLingui();
   const [, eventAction] = event.name.split('.');
   const [isOpen, setIsOpen] = useState(false);
 
@@ -41,13 +44,15 @@ export const EventRowCalendarEvent = ({
       <StyledRowContainer>
         <StyledEventRowItemColumn>{authorFullName}</StyledEventRowItemColumn>
         <StyledEventRowItemAction>
-          linked a calendar event with {labelIdentifierValue}
+          {t`linked a calendar event with ${labelIdentifierValue}`}
         </StyledEventRowItemAction>
         <EventCardToggleButton isOpen={isOpen} setIsOpen={setIsOpen} />
       </StyledRowContainer>
-      <EventCard isOpen={isOpen}>
-        <EventCardCalendarEvent calendarEventId={event.linkedRecordId} />
-      </EventCard>
+      {isTimelineActivityWithLinkedRecord(event) && (
+        <EventCard isOpen={isOpen}>
+          <EventCardCalendarEvent calendarEventId={event.linkedRecordId} />
+        </EventCard>
+      )}
     </StyledEventRowCalendarEventContainer>
   );
 };

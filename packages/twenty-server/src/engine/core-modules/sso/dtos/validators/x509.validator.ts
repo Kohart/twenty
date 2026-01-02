@@ -4,15 +4,16 @@ import * as crypto from 'crypto';
 
 import {
   registerDecorator,
-  ValidationOptions,
+  type ValidationOptions,
   ValidatorConstraint,
-  ValidatorConstraintInterface,
+  type ValidatorConstraintInterface,
 } from 'class-validator';
 
 @ValidatorConstraint({ async: false })
 export class IsX509CertificateConstraint
   implements ValidatorConstraintInterface
 {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   validate(value: any) {
     if (typeof value !== 'string') {
       return false;
@@ -29,7 +30,7 @@ export class IsX509CertificateConstraint
       const cert = new crypto.X509Certificate(der);
 
       return cert instanceof crypto.X509Certificate;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

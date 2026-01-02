@@ -1,84 +1,71 @@
-import { isAnalyticsEnabledState } from '@/client-config/states/isAnalyticsEnabledState';
+import { useTestServerlessFunction } from '@/serverless-functions/hooks/useTestServerlessFunction';
+import { computeNewSources } from '@/serverless-functions/utils/computeNewSources';
+import { flattenSources } from '@/serverless-functions/utils/flattenSources';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { SettingsServerlessFunctionCodeEditorTab } from '@/settings/serverless-functions/components/tabs/SettingsServerlessFunctionCodeEditorTab';
-import { SettingsServerlessFunctionMonitoringTab } from '@/settings/serverless-functions/components/tabs/SettingsServerlessFunctionMonitoringTab';
 import { SettingsServerlessFunctionSettingsTab } from '@/settings/serverless-functions/components/tabs/SettingsServerlessFunctionSettingsTab';
 import { SettingsServerlessFunctionTestTab } from '@/settings/serverless-functions/components/tabs/SettingsServerlessFunctionTestTab';
-import { SettingsServerlessFunctionTestTabEffect } from '@/settings/serverless-functions/components/tabs/SettingsServerlessFunctionTestTabEffect';
-import { useExecuteOneServerlessFunction } from '@/settings/serverless-functions/hooks/useExecuteOneServerlessFunction';
-import { useGetOneServerlessFunctionSourceCode } from '@/settings/serverless-functions/hooks/useGetOneServerlessFunctionSourceCode';
-import { usePublishOneServerlessFunction } from '@/settings/serverless-functions/hooks/usePublishOneServerlessFunction';
+import { SettingsServerlessFunctionTriggersTab } from '@/settings/serverless-functions/components/tabs/SettingsServerlessFunctionTriggersTab';
+import { usePersistServerlessFunction } from '@/settings/serverless-functions/hooks/usePersistServerlessFunction';
 import { useServerlessFunctionUpdateFormState } from '@/settings/serverless-functions/hooks/useServerlessFunctionUpdateFormState';
-import { useUpdateOneServerlessFunction } from '@/settings/serverless-functions/hooks/useUpdateOneServerlessFunction';
-import { settingsServerlessFunctionInputState } from '@/settings/serverless-functions/states/settingsServerlessFunctionInputState';
-import { settingsServerlessFunctionOutputState } from '@/settings/serverless-functions/states/settingsServerlessFunctionOutputState';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
-import { SettingsPath } from '@/types/SettingsPath';
-import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
-import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
-import { TabList } from '@/ui/layout/tab/components/TabList';
-import { useTabList } from '@/ui/layout/tab/hooks/useTabList';
-import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
+import { TabList } from '@/ui/layout/tab-list/components/TabList';
+import { activeTabIdComponentState } from '@/ui/layout/tab-list/states/activeTabIdComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { t } from '@lingui/core/macro';
+import { useNavigate, useParams } from 'react-router-dom';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
 import {
+  IconBolt,
   IconCode,
-  IconGauge,
   IconSettings,
   IconTestPipe,
-  Section,
-} from 'twenty-ui';
-import { usePreventOverlapCallback } from '~/hooks/usePreventOverlapCallback';
-import { isDeeplyEqual } from '~/utils/isDeeplyEqual';
-import { isDefined } from '~/utils/isDefined';
+} from 'twenty-ui/display';
+import { useDebouncedCallback } from 'use-debounce';
+import { useFindOneApplicationQuery } from '~/generated-metadata/graphql';
 
-const TAB_LIST_COMPONENT_ID = 'serverless-function-detail';
+const SERVERLESS_FUNCTION_DETAIL_ID = 'serverless-function-detail';
 
 export const SettingsServerlessFunctionDetail = () => {
-  const { serverlessFunctionId = '' } = useParams();
-  const { enqueueSnackBar } = useSnackBar();
-  const { activeTabIdState, setActiveTabId } = useTabList(
-    TAB_LIST_COMPONENT_ID,
-  );
-  const activeTabId = useRecoilValue(activeTabIdState);
-  const [isCodeValid, setIsCodeValid] = useState(true);
-  const { executeOneServerlessFunction } = useExecuteOneServerlessFunction();
-  const { updateOneServerlessFunction } = useUpdateOneServerlessFunction();
-  const { publishOneServerlessFunction } = usePublishOneServerlessFunction();
-  const { formValues, setFormValues, loading } =
-    useServerlessFunctionUpdateFormState(serverlessFunctionId);
-  const { code: latestVersionCode } = useGetOneServerlessFunctionSourceCode({
-    id: serverlessFunctionId,
-    version: 'latest',
+  const { serverlessFunctionId = '', applicationId = '' } = useParams();
+
+  const navigate = useNavigate();
+
+  const { data } = useFindOneApplicationQuery({
+    variables: { id: applicationId },
+    skip: !applicationId,
   });
-  const setSettingsServerlessFunctionOutput = useSetRecoilState(
-    settingsServerlessFunctionOutputState,
-  );
-  const settingsServerlessFunctionInput = useRecoilValue(
-    settingsServerlessFunctionInputState,
-  );
 
-  const save = async () => {
-    try {
-      await updateOneServerlessFunction({
+  const applicationName = data?.findOneApplication?.name;
+
+  const instanceId = `${SERVERLESS_FUNCTION_DETAIL_ID}-${serverlessFunctionId}`;
+
+  const activeTabId = useRecoilComponentValue(
+    activeTabIdComponentState,
+    instanceId,
+  );
+  const { updateServerlessFunction } = usePersistServerlessFunction();
+
+  const { formValues, setFormValues, serverlessFunction, loading } =
+    useServerlessFunctionUpdateFormState({ serverlessFunctionId });
+
+  const { testServerlessFunction, isTesting } = useTestServerlessFunction({
+    serverlessFunctionId,
+  });
+
+  const handleSave = useDebouncedCallback(async () => {
+    await updateServerlessFunction({
+      input: {
         id: serverlessFunctionId,
-        name: formValues.name,
-        description: formValues.description,
-        code: formValues.code,
-      });
-    } catch (err) {
-      enqueueSnackBar(
-        (err as Error)?.message || 'An error occurred while updating function',
-        {
-          variant: SnackBarVariant.Error,
+        update: {
+          name: formValues.name,
+          description: formValues.description,
+          code: formValues.code,
         },
-      );
-    }
-  };
-
-  const handleSave = usePreventOverlapCallback(save, 1000);
+      },
+    });
+  }, 500);
 
   const onChange = (key: string) => {
     return async (value: string) => {
@@ -91,117 +78,46 @@ export const SettingsServerlessFunctionDetail = () => {
   };
 
   const onCodeChange = async (filePath: string, value: string) => {
-    setFormValues((prevState) => ({
-      ...prevState,
-      code: { ...prevState.code, [filePath]: value },
-    }));
+    setFormValues((prevState) => {
+      return {
+        ...prevState,
+        code: computeNewSources({
+          previousCode: prevState['code'],
+          filePath,
+          value,
+        }),
+      };
+    });
     await handleSave();
   };
 
-  const resetDisabled =
-    !isDefined(latestVersionCode) ||
-    isDeeplyEqual(latestVersionCode, formValues.code);
-  const publishDisabled =
-    !isCodeValid || isDeeplyEqual(latestVersionCode, formValues.code);
-
-  const handleReset = async () => {
-    try {
-      const newState = {
-        code: latestVersionCode || {},
-      };
-      setFormValues((prevState) => ({
-        ...prevState,
-        ...newState,
-      }));
-      await handleSave();
-    } catch (err) {
-      enqueueSnackBar(
-        (err as Error)?.message || 'An error occurred while reset function',
-        {
-          variant: SnackBarVariant.Error,
-        },
-      );
-    }
+  const handleTestFunction = async () => {
+    navigate('#test');
+    await testServerlessFunction();
   };
-
-  const handlePublish = async () => {
-    try {
-      await publishOneServerlessFunction({
-        id: serverlessFunctionId,
-      });
-      enqueueSnackBar(`New function version has been published`, {
-        variant: SnackBarVariant.Success,
-      });
-    } catch (err) {
-      enqueueSnackBar(
-        (err as Error)?.message ||
-          'An error occurred while publishing new version',
-        {
-          variant: SnackBarVariant.Error,
-        },
-      );
-    }
-  };
-
-  const handleExecute = async () => {
-    try {
-      const result = await executeOneServerlessFunction({
-        id: serverlessFunctionId,
-        payload: JSON.parse(settingsServerlessFunctionInput),
-        version: 'draft',
-      });
-      setSettingsServerlessFunctionOutput({
-        data: result?.data?.executeOneServerlessFunction?.data
-          ? JSON.stringify(
-              result?.data?.executeOneServerlessFunction?.data,
-              null,
-              4,
-            )
-          : undefined,
-        duration: result?.data?.executeOneServerlessFunction?.duration,
-        status: result?.data?.executeOneServerlessFunction?.status,
-        error: result?.data?.executeOneServerlessFunction?.error
-          ? JSON.stringify(
-              result?.data?.executeOneServerlessFunction?.error,
-              null,
-              4,
-            )
-          : undefined,
-      });
-    } catch (err) {
-      enqueueSnackBar(
-        (err as Error)?.message || 'An error occurred while executing function',
-        {
-          variant: SnackBarVariant.Error,
-        },
-      );
-    }
-    setActiveTabId('test');
-  };
-  const isAnalyticsEnabled = useRecoilValue(isAnalyticsEnabledState);
-
-  const isAnalyticsV2Enabled = useIsFeatureEnabled('IS_ANALYTICS_V2_ENABLED');
 
   const tabs = [
-    { id: 'editor', title: 'Editor', Icon: IconCode },
-    { id: 'test', title: 'Test', Icon: IconTestPipe },
-    { id: 'settings', title: 'Settings', Icon: IconSettings },
-    ...(isAnalyticsEnabled && isAnalyticsV2Enabled
-      ? [{ id: 'monitoring', title: 'Monitoring', Icon: IconGauge }]
-      : []),
+    { id: 'editor', title: t`Editor`, Icon: IconCode },
+    { id: 'triggers', title: t`Triggers`, Icon: IconBolt },
+    { id: 'test', title: t`Test`, Icon: IconTestPipe },
+    { id: 'settings', title: t`Settings`, Icon: IconSettings },
   ];
 
-  const files = formValues.code
-    ? Object.keys(formValues.code)
-        .map((key) => {
-          return {
-            path: key,
-            language: key === '.env' ? 'ini' : 'typescript',
-            content: formValues.code?.[key] || '',
-          };
-        })
-        .reverse()
-    : [];
+  const flattenedCode = flattenSources(formValues.code);
+
+  const files = flattenedCode
+    .map((file) => ({
+      path: file.path,
+      language: 'typescript',
+      content: file.content,
+    }))
+    .sort((a, b) =>
+      a.path === serverlessFunction?.handlerPath
+        ? -1
+        : b.path === serverlessFunction?.handlerPath
+          ? 1
+          : 0,
+    );
 
   const renderActiveTabContent = () => {
     switch (activeTabId) {
@@ -209,35 +125,30 @@ export const SettingsServerlessFunctionDetail = () => {
         return (
           <SettingsServerlessFunctionCodeEditorTab
             files={files}
-            handleExecute={handleExecute}
-            handlePublish={handlePublish}
-            handleReset={handleReset}
-            resetDisabled={resetDisabled}
-            publishDisabled={publishDisabled}
+            handleExecute={handleTestFunction}
             onChange={onCodeChange}
-            setIsCodeValid={setIsCodeValid}
+            isTesting={isTesting}
           />
         );
+      case 'triggers':
+        return serverlessFunction ? (
+          <SettingsServerlessFunctionTriggersTab
+            serverlessFunction={serverlessFunction}
+          />
+        ) : null;
       case 'test':
         return (
-          <>
-            <SettingsServerlessFunctionTestTabEffect />
-            <SettingsServerlessFunctionTestTab handleExecute={handleExecute} />
-          </>
+          <SettingsServerlessFunctionTestTab
+            serverlessFunctionId={serverlessFunctionId}
+            handleExecute={handleTestFunction}
+            isTesting={isTesting}
+          />
         );
       case 'settings':
         return (
           <SettingsServerlessFunctionSettingsTab
             formValues={formValues}
-            serverlessFunctionId={serverlessFunctionId}
             onChange={onChange}
-            onCodeChange={onCodeChange}
-          />
-        );
-      case 'monitoring':
-        return (
-          <SettingsServerlessFunctionMonitoringTab
-            serverlessFunctionId={serverlessFunctionId}
           />
         );
       default:
@@ -251,20 +162,29 @@ export const SettingsServerlessFunctionDetail = () => {
         title={formValues.name}
         links={[
           {
-            children: 'Workspace',
-            href: getSettingsPagePath(SettingsPath.Workspace),
+            children: t`Workspace`,
+            href: getSettingsPath(SettingsPath.Workspace),
           },
           {
-            children: 'Functions',
-            href: getSettingsPagePath(SettingsPath.ServerlessFunctions),
+            children: t`Applications`,
+            href: getSettingsPath(SettingsPath.Applications),
           },
-          { children: `${formValues.name}` },
+          {
+            children: `${applicationName}`,
+            href: getSettingsPath(
+              SettingsPath.ApplicationDetail,
+              {
+                applicationId,
+              },
+              undefined,
+              'content',
+            ),
+          },
+          { children: `${serverlessFunction?.name}` },
         ]}
       >
         <SettingsPageContainer>
-          <Section>
-            <TabList tabListInstanceId={TAB_LIST_COMPONENT_ID} tabs={tabs} />
-          </Section>
+          <TabList tabs={tabs} componentInstanceId={instanceId} />
           {renderActiveTabContent()}
         </SettingsPageContainer>
       </SubMenuTopBarContainer>

@@ -1,4 +1,4 @@
-import { BLOCK_SCHEMA } from '@/activities/blocks/constants/Schema';
+import { type BLOCK_SCHEMA } from '@/activities/blocks/constants/Schema';
 import { CustomAddBlockItem } from '@/ui/input/editor/components/CustomAddBlockItem';
 import { CustomSideMenuOptions } from '@/ui/input/editor/components/CustomSideMenuOptions';
 import {
@@ -10,7 +10,8 @@ import {
   SideMenuController,
 } from '@blocknote/react';
 import styled from '@emotion/styled';
-import { IconColorSwatch, IconPlus, IconTrash } from 'twenty-ui';
+import { useLingui } from '@lingui/react/macro';
+import { IconColorSwatch, IconPlus, IconTrash } from 'twenty-ui/display';
 
 type CustomSideMenuProps = {
   editor: typeof BLOCK_SCHEMA.BlockNoteEditor;
@@ -21,6 +22,7 @@ const StyledDivToCreateGap = styled.div`
 `;
 
 export const CustomSideMenu = ({ editor }: CustomSideMenuProps) => {
+  const { t } = useLingui();
   return (
     <SideMenuController
       sideMenu={(props) => (
@@ -35,7 +37,7 @@ export const CustomSideMenu = ({ editor }: CustomSideMenuProps) => {
                 <CustomAddBlockItem editor={editor}>
                   <CustomSideMenuOptions
                     LeftIcon={IconPlus}
-                    text={'Add Block'}
+                    text={t`Add Block`}
                     Variant="normal"
                   />
                 </CustomAddBlockItem>
@@ -43,7 +45,7 @@ export const CustomSideMenu = ({ editor }: CustomSideMenuProps) => {
                 <BlockColorsItem {...props}>
                   <CustomSideMenuOptions
                     LeftIcon={IconColorSwatch}
-                    text={'Change Color'}
+                    text={t`Change Color`}
                     Variant="normal"
                   />
                 </BlockColorsItem>
@@ -52,7 +54,7 @@ export const CustomSideMenu = ({ editor }: CustomSideMenuProps) => {
                   {' '}
                   <CustomSideMenuOptions
                     LeftIcon={IconTrash}
-                    text={'Delete'}
+                    text={t`Delete`}
                     Variant="danger"
                   />
                 </RemoveBlockItem>

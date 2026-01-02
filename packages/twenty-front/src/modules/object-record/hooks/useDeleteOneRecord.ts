@@ -1,16 +1,23 @@
-import { useApolloClient } from '@apollo/client';
+import { type ApolloError } from '@apollo/client';
 import { useCallback } from 'react';
 
 import { triggerUpdateRecordOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerUpdateRecordOptimisticEffect';
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
 import { useGetRecordFromCache } from '@/object-record/cache/hooks/useGetRecordFromCache';
+import { getObjectTypename } from '@/object-record/cache/utils/getObjectTypename';
 import { getRecordNodeFromRecord } from '@/object-record/cache/utils/getRecordNodeFromRecord';
 import { updateRecordFromCache } from '@/object-record/cache/utils/updateRecordFromCache';
 import { useDeleteOneRecordMutation } from '@/object-record/hooks/useDeleteOneRecordMutation';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
+import { useRefetchAggregateQueries } from '@/object-record/hooks/useRefetchAggregateQueries';
+import { useRegisterObjectOperation } from '@/object-record/hooks/useRegisterObjectOperation';
+import { useUpsertRecordsInStore } from '@/object-record/record-store/hooks/useUpsertRecordsInStore';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { getDeleteOneRecordMutationResponseField } from '@/object-record/utils/getDeleteOneRecordMutationResponseField';
-import { capitalize } from '~/utils/string/capitalize';
+import { isNull } from '@sniptt/guards';
+import { isDefined } from 'twenty-shared/utils';
 
 type useDeleteOneRecordProps = {
   objectNameSingular: string;
@@ -19,7 +26,9 @@ type useDeleteOneRecordProps = {
 export const useDeleteOneRecord = ({
   objectNameSingular,
 }: useDeleteOneRecordProps) => {
-  const apolloClient = useApolloClient();
+  const { registerObjectOperation } = useRegisterObjectOperation();
+  const { upsertRecordsInStore } = useUpsertRecordsInStore();
+  const apolloCoreClient = useApolloCoreClient();
 
   const { objectMetadataItem } = useObjectMetadataItem({
     objectNameSingular,
@@ -34,57 +43,71 @@ export const useDeleteOneRecord = ({
   });
 
   const { objectMetadataItems } = useObjectMetadataItems();
+  const { objectPermissionsByObjectMetadataId } = useObjectPermissions();
+  const { refetchAggregateQueries } = useRefetchAggregateQueries({
+    objectMetadataNamePlural: objectMetadataItem.namePlural,
+  });
 
   const mutationResponseField =
     getDeleteOneRecordMutationResponseField(objectNameSingular);
 
   const deleteOneRecord = useCallback(
     async (idToDelete: string) => {
-      const currentTimestamp = new Date().toISOString();
-
-      const cachedRecord = getRecordFromCache(idToDelete, apolloClient.cache);
-
-      const cachedRecordWithConnection = getRecordNodeFromRecord<ObjectRecord>({
+      const cachedRecord = getRecordFromCache(
+        idToDelete,
+        apolloCoreClient.cache,
+      );
+      const cachedRecordNode = getRecordNodeFromRecord<ObjectRecord>({
         record: cachedRecord,
         objectMetadataItem,
         objectMetadataItems,
-        computeReferences: true,
+        computeReferences: false,
       });
 
+      const currentTimestamp = new Date().toISOString();
       const computedOptimisticRecord = {
         ...cachedRecord,
-        ...{ id: idToDelete, deletedAt: currentTimestamp },
-        ...{ __typename: capitalize(objectMetadataItem.nameSingular) },
+        id: idToDelete,
+        deletedAt: currentTimestamp,
+        __typename: getObjectTypename(objectMetadataItem.nameSingular),
       };
+      const optimisticRecordNode = getRecordNodeFromRecord<ObjectRecord>({
+        record: computedOptimisticRecord,
+        objectMetadataItem,
+        objectMetadataItems,
+        computeReferences: false,
+      });
 
-      const optimisticRecordWithConnection =
-        getRecordNodeFromRecord<ObjectRecord>({
-          record: computedOptimisticRecord,
-          objectMetadataItem,
+      const shouldHandleOptimisticCache =
+        !isNull(cachedRecord) &&
+        isDefined(optimisticRecordNode) &&
+        isDefined(cachedRecordNode);
+
+      if (shouldHandleOptimisticCache) {
+        const recordGqlFields = {
+          deletedAt: true,
+        };
+        updateRecordFromCache({
           objectMetadataItems,
-          computeReferences: true,
+          objectMetadataItem,
+          cache: apolloCoreClient.cache,
+          record: computedOptimisticRecord,
+          recordGqlFields,
+          objectPermissionsByObjectMetadataId,
         });
 
-      if (!optimisticRecordWithConnection || !cachedRecordWithConnection) {
-        return null;
+        triggerUpdateRecordOptimisticEffect({
+          cache: apolloCoreClient.cache,
+          objectMetadataItem,
+          currentRecord: cachedRecordNode,
+          updatedRecord: optimisticRecordNode,
+          objectMetadataItems,
+          objectPermissionsByObjectMetadataId,
+          upsertRecordsInStore,
+        });
       }
 
-      updateRecordFromCache({
-        objectMetadataItems,
-        objectMetadataItem,
-        cache: apolloClient.cache,
-        record: computedOptimisticRecord,
-      });
-
-      triggerUpdateRecordOptimisticEffect({
-        cache: apolloClient.cache,
-        objectMetadataItem,
-        currentRecord: cachedRecordWithConnection,
-        updatedRecord: optimisticRecordWithConnection,
-        objectMetadataItems,
-      });
-
-      const deletedRecord = await apolloClient
+      const deletedRecord = await apolloCoreClient
         .mutate({
           mutation: deleteOneRecordMutation,
           variables: {
@@ -92,49 +115,73 @@ export const useDeleteOneRecord = ({
           },
           update: (cache, { data }) => {
             const record = data?.[mutationResponseField];
-
-            if (!record || !cachedRecord) return;
+            if (!isDefined(record) || !shouldHandleOptimisticCache) {
+              return;
+            }
 
             triggerUpdateRecordOptimisticEffect({
               cache,
               objectMetadataItem,
-              currentRecord: cachedRecord,
+              currentRecord: optimisticRecordNode,
               updatedRecord: record,
               objectMetadataItems,
+              objectPermissionsByObjectMetadataId,
+              upsertRecordsInStore,
             });
           },
         })
-        .catch((error: Error) => {
-          if (!cachedRecord) {
+        .catch((error: ApolloError) => {
+          if (!shouldHandleOptimisticCache) {
             throw error;
           }
+
+          const recordGqlFields = {
+            deletedAt: true,
+          };
           updateRecordFromCache({
             objectMetadataItems,
             objectMetadataItem,
-            cache: apolloClient.cache,
-            record: cachedRecord,
+            cache: apolloCoreClient.cache,
+            record: {
+              ...cachedRecord,
+              deletedAt: null,
+            },
+            recordGqlFields,
+            objectPermissionsByObjectMetadataId,
           });
 
           triggerUpdateRecordOptimisticEffect({
-            cache: apolloClient.cache,
+            cache: apolloCoreClient.cache,
             objectMetadataItem,
-            currentRecord: optimisticRecordWithConnection,
-            updatedRecord: cachedRecordWithConnection,
+            currentRecord: optimisticRecordNode,
+            updatedRecord: cachedRecordNode,
             objectMetadataItems,
+            objectPermissionsByObjectMetadataId,
+            upsertRecordsInStore,
           });
 
           throw error;
         });
 
+      await refetchAggregateQueries();
+
+      registerObjectOperation(objectMetadataItem, {
+        type: 'delete-one',
+      });
+
       return deletedRecord.data?.[mutationResponseField] ?? null;
     },
     [
-      apolloClient,
-      deleteOneRecordMutation,
       getRecordFromCache,
-      mutationResponseField,
+      apolloCoreClient,
       objectMetadataItem,
       objectMetadataItems,
+      deleteOneRecordMutation,
+      refetchAggregateQueries,
+      registerObjectOperation,
+      mutationResponseField,
+      objectPermissionsByObjectMetadataId,
+      upsertRecordsInStore,
     ],
   );
 

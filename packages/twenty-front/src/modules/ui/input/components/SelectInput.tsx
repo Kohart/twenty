@@ -1,43 +1,32 @@
-import styled from '@emotion/styled';
-
-import { SelectOption } from '@/spreadsheet-import/types';
-
-import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
+import { AddSelectOptionMenuItem } from '@/settings/data-model/fields/forms/select/components/AddSelectOptionMenuItem';
+import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { DropdownMenuSearchInput } from '@/ui/layout/dropdown/components/DropdownMenuSearchInput';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
-import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
+import { SelectableListItem } from '@/ui/layout/selectable-list/components/SelectableListItem';
+import { SelectableListComponentInstanceContext } from '@/ui/layout/selectable-list/states/contexts/SelectableListComponentInstanceContext';
+import { selectedItemIdComponentState } from '@/ui/layout/selectable-list/states/selectedItemIdComponentState';
 import { useListenClickOutside } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
-import { useTheme } from '@emotion/react';
-import {
-  ReferenceType,
-  autoUpdate,
-  flip,
-  offset,
-  size,
-  useFloating,
-} from '@floating-ui/react';
+import { useAvailableComponentInstanceIdOrThrow } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceIdOrThrow';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Key } from 'ts-key-enum';
-import { MenuItemSelectTag, TagColor, isDefined } from 'twenty-ui';
-
-const StyledRelationPickerContainer = styled.div`
-  left: -1px;
-  position: absolute;
-  top: -1px;
-  z-index: ${({ theme }) => theme.lastLayerZIndex};
-`;
+import { t } from '@lingui/core/macro';
+import { isDefined } from 'twenty-shared/utils';
+import { type TagColor } from 'twenty-ui/components';
+import { type SelectOption } from 'twenty-ui/input';
+import { MenuItemSelectTag } from 'twenty-ui/navigation';
+import { normalizeSearchText } from '~/utils/normalizeSearchText';
 
 interface SelectInputProps {
   onOptionSelected: (selectedOption: SelectOption) => void;
   options: SelectOption[];
   onCancel?: () => void;
   defaultOption?: SelectOption;
-  parentRef?: ReferenceType | null | undefined;
   onFilterChange?: (filteredOptions: SelectOption[]) => void;
   onClear?: () => void;
   clearLabel?: string;
-  hotkeyScope: string;
+  focusId: string;
+  onAddSelectOption?: (optionName: string) => void;
 }
 
 export const SelectInput = ({
@@ -47,28 +36,37 @@ export const SelectInput = ({
   options,
   onCancel,
   defaultOption,
-  parentRef,
   onFilterChange,
-  hotkeyScope,
+  onAddSelectOption,
 }: SelectInputProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const theme = useTheme();
+  // Get the SelectableList instance id from context
+  const selectableListInstanceId = useAvailableComponentInstanceIdOrThrow(
+    SelectableListComponentInstanceContext,
+  );
+
+  const selectedItemId = useRecoilComponentValue(
+    selectedItemIdComponentState,
+    selectableListInstanceId,
+  );
+
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedOption, setSelectedOption] = useState<
     SelectOption | undefined
   >(defaultOption);
 
-  const optionsToSelect = useMemo(
-    () =>
+  const optionsToSelect = useMemo(() => {
+    const searchTerm = normalizeSearchText(searchFilter);
+    return (
       options.filter((option) => {
         return (
           option.value !== selectedOption?.value &&
-          option.label.toLowerCase().includes(searchFilter.toLowerCase())
+          normalizeSearchText(option.label).includes(searchTerm)
         );
-      }) || [],
-    [options, searchFilter, selectedOption?.value],
-  );
+      }) || []
+    );
+  }, [options, searchFilter, selectedOption?.value]);
 
   const optionsInDropDown = useMemo(
     () =>
@@ -81,30 +79,20 @@ export const SelectInput = ({
     onOptionSelected(option);
   };
 
-  const { refs, floatingStyles } = useFloating({
-    elements: { reference: parentRef },
-    strategy: 'absolute',
-    middleware: [
-      offset(() => {
-        return parseInt(theme.spacing(2), 10);
-      }),
-      flip(),
-      size(),
-    ],
-    whileElementsMounted: autoUpdate,
-    open: true,
-    placement: 'bottom-start',
-  });
+  const handleClearOption = () => {
+    setSelectedOption(undefined);
+    onClear?.();
+  };
 
   useEffect(() => {
     onFilterChange?.(optionsInDropDown);
   }, [onFilterChange, optionsInDropDown]);
 
   useListenClickOutside({
-    refs: [refs.floating],
+    refs: [containerRef],
     callback: (event) => {
       event.stopImmediatePropagation();
-
+      event.preventDefault();
       const weAreNotInAnHTMLInput = !(
         event.target instanceof HTMLInputElement &&
         event.target.tagName === 'INPUT'
@@ -113,61 +101,64 @@ export const SelectInput = ({
         onCancel();
       }
     },
+    listenerId: 'select-input',
   });
 
-  useScopedHotkeys(
-    Key.Enter,
-    () => {
-      const selectedOption = optionsInDropDown.find((option) =>
-        option.label.toLowerCase().includes(searchFilter.toLowerCase()),
-      );
-      if (isDefined(selectedOption)) {
-        handleOptionChange(selectedOption);
-      }
-    },
-    hotkeyScope,
-    [searchFilter, optionsInDropDown],
-  );
-
   return (
-    <StyledRelationPickerContainer
-      ref={refs.setFloating}
-      style={floatingStyles}
-    >
-      <DropdownMenu ref={containerRef} data-select-disable>
-        <DropdownMenuSearchInput
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          autoFocus
-        />
-        <DropdownMenuSeparator />
-        <DropdownMenuItemsContainer hasMaxHeight>
-          {onClear && clearLabel && (
+    <DropdownContent ref={containerRef} selectDisabled>
+      <DropdownMenuSearchInput
+        value={searchFilter}
+        onChange={(e) => setSearchFilter(e.target.value)}
+        autoFocus
+      />
+      <DropdownMenuSeparator />
+      <DropdownMenuItemsContainer hasMaxHeight>
+        {onClear && clearLabel && (
+          <SelectableListItem
+            itemId={t`No ${clearLabel}`}
+            onEnter={handleClearOption}
+          >
             <MenuItemSelectTag
-              key={`No ${clearLabel}`}
-              selected={false}
-              text={`No ${clearLabel}`}
+              key={t`No ${clearLabel}`}
+              text={t`No ${clearLabel}`}
               color="transparent"
               variant="outline"
-              onClick={() => {
-                setSelectedOption(undefined);
-                onClear();
-              }}
+              onClick={handleClearOption}
+              isKeySelected={selectedItemId === t`No ${clearLabel}`}
             />
-          )}
-          {optionsInDropDown.map((option) => {
-            return (
+          </SelectableListItem>
+        )}
+        {optionsInDropDown.map((option) => {
+          return (
+            <SelectableListItem
+              key={option.value}
+              itemId={option.value}
+              onEnter={() => handleOptionChange(option)}
+            >
               <MenuItemSelectTag
                 key={option.value}
                 selected={selectedOption?.value === option.value}
                 text={option.label}
-                color={option.color as TagColor}
+                color={(option.color as TagColor) ?? 'transparent'}
                 onClick={() => handleOptionChange(option)}
+                LeftIcon={option.Icon}
+                isKeySelected={selectedItemId === option.value}
               />
-            );
-          })}
-        </DropdownMenuItemsContainer>
-      </DropdownMenu>
-    </StyledRelationPickerContainer>
+            </SelectableListItem>
+          );
+        })}
+      </DropdownMenuItemsContainer>
+      {onAddSelectOption && searchFilter && optionsToSelect.length === 0 && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItemsContainer scrollable={false}>
+            <AddSelectOptionMenuItem
+              name={searchFilter}
+              onAddSelectOption={onAddSelectOption}
+            />
+          </DropdownMenuItemsContainer>
+        </>
+      )}
+    </DropdownContent>
   );
 };

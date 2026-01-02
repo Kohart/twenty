@@ -1,27 +1,29 @@
-import { useMutation } from '@apollo/client';
-import { getOperationName } from '@apollo/client/utilities';
-
 import {
-  UpdateOneObjectInput,
-  UpdateOneObjectMetadataItemMutation,
-  UpdateOneObjectMetadataItemMutationVariables,
+  useUpdateOneObjectMetadataItemMutation,
+  type UpdateOneObjectInput,
 } from '~/generated-metadata/graphql';
 
-import { UPDATE_ONE_OBJECT_METADATA_ITEM } from '../graphql/mutations';
-import { FIND_MANY_OBJECT_METADATA_ITEMS } from '../graphql/queries';
-
-import { useApolloMetadataClient } from './useApolloMetadataClient';
+import { useMetadataErrorHandler } from '@/metadata-error-handler/hooks/useMetadataErrorHandler';
+import { useRefreshObjectMetadataItems } from '@/object-metadata/hooks/useRefreshObjectMetadataItems';
+import { type MetadataRequestResult } from '@/object-metadata/types/MetadataRequestResult.type';
+import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
+import { useRefreshCoreViewsByObjectMetadataId } from '@/views/hooks/useRefreshCoreViewsByObjectMetadataId';
+import { ApolloError } from '@apollo/client';
+import { t } from '@lingui/core/macro';
 
 // TODO: Slice the Apollo store synchronously in the update function instead of subscribing, so we can use update after read in the same function call
 export const useUpdateOneObjectMetadataItem = () => {
-  const apolloClientMetadata = useApolloMetadataClient();
+  const [updateOneObjectMetadataItemMutation, { loading }] =
+    useUpdateOneObjectMetadataItemMutation();
 
-  const [mutate, { loading }] = useMutation<
-    UpdateOneObjectMetadataItemMutation,
-    UpdateOneObjectMetadataItemMutationVariables
-  >(UPDATE_ONE_OBJECT_METADATA_ITEM, {
-    client: apolloClientMetadata ?? undefined,
-  });
+  const { refreshObjectMetadataItems } =
+    useRefreshObjectMetadataItems('network-only');
+
+  const { refreshCoreViewsByObjectMetadataId } =
+    useRefreshCoreViewsByObjectMetadataId();
+
+  const { handleMetadataError } = useMetadataErrorHandler();
+  const { enqueueErrorSnackBar } = useSnackBar();
 
   const updateOneObjectMetadataItem = async ({
     idToUpdate,
@@ -29,15 +31,40 @@ export const useUpdateOneObjectMetadataItem = () => {
   }: {
     idToUpdate: UpdateOneObjectInput['id'];
     updatePayload: UpdateOneObjectInput['update'];
-  }) => {
-    return await mutate({
-      variables: {
-        idToUpdate,
-        updatePayload,
-      },
-      awaitRefetchQueries: true,
-      refetchQueries: [getOperationName(FIND_MANY_OBJECT_METADATA_ITEMS) ?? ''],
-    });
+  }): Promise<
+    MetadataRequestResult<
+      Awaited<ReturnType<typeof updateOneObjectMetadataItemMutation>>
+    >
+  > => {
+    try {
+      const response = await updateOneObjectMetadataItemMutation({
+        variables: {
+          idToUpdate,
+          updatePayload,
+        },
+      });
+
+      await refreshObjectMetadataItems();
+      await refreshCoreViewsByObjectMetadataId(idToUpdate);
+
+      return {
+        status: 'successful',
+        response,
+      };
+    } catch (error) {
+      if (error instanceof ApolloError) {
+        handleMetadataError(error, {
+          primaryMetadataName: 'objectMetadata',
+        });
+      } else {
+        enqueueErrorSnackBar({ message: t`An error occurred.` });
+      }
+
+      return {
+        status: 'failed',
+        error,
+      };
+    }
   };
 
   return {

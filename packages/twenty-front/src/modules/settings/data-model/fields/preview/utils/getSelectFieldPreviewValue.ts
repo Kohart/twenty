@@ -1,10 +1,10 @@
 import { isNonEmptyString } from '@sniptt/guards';
 
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { FieldSelectValue } from '@/object-record/record-field/types/FieldMetadata';
-import { selectFieldDefaultValueSchema } from '@/object-record/record-field/validation-schemas/selectFieldDefaultValueSchema';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type FieldSelectValue } from '@/object-record/record-field/ui/types/FieldMetadata';
+import { selectFieldDefaultValueSchema } from '@/object-record/record-field/ui/validation-schemas/selectFieldDefaultValueSchema';
+import { isDefined } from 'twenty-shared/utils';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
-import { isDefined } from '~/utils/isDefined';
 import { stripSimpleQuotesFromString } from '~/utils/string/stripSimpleQuotesFromString';
 
 export const getSelectFieldPreviewValue = ({
@@ -16,7 +16,7 @@ export const getSelectFieldPreviewValue = ({
   >;
 }): FieldSelectValue => {
   if (
-    fieldMetadataItem.type !== FieldMetadataType.Select ||
+    fieldMetadataItem.type !== FieldMetadataType.SELECT ||
     !fieldMetadataItem.options?.length
   ) {
     return null;
@@ -26,7 +26,7 @@ export const getSelectFieldPreviewValue = ({
 
   return selectFieldDefaultValueSchema(fieldMetadataItem.options)
     .refine(isDefined)
-    .transform(stripSimpleQuotesFromString)
+    .transform((value) => stripSimpleQuotesFromString(value ?? ''))
     .refine(isNonEmptyString)
     .catch(firstOptionValue)
     .parse(fieldMetadataItem.defaultValue);

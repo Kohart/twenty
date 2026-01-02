@@ -1,11 +1,10 @@
-import { SettingsServerlessFunctionCodeEditorContainer } from '@/settings/serverless-functions/components/SettingsServerlessFunctionCodeEditorContainer';
 import { useGetAvailablePackages } from '@/settings/serverless-functions/hooks/useGetAvailablePackages';
-import { EditorProps, Monaco } from '@monaco-editor/react';
-import dotenv from 'dotenv';
-import { editor, MarkerSeverity } from 'monaco-editor';
+import { type EditorProps, type Monaco } from '@monaco-editor/react';
+import { type editor } from 'monaco-editor';
 import { AutoTypings } from 'monaco-editor-auto-typings';
-import { CodeEditor } from 'twenty-ui';
-import { isDefined } from '~/utils/isDefined';
+import { useParams } from 'react-router-dom';
+import { isDefined } from 'twenty-shared/utils';
+import { CodeEditor } from 'twenty-ui/input';
 
 export type File = {
   language: string;
@@ -20,21 +19,21 @@ type SettingsServerlessFunctionCodeEditorProps = Omit<
   currentFilePath: string;
   files: File[];
   onChange: (value: string) => void;
-  setIsCodeValid: (isCodeValid: boolean) => void;
 };
 
 export const SettingsServerlessFunctionCodeEditor = ({
   currentFilePath,
   files,
   onChange,
-  setIsCodeValid,
   height = 450,
   options = undefined,
 }: SettingsServerlessFunctionCodeEditorProps) => {
-  const { availablePackages } = useGetAvailablePackages();
+  const { serverlessFunctionId = '' } = useParams();
+  const { availablePackages } = useGetAvailablePackages({
+    id: serverlessFunctionId,
+  });
 
   const currentFile = files.find((file) => file.path === currentFilePath);
-  const environmentVariablesFile = files.find((file) => file.path === '.env');
 
   const handleEditorDidMount = async (
     editor: editor.IStandaloneCodeEditor,
@@ -66,20 +65,21 @@ export const SettingsServerlessFunctionCodeEditor = ({
         target: monaco.languages.typescript.ScriptTarget.ESNext,
       });
 
-      if (isDefined(environmentVariablesFile)) {
-        const environmentVariables = dotenv.parse(
-          environmentVariablesFile.content,
-        );
+      // TODO load that with proper env variables
+      const environmentVariables = {};
 
+      if (isDefined(environmentVariables)) {
+        const envTypeDefinitions = Object.keys(environmentVariables)
+          // eslint-disable-next-line lingui/no-unlocalized-strings
+          .map((key) => `${key}: string;`)
+          .join('\n');
         const environmentDefinition = `
           declare namespace NodeJS {
             interface ProcessEnv {
-              ${Object.keys(environmentVariables)
-                .map((key) => `${key}: string;`)
-                .join('\n')}
+              ${envTypeDefinitions}
             }
           }
-  
+
           declare const process: {
             env: NodeJS.ProcessEnv;
           };
@@ -103,30 +103,18 @@ export const SettingsServerlessFunctionCodeEditor = ({
     }
   };
 
-  const handleEditorValidation = (markers: editor.IMarker[]) => {
-    for (const marker of markers) {
-      if (marker.severity === MarkerSeverity.Error) {
-        setIsCodeValid?.(false);
-        return;
-      }
-    }
-    setIsCodeValid?.(true);
-  };
-
   return (
     isDefined(currentFile) &&
     isDefined(availablePackages) && (
-      <SettingsServerlessFunctionCodeEditorContainer>
-        <CodeEditor
-          height={height}
-          value={currentFile.content}
-          language={currentFile.language}
-          onMount={handleEditorDidMount}
-          onChange={onChange}
-          onValidate={handleEditorValidation}
-          options={options}
-        />
-      </SettingsServerlessFunctionCodeEditorContainer>
+      <CodeEditor
+        height={height}
+        value={currentFile.content}
+        language={currentFile.language}
+        onMount={handleEditorDidMount}
+        onChange={onChange}
+        options={options}
+        variant="with-header"
+      />
     )
   );
 };

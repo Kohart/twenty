@@ -1,55 +1,60 @@
 import { useContext } from 'react';
-import { useRecoilState } from 'recoil';
 
-import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
-import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
-import { HotkeyScope } from '@/ui/utilities/hotkey/types/HotkeyScope';
-import { isDefined } from '~/utils/isDefined';
+import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
 
-import { useInitDraftValueV2 } from '@/object-record/record-field/hooks/useInitDraftValueV2';
-import { isInlineCellInEditModeScopedState } from '../states/isInlineCellInEditModeScopedState';
-import { InlineCellHotkeyScope } from '../types/InlineCellHotkeyScope';
+import { useRecordFieldsScopeContextOrThrow } from '@/object-record/record-field-list/contexts/RecordFieldsScopeContext';
+import { useInitDraftValue } from '@/object-record/record-field/ui/hooks/useInitDraftValue';
+import { RecordFieldComponentInstanceContext } from '@/object-record/record-field/ui/states/contexts/RecordFieldComponentInstanceContext';
+import { useRecordInlineCellContext } from '@/object-record/record-inline-cell/components/RecordInlineCellContext';
+import { getDropdownFocusIdForRecordField } from '@/object-record/utils/getDropdownFocusIdForRecordField';
+import { useGoBackToPreviousDropdownFocusId } from '@/ui/layout/dropdown/hooks/useGoBackToPreviousDropdownFocusId';
+import { useSetActiveDropdownFocusIdAndMemorizePrevious } from '@/ui/layout/dropdown/hooks/useSetFocusedDropdownIdAndMemorizePrevious';
+import { useAvailableComponentInstanceIdOrThrow } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceIdOrThrow';
 
-export const useInlineCell = () => {
-  const {
-    recoilScopeId = '',
-    recordId,
-    fieldDefinition,
-  } = useContext(FieldContext);
+export const useInlineCell = (
+  recordFieldComponentInstanceIdFromProps?: string,
+) => {
+  const { recordId, fieldDefinition } = useContext(FieldContext);
 
-  const [isInlineCellInEditMode, setIsInlineCellInEditMode] = useRecoilState(
-    isInlineCellInEditModeScopedState(recoilScopeId),
+  const recordFieldComponentInstanceId = useAvailableComponentInstanceIdOrThrow(
+    RecordFieldComponentInstanceContext,
+    recordFieldComponentInstanceIdFromProps,
   );
 
-  const {
-    setHotkeyScopeAndMemorizePreviousScope,
-    goBackToPreviousHotkeyScope,
-  } = usePreviousHotkeyScope();
+  const { onOpenEditMode, onCloseEditMode } = useRecordInlineCellContext();
+  const { scopeInstanceId } = useRecordFieldsScopeContextOrThrow();
 
-  const initFieldInputDraftValue = useInitDraftValueV2();
+  const { setActiveDropdownFocusIdAndMemorizePrevious } =
+    useSetActiveDropdownFocusIdAndMemorizePrevious();
+  const { goBackToPreviousDropdownFocusId } =
+    useGoBackToPreviousDropdownFocusId();
+
+  const initFieldInputDraftValue = useInitDraftValue();
 
   const closeInlineCell = () => {
-    setIsInlineCellInEditMode(false);
-
-    goBackToPreviousHotkeyScope();
+    onCloseEditMode?.();
+    goBackToPreviousDropdownFocusId();
   };
 
-  const openInlineCell = (customEditHotkeyScopeForField?: HotkeyScope) => {
-    setIsInlineCellInEditMode(true);
-    initFieldInputDraftValue({ recordId, fieldDefinition });
+  const openInlineCell = () => {
+    onOpenEditMode?.();
+    initFieldInputDraftValue({
+      recordId,
+      fieldDefinition,
+      fieldComponentInstanceId: recordFieldComponentInstanceId,
+    });
 
-    if (isDefined(customEditHotkeyScopeForField)) {
-      setHotkeyScopeAndMemorizePreviousScope(
-        customEditHotkeyScopeForField.scope,
-        customEditHotkeyScopeForField.customScopes,
-      );
-    } else {
-      setHotkeyScopeAndMemorizePreviousScope(InlineCellHotkeyScope.InlineCell);
-    }
+    const dropdownId = getDropdownFocusIdForRecordField({
+      recordId,
+      fieldMetadataId: fieldDefinition.fieldMetadataId,
+      componentType: 'inline-cell',
+      instanceId: scopeInstanceId,
+    });
+
+    setActiveDropdownFocusIdAndMemorizePrevious(dropdownId);
   };
 
   return {
-    isInlineCellInEditMode,
     closeInlineCell,
     openInlineCell,
   };

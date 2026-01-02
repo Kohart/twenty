@@ -1,43 +1,68 @@
-import { useRecoilState, useRecoilValue } from 'recoil';
+import { useRecoilCallback } from 'recoil';
 
-import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
-import { AppHotkeyScope } from '@/ui/utilities/hotkey/types/AppHotkeyScope';
+import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
+import { useRemoveFocusItemFromFocusStackById } from '@/ui/utilities/focus/hooks/useRemoveFocusItemFromFocusStackById';
+import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
+import { isKeyboardShortcutMenuOpenedState } from '@/keyboard-shortcut-menu/states/isKeyboardShortcutMenuOpenedState';
 
-import { isKeyboardShortcutMenuOpenedState } from '../states/isKeyboardShortcutMenuOpenedState';
+export const KEYBOARD_SHORTCUT_MENU_INSTANCE_ID = 'keyboard-shortcut-menu';
 
 export const useKeyboardShortcutMenu = () => {
-  const [, setIsKeyboardShortcutMenuOpened] = useRecoilState(
-    isKeyboardShortcutMenuOpenedState,
+  const { pushFocusItemToFocusStack } = usePushFocusItemToFocusStack();
+  const { removeFocusItemFromFocusStackById } =
+    useRemoveFocusItemFromFocusStackById();
+
+  const openKeyboardShortcutMenu = useRecoilCallback(
+    ({ set }) =>
+      () => {
+        set(isKeyboardShortcutMenuOpenedState, true);
+        pushFocusItemToFocusStack({
+          focusId: KEYBOARD_SHORTCUT_MENU_INSTANCE_ID,
+          component: {
+            type: FocusComponentType.KEYBOARD_SHORTCUT_MENU,
+            instanceId: KEYBOARD_SHORTCUT_MENU_INSTANCE_ID,
+          },
+          globalHotkeysConfig: {
+            enableGlobalHotkeysConflictingWithKeyboard: false,
+            enableGlobalHotkeysWithModifiers: false,
+          },
+        });
+      },
+    [pushFocusItemToFocusStack],
   );
-  const isKeyboardShortcutMenuOpened = useRecoilValue(
-    isKeyboardShortcutMenuOpenedState,
+
+  const closeKeyboardShortcutMenu = useRecoilCallback(
+    ({ set, snapshot }) =>
+      () => {
+        const isKeyboardShortcutMenuOpened = snapshot
+          .getLoadable(isKeyboardShortcutMenuOpenedState)
+          .getValue();
+
+        if (isKeyboardShortcutMenuOpened) {
+          set(isKeyboardShortcutMenuOpenedState, false);
+          removeFocusItemFromFocusStackById({
+            focusId: KEYBOARD_SHORTCUT_MENU_INSTANCE_ID,
+          });
+        }
+      },
+    [removeFocusItemFromFocusStackById],
   );
-  const {
-    setHotkeyScopeAndMemorizePreviousScope,
-    goBackToPreviousHotkeyScope,
-  } = usePreviousHotkeyScope();
 
-  const toggleKeyboardShortcutMenu = () => {
-    if (isKeyboardShortcutMenuOpened === false) {
-      setIsKeyboardShortcutMenuOpened(true);
-      setHotkeyScopeAndMemorizePreviousScope(
-        AppHotkeyScope.KeyboardShortcutMenu,
-      );
-    } else {
-      setIsKeyboardShortcutMenuOpened(false);
-      goBackToPreviousHotkeyScope();
-    }
-  };
+  const toggleKeyboardShortcutMenu = useRecoilCallback(
+    ({ snapshot }) =>
+      () => {
+        const isKeyboardShortcutMenuOpened = snapshot
+          .getLoadable(isKeyboardShortcutMenuOpenedState)
+          .getValue();
 
-  const openKeyboardShortcutMenu = () => {
-    setIsKeyboardShortcutMenuOpened(true);
-    setHotkeyScopeAndMemorizePreviousScope(AppHotkeyScope.KeyboardShortcutMenu);
-  };
-
-  const closeKeyboardShortcutMenu = () => {
-    setIsKeyboardShortcutMenuOpened(false);
-    goBackToPreviousHotkeyScope();
-  };
+        if (isKeyboardShortcutMenuOpened === false) {
+          openKeyboardShortcutMenu();
+        } else {
+          closeKeyboardShortcutMenu();
+        }
+      },
+    [closeKeyboardShortcutMenu, openKeyboardShortcutMenu],
+  );
 
   return {
     toggleKeyboardShortcutMenu,

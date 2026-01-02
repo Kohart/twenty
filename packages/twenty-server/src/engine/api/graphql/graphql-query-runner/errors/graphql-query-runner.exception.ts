@@ -1,11 +1,6 @@
-import { CustomException } from 'src/utils/custom-exception';
+import { type MessageDescriptor } from '@lingui/core';
 
-export class GraphqlQueryRunnerException extends CustomException {
-  code: GraphqlQueryRunnerExceptionCode;
-  constructor(message: string, code: GraphqlQueryRunnerExceptionCode) {
-    super(message, code);
-  }
-}
+import { CustomException } from 'src/utils/custom-exception';
 
 export enum GraphqlQueryRunnerExceptionCode {
   INVALID_QUERY_INPUT = 'INVALID_QUERY_INPUT',
@@ -15,9 +10,27 @@ export enum GraphqlQueryRunnerExceptionCode {
   UNSUPPORTED_OPERATOR = 'UNSUPPORTED_OPERATOR',
   ARGS_CONFLICT = 'ARGS_CONFLICT',
   FIELD_NOT_FOUND = 'FIELD_NOT_FOUND',
+  MISSING_SYSTEM_FIELD = 'MISSING_SYSTEM_FIELD',
   OBJECT_METADATA_NOT_FOUND = 'OBJECT_METADATA_NOT_FOUND',
   RECORD_NOT_FOUND = 'RECORD_NOT_FOUND',
   INVALID_ARGS_FIRST = 'INVALID_ARGS_FIRST',
   INVALID_ARGS_LAST = 'INVALID_ARGS_LAST',
-  METADATA_CACHE_VERSION_NOT_FOUND = 'METADATA_CACHE_VERSION_NOT_FOUND',
+  RELATION_SETTINGS_NOT_FOUND = 'RELATION_SETTINGS_NOT_FOUND',
+  RELATION_TARGET_OBJECT_METADATA_NOT_FOUND = 'RELATION_TARGET_OBJECT_METADATA_NOT_FOUND',
+  NOT_IMPLEMENTED = 'NOT_IMPLEMENTED',
+  INVALID_POST_HOOK_PAYLOAD = 'INVALID_POST_HOOK_PAYLOAD',
+  UPSERT_MULTIPLE_MATCHING_RECORDS_CONFLICT = 'UPSERT_MULTIPLE_MATCHING_RECORDS_CONFLICT',
+  UPSERT_MAX_RECORDS_EXCEEDED = 'UPSERT_MAX_RECORDS_EXCEEDED',
+}
+
+export class GraphqlQueryRunnerException extends CustomException<GraphqlQueryRunnerExceptionCode> {
+  constructor(
+    message: string,
+    code: GraphqlQueryRunnerExceptionCode,
+    { userFriendlyMessage }: { userFriendlyMessage: MessageDescriptor },
+  ) {
+    super(message, code, {
+      userFriendlyMessage,
+    });
+  }
 }

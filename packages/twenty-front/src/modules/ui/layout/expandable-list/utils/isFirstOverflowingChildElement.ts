@@ -1,5 +1,4 @@
-import { isDefined } from '~/utils/isDefined';
-
+import { isDefined } from 'twenty-shared/utils';
 export const isFirstOverflowingChildElement = ({
   containerElement,
   childElement,

@@ -1,47 +1,42 @@
-import { GithubVersionLink, H2Title, Section } from 'twenty-ui';
+import { useLingui } from '@lingui/react/macro';
 
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { DeleteWorkspace } from '@/settings/profile/components/DeleteWorkspace';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
 import { NameField } from '@/settings/workspace/components/NameField';
-import { ToggleImpersonate } from '@/settings/workspace/components/ToggleImpersonate';
 import { WorkspaceLogoUploader } from '@/settings/workspace/components/WorkspaceLogoUploader';
-import { SettingsPath } from '@/types/SettingsPath';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
-import packageJson from '../../../package.json';
-export const SettingsWorkspace = () => (
-  <SubMenuTopBarContainer
-    title="General"
-    links={[
-      {
-        children: 'Workspace',
-        href: getSettingsPagePath(SettingsPath.Workspace),
-      },
-      { children: 'General' },
-    ]}
-  >
-    <SettingsPageContainer>
-      <Section>
-        <H2Title title="Picture" />
-        <WorkspaceLogoUploader />
-      </Section>
-      <Section>
-        <H2Title title="Name" description="Name of your workspace" />
-        <NameField />
-      </Section>
-      <Section>
-        <H2Title
-          title="Support"
-          adornment={<ToggleImpersonate />}
-          description="Grant Twenty support temporary access to your workspace so we can troubleshoot problems or recover content on your behalf. You can revoke access at any time."
-        />
-      </Section>
-      <Section>
-        <DeleteWorkspace />
-      </Section>
-      <Section>
-        <GithubVersionLink version={packageJson.version} />
-      </Section>
-    </SettingsPageContainer>
-  </SubMenuTopBarContainer>
-);
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
+import { H2Title } from 'twenty-ui/display';
+import { Section } from 'twenty-ui/layout';
+
+export const SettingsWorkspace = () => {
+  const { t } = useLingui();
+  return (
+    <SubMenuTopBarContainer
+      title={t`General`}
+      links={[
+        {
+          children: t`Workspace`,
+          href: getSettingsPath(SettingsPath.Workspace),
+        },
+        { children: t`General` },
+      ]}
+    >
+      <SettingsPageContainer>
+        <Section>
+          <H2Title title={t`Picture`} />
+          <WorkspaceLogoUploader />
+        </Section>
+        <Section>
+          <H2Title title={t`Name`} description={t`Name of your workspace`} />
+          <NameField />
+        </Section>
+
+        <Section>
+          <DeleteWorkspace />
+        </Section>
+      </SettingsPageContainer>
+    </SubMenuTopBarContainer>
+  );
+};

@@ -1,21 +1,20 @@
+import { type DeepPartial } from 'typeorm';
+
 import {
-  ForeignDataWrapperOptions,
-  RemoteServerEntity,
-  RemoteServerType,
+  type ForeignDataWrapperOptions,
+  type RemoteServerEntity,
+  type RemoteServerType,
 } from 'src/engine/metadata-modules/remote-server/remote-server.entity';
 import {
   RemoteServerException,
   RemoteServerExceptionCode,
 } from 'src/engine/metadata-modules/remote-server/remote-server.exception';
-import { UserMappingOptions } from 'src/engine/metadata-modules/remote-server/types/user-mapping-options';
-
-export type DeepPartial<T> = {
-  [P in keyof T]?: DeepPartial<T[P]>;
-};
+import { type UserMappingOptions } from 'src/engine/metadata-modules/remote-server/types/user-mapping-options';
 
 export const buildUpdateRemoteServerRawQuery = (
   remoteServerToUpdate: DeepPartial<RemoteServerEntity<RemoteServerType>> &
     Pick<RemoteServerEntity<RemoteServerType>, 'workspaceId' | 'id'>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): [any[], string] => {
   const options: string[] = [];
 
@@ -43,10 +42,12 @@ export const buildUpdateRemoteServerRawQuery = (
   }
 
   if (remoteServerToUpdate.schema) {
+    // @ts-expect-error legacy noImplicitAny
     options.push(`"schema" = $${parametersPositions['schema']}`);
   }
 
   if (remoteServerToUpdate.label) {
+    // @ts-expect-error legacy noImplicitAny
     options.push(`"label" = $${parametersPositions['label']}`);
   }
 
@@ -67,7 +68,9 @@ export const buildUpdateRemoteServerRawQuery = (
 const buildParametersAndPositions = (
   remoteServerToUpdate: DeepPartial<RemoteServerEntity<RemoteServerType>> &
     Pick<RemoteServerEntity<RemoteServerType>, 'workspaceId' | 'id'>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): [any[], object] => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parameters: any[] = [remoteServerToUpdate.id];
   const parametersPositions = {};
 
@@ -75,6 +78,7 @@ const buildParametersAndPositions = (
     Object.entries(remoteServerToUpdate.userMappingOptions).forEach(
       ([key, value]) => {
         parameters.push(value);
+        // @ts-expect-error legacy noImplicitAny
         parametersPositions[key] = parameters.length;
       },
     );
@@ -84,6 +88,7 @@ const buildParametersAndPositions = (
     Object.entries(remoteServerToUpdate.foreignDataWrapperOptions).forEach(
       ([key, value]) => {
         parameters.push(value);
+        // @ts-expect-error legacy noImplicitAny
         parametersPositions[key] = parameters.length;
       },
     );
@@ -91,11 +96,13 @@ const buildParametersAndPositions = (
 
   if (remoteServerToUpdate.schema) {
     parameters.push(remoteServerToUpdate.schema);
+    // @ts-expect-error legacy noImplicitAny
     parametersPositions['schema'] = parameters.length;
   }
 
   if (remoteServerToUpdate.label) {
     parameters.push(remoteServerToUpdate.label);
+    // @ts-expect-error legacy noImplicitAny
     parametersPositions['label'] = parameters.length;
   }
 
@@ -116,9 +123,11 @@ const buildJsonRawQuery = (
   ): string => {
     const [[firstKey, _], ...followingOptions] = Object.entries(opts);
 
+    // @ts-expect-error legacy noImplicitAny
     let query = `jsonb_set("${objectName}", '{${firstKey}}', to_jsonb($${parametersPositions[firstKey]}::text))`;
 
     followingOptions.forEach(([key, _]) => {
+      // @ts-expect-error legacy noImplicitAny
       query = `jsonb_set(${query}, '{${key}}', to_jsonb($${parametersPositions[key]}::text))`;
     });
 

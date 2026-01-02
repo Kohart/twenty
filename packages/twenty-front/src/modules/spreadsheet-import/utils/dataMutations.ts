@@ -2,28 +2,32 @@ import { isNonEmptyString } from '@sniptt/guards';
 import { v4 } from 'uuid';
 
 import {
-  Errors,
-  ImportedStructuredRowMetadata,
+  type Errors,
+  type ImportedStructuredRowMetadata,
 } from '@/spreadsheet-import/steps/components/ValidationStep/types';
 import {
-  Fields,
-  ImportedStructuredRow,
-  Info,
-  RowHook,
-  TableHook,
+  type ImportedStructuredRow,
+  type SpreadsheetImportFields,
+  type SpreadsheetImportInfo,
+  type SpreadsheetImportRowHook,
+  type SpreadsheetImportTableHook,
 } from '@/spreadsheet-import/types';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared/utils';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
-export const addErrorsAndRunHooks = <T extends string>(
-  data: (ImportedStructuredRow<T> & Partial<ImportedStructuredRowMetadata>)[],
-  fields: Fields<T>,
-  rowHook?: RowHook<T>,
-  tableHook?: TableHook<T>,
-): (ImportedStructuredRow<T> & ImportedStructuredRowMetadata)[] => {
+export const addErrorsAndRunHooks = (
+  data: (ImportedStructuredRow & Partial<ImportedStructuredRowMetadata>)[],
+  fields: SpreadsheetImportFields,
+  rowHook?: SpreadsheetImportRowHook,
+  tableHook?: SpreadsheetImportTableHook,
+): (ImportedStructuredRow & ImportedStructuredRowMetadata)[] => {
   const errors: Errors = {};
 
-  const addHookError = (rowIndex: number, fieldKey: T, error: Info) => {
+  const addHookError = (
+    rowIndex: number,
+    fieldKey: string,
+    error: SpreadsheetImportInfo,
+  ) => {
     errors[rowIndex] = {
       ...errors[rowIndex],
       [fieldKey]: error,
@@ -44,7 +48,7 @@ export const addErrorsAndRunHooks = <T extends string>(
     field.fieldValidationDefinitions?.forEach((fieldValidationDefinition) => {
       switch (fieldValidationDefinition.rule) {
         case 'unique': {
-          const values = data.map((entry) => entry[field.key as T]);
+          const values = data.map((entry) => entry[field.key]);
 
           const taken = new Set(); // Set of items used at least once
           const duplicates = new Set(); // Set of items used multiple times
@@ -83,9 +87,9 @@ export const addErrorsAndRunHooks = <T extends string>(
         case 'required': {
           data.forEach((entry, index) => {
             if (
-              entry[field.key as T] === null ||
-              entry[field.key as T] === undefined ||
-              entry[field.key as T] === ''
+              entry[field.key] === null ||
+              entry[field.key] === undefined ||
+              entry[field.key] === ''
             ) {
               errors[index] = {
                 ...errors[index],
@@ -152,14 +156,17 @@ export const addErrorsAndRunHooks = <T extends string>(
     if (!('__index' in value)) {
       value.__index = v4();
     }
-    const newValue = value as ImportedStructuredRow<T> &
+    const newValue = value as ImportedStructuredRow &
       ImportedStructuredRowMetadata;
 
     if (isDefined(errors[index])) {
-      return { ...newValue, __errors: errors[index] };
+      return { ...newValue, __errors: errors[index] } as ImportedStructuredRow &
+        ImportedStructuredRowMetadata;
     }
+
     if (isUndefinedOrNull(errors[index]) && isDefined(value?.__errors)) {
-      return { ...newValue, __errors: null };
+      return { ...newValue, __errors: null } as ImportedStructuredRow &
+        ImportedStructuredRowMetadata;
     }
     return newValue;
   });

@@ -1,25 +1,18 @@
 import styled from '@emotion/styled';
 import { useMemo } from 'react';
-import { useFormContext } from 'react-hook-form';
 
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { getLabelIdentifierFieldMetadataItem } from '@/object-metadata/utils/getLabelIdentifierFieldMetadataItem';
 import { SettingsDataModelCardTitle } from '@/settings/data-model/components/SettingsDataModelCardTitle';
-import { SettingsDataModelFieldPreviewCard } from '@/settings/data-model/fields/preview/components/SettingsDataModelFieldPreviewCard';
-import { SettingsDataModelObjectSummary } from '@/settings/data-model/objects/components/SettingsDataModelObjectSummary';
-import {
-  SettingsDataModelObjectIdentifiersForm,
-  SettingsDataModelObjectIdentifiersFormValues,
-} from '@/settings/data-model/objects/forms/components/SettingsDataModelObjectIdentifiersForm';
-import { Card, CardContent } from 'twenty-ui';
+import { SettingsDataModelFieldPreviewWidget } from '@/settings/data-model/fields/preview/components/SettingsDataModelFieldPreviewWidget';
+import { SettingsDataModelObjectPreview } from '@/settings/data-model/objects/components/SettingsDataModelObjectSummary';
+import { SettingsDataModelObjectIdentifiersForm } from '@/settings/data-model/objects/forms/components/SettingsDataModelObjectIdentifiersForm';
+import { Trans } from '@lingui/react/macro';
+import { Card, CardContent } from 'twenty-ui/layout';
 
 type SettingsDataModelObjectSettingsFormCardProps = {
   objectMetadataItem: ObjectMetadataItem;
 };
-
-const StyledFieldPreviewCard = styled(SettingsDataModelFieldPreviewCard)`
-  width: 100%;
-`;
 
 const StyledTopCardContent = styled(CardContent)`
   background-color: ${({ theme }) => theme.background.transparent.lighter};
@@ -38,37 +31,31 @@ const StyledObjectSummaryCardContent = styled(CardContent)`
 export const SettingsDataModelObjectSettingsFormCard = ({
   objectMetadataItem,
 }: SettingsDataModelObjectSettingsFormCardProps) => {
-  const { watch: watchFormValue } =
-    useFormContext<SettingsDataModelObjectIdentifiersFormValues>();
-
-  const labelIdentifierFieldMetadataIdFormValue = watchFormValue(
-    'labelIdentifierFieldMetadataId',
-  );
-
-  const labelIdentifierFieldMetadataItem = useMemo(
-    () =>
-      getLabelIdentifierFieldMetadataItem({
-        fields: objectMetadataItem.fields,
-        labelIdentifierFieldMetadataId: labelIdentifierFieldMetadataIdFormValue,
-      }),
-    [labelIdentifierFieldMetadataIdFormValue, objectMetadataItem],
-  );
+  const labelIdentifierFieldMetadataItem = useMemo(() => {
+    return getLabelIdentifierFieldMetadataItem({
+      fields: objectMetadataItem.fields,
+      labelIdentifierFieldMetadataId:
+        objectMetadataItem.labelIdentifierFieldMetadataId,
+    });
+  }, [objectMetadataItem]);
 
   return (
     <Card fullWidth>
       <StyledTopCardContent divider>
-        <SettingsDataModelCardTitle>Preview</SettingsDataModelCardTitle>
+        <SettingsDataModelCardTitle>
+          <Trans>Preview</Trans>
+        </SettingsDataModelCardTitle>
         {labelIdentifierFieldMetadataItem ? (
-          <StyledFieldPreviewCard
-            objectMetadataItem={objectMetadataItem}
+          <SettingsDataModelFieldPreviewWidget
+            objectNameSingular={objectMetadataItem.nameSingular}
             fieldMetadataItem={labelIdentifierFieldMetadataItem}
             withFieldLabel={false}
           />
         ) : (
           <StyledObjectSummaryCard>
             <StyledObjectSummaryCardContent>
-              <SettingsDataModelObjectSummary
-                objectMetadataItem={objectMetadataItem}
+              <SettingsDataModelObjectPreview
+                objectMetadataItems={[objectMetadataItem]}
               />
             </StyledObjectSummaryCardContent>
           </StyledObjectSummaryCard>
@@ -77,9 +64,6 @@ export const SettingsDataModelObjectSettingsFormCard = ({
       <CardContent>
         <SettingsDataModelObjectIdentifiersForm
           objectMetadataItem={objectMetadataItem}
-          defaultLabelIdentifierFieldMetadataId={
-            labelIdentifierFieldMetadataItem?.id
-          }
         />
       </CardContent>
     </Card>

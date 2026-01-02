@@ -1,19 +1,20 @@
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 
-import { hasPositionField } from '@/object-metadata/utils/hasPositionField';
-import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
+import { type RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
 import { mapArrayToObject } from '~/utils/array/mapArrayToObject';
-import { isDefined } from '~/utils/isDefined';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { getOrderByForFieldMetadataType } from '@/object-metadata/utils/getOrderByForFieldMetadataType';
-import { OrderBy } from '@/types/OrderBy';
-import { Sort } from '../types/Sort';
+import { hasObjectMetadataItemPositionField } from '@/object-metadata/utils/hasObjectMetadataItemPositionField';
+import { type RecordSort } from '@/object-record/record-sort/types/RecordSort';
+import { type OrderBy } from '@/types/OrderBy';
+import { isDefined } from 'twenty-shared/utils';
+import { ViewSortDirection } from '~/generated/graphql';
 
 export const turnSortsIntoOrderBy = (
   objectMetadataItem: ObjectMetadataItem,
-  sorts: Sort[],
+  sorts: RecordSort[],
 ): RecordGqlOperationOrderBy => {
   const fields: Pick<FieldMetadataItem, 'id' | 'name' | 'type'>[] =
     objectMetadataItem?.fields ?? [];
@@ -29,13 +30,18 @@ export const turnSortsIntoOrderBy = (
       }
 
       const direction: OrderBy =
-        sort.direction === 'asc' ? 'AscNullsFirst' : 'DescNullsLast';
+        sort.direction === ViewSortDirection.ASC
+          ? 'AscNullsFirst'
+          : 'DescNullsLast';
 
       return getOrderByForFieldMetadataType(correspondingField, direction);
     })
     .filter(isDefined);
 
-  if (hasPositionField(objectMetadataItem)) {
+  if (
+    !objectMetadataItem.isRemote &&
+    hasObjectMetadataItemPositionField(objectMetadataItem)
+  ) {
     const positionOrderBy = [
       {
         position: 'AscNullsFirst',

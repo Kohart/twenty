@@ -1,7 +1,5 @@
-import { PlacesType, PositionStrategy, Tooltip } from 'react-tooltip';
 import styled from '@emotion/styled';
-
-import { RGBA } from '@ui/theme/constants/Rgba';
+import { type PlacesType, type PositionStrategy, Tooltip } from 'react-tooltip';
 
 export enum TooltipPosition {
   Top = 'top',
@@ -14,20 +12,21 @@ export enum TooltipDelay {
   noDelay = '0ms',
   shortDelay = '300ms',
   mediumDelay = '500ms',
+  longDelay = '1000ms',
 }
 
-const StyledAppTooltip = styled(Tooltip)`
+const StyledAppTooltip = styled(Tooltip)<{ width?: string }>`
   backdrop-filter: ${({ theme }) => theme.blur.strong};
-  background-color: ${({ theme }) => RGBA(theme.color.gray80, 0.8)};
+  background-color: ${({ theme }) => theme.color.transparent.gray11};
   border-radius: ${({ theme }) => theme.border.radius.sm};
 
   box-shadow: ${({ theme }) => theme.boxShadow.light};
-  color: ${({ theme }) => theme.grayScale.gray0};
+  color: ${({ theme }) => theme.grayScale.gray1};
 
   font-size: ${({ theme }) => theme.font.size.sm};
   font-weight: ${({ theme }) => theme.font.weight.regular};
 
-  max-width: 40%;
+  max-width: ${({ width }) => width || '40%'};
   overflow: visible;
 
   padding: ${({ theme }) => theme.spacing(2)};
@@ -44,18 +43,20 @@ export type AppTooltipProps = {
   children?: React.ReactNode;
   offset?: number;
   noArrow?: boolean;
-  isOpen?: boolean;
+  hidden?: boolean;
   place?: PlacesType;
   delay?: TooltipDelay;
   positionStrategy?: PositionStrategy;
   clickable?: boolean;
+  width?: string;
+  isOpen?: boolean;
 };
 
 export const AppTooltip = ({
   anchorSelect,
   className,
   content,
-  isOpen,
+  hidden = false,
   noArrow,
   offset,
   delay = TooltipDelay.mediumDelay,
@@ -63,13 +64,21 @@ export const AppTooltip = ({
   positionStrategy,
   children,
   clickable,
+  width,
+  isOpen,
 }: AppTooltipProps) => {
-  const delayInMs =
-    delay === TooltipDelay.noDelay
-      ? 0
-      : delay === TooltipDelay.shortDelay
-        ? 300
-        : 500;
+  const getDelayInMis = (delay: TooltipDelay) => {
+    switch (delay) {
+      case TooltipDelay.noDelay:
+        return 0;
+      case TooltipDelay.shortDelay:
+        return 300;
+      case TooltipDelay.mediumDelay:
+        return 500;
+      case TooltipDelay.longDelay:
+        return 1000;
+    }
+  };
 
   return (
     <StyledAppTooltip
@@ -77,15 +86,17 @@ export const AppTooltip = ({
         anchorSelect,
         className,
         content,
-        delayShow: delayInMs,
-        delayHide: delayInMs,
-        isOpen,
+        delayShow: getDelayInMis(delay),
+        delayHide: 20,
+        hidden,
         noArrow,
         offset,
         place,
         positionStrategy,
         children,
         clickable,
+        width,
+        isOpen,
       }}
     />
   );

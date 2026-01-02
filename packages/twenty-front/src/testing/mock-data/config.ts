@@ -1,41 +1,59 @@
-import { ClientConfig } from '~/generated-metadata/graphql';
-import { CaptchaDriverType } from '~/generated/graphql';
+import { type ClientConfig } from '@/client-config/types/ClientConfig';
+import { CaptchaDriverType, SupportDriver } from '~/generated/graphql';
 
 export const mockedClientConfig: ClientConfig = {
+  aiModels: [],
   signInPrefilled: true,
-  signUpDisabled: false,
-  chromeExtensionId: 'MOCKED_EXTENSION_ID',
-  debugMode: false,
-  analyticsEnabled: true,
+  isMultiWorkspaceEnabled: false,
+  isEmailVerificationRequired: false,
   authProviders: {
-    sso: false,
     google: true,
-    password: true,
     magicLink: false,
+    password: true,
     microsoft: false,
-    __typename: 'AuthProviders',
+    sso: [],
   },
+  frontDomain: 'localhost',
+  defaultSubdomain: 'app',
+  chromeExtensionId: 'MOCKED_EXTENSION_ID',
+  analyticsEnabled: true,
   support: {
-    supportDriver: 'front',
+    supportDriver: SupportDriver.FRONT,
     supportFrontChatId: null,
-    __typename: 'Support',
   },
   sentry: {
     dsn: 'MOCKED_DSN',
     release: 'MOCKED_RELEASE',
     environment: 'MOCKED_ENVIRONMENT',
-    __typename: 'Sentry',
   },
   billing: {
     isBillingEnabled: true,
     billingUrl: '',
-    billingFreeTrialDurationInDays: 10,
-    __typename: 'Billing',
+    trialPeriods: [
+      {
+        duration: 30,
+        isCreditCardRequired: true,
+      },
+      {
+        duration: 7,
+        isCreditCardRequired: false,
+      },
+    ],
   },
   captcha: {
-    provider: CaptchaDriverType.GoogleRecaptcha,
+    provider: CaptchaDriverType.GOOGLE_RECAPTCHA,
     siteKey: 'MOCKED_SITE_KEY',
-    __typename: 'Captcha',
   },
   api: { mutationMaximumAffectedRecords: 100 },
+  canManageFeatureFlags: true,
+  publicFeatureFlags: [],
+  isMicrosoftMessagingEnabled: true,
+  isMicrosoftCalendarEnabled: true,
+  isGoogleMessagingEnabled: true,
+  isGoogleCalendarEnabled: true,
+  isAttachmentPreviewEnabled: true,
+  isConfigVariablesInDbEnabled: false,
+  isImapSmtpCaldavEnabled: false,
+  isTwoFactorAuthenticationEnabled: false,
+  isEmailingDomainsEnabled: false,
 };

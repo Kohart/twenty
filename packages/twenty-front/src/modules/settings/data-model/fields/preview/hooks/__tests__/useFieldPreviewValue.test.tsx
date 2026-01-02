@@ -1,11 +1,11 @@
 import { renderHook } from '@testing-library/react';
 
-import { FieldMetadataItemOption } from '@/object-metadata/types/FieldMetadataItem';
-import { FieldMetadataType } from '~/generated/graphql';
+import { type FieldMetadataItemOption } from '@/object-metadata/types/FieldMetadataItem';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
-import { useFieldPreviewValue } from '../useFieldPreviewValue';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
+import { useFieldPreviewValue } from '@/settings/data-model/fields/preview/hooks/useFieldPreviewValue';
 
 const mockedCompanyObjectMetadataItem = generatedMockObjectMetadataItems.find(
   (item) => item.nameSingular === 'company',
@@ -30,7 +30,7 @@ describe('useFieldPreviewValue', () => {
     const fieldName = 'amount';
     const fieldMetadataItem = mockedOpportunityObjectMetadataItem?.fields.find(
       ({ name, type }) =>
-        name === fieldName && type === FieldMetadataType.Currency,
+        name === fieldName && type === FieldMetadataType.CURRENCY,
     );
     const skip = true;
 
@@ -53,7 +53,7 @@ describe('useFieldPreviewValue', () => {
     const fieldName = 'amount';
     const fieldMetadataItem = mockedOpportunityObjectMetadataItem?.fields.find(
       ({ name, type }) =>
-        name === fieldName && type === FieldMetadataType.Currency,
+        name === fieldName && type === FieldMetadataType.CURRENCY,
     );
 
     if (!fieldMetadataItem) {
@@ -77,7 +77,7 @@ describe('useFieldPreviewValue', () => {
     // Given
     const fieldMetadataItem = {
       name: 'people',
-      type: FieldMetadataType.Relation,
+      type: FieldMetadataType.RELATION,
     };
     const relationObjectMetadataItem = mockedPersonObjectMetadataItem;
 
@@ -86,20 +86,22 @@ describe('useFieldPreviewValue', () => {
       () =>
         useFieldPreviewValue({
           fieldMetadataItem,
-          relationObjectMetadataItem,
+          relationObjectNameSingular: relationObjectMetadataItem?.nameSingular,
         }),
       { wrapper: Wrapper },
     );
 
     // Then
-    expect(result.current).toEqual({
-      __typename: 'Person',
-      id: '',
-      name: {
-        firstName: 'John',
-        lastName: 'Doe',
+    expect(result.current).toEqual([
+      {
+        __typename: 'Person',
+        id: '',
+        name: {
+          firstName: 'John',
+          lastName: 'Doe',
+        },
       },
-    });
+    ]);
   });
 
   it("returns the field's preview value for a Select field", () => {
@@ -107,7 +109,7 @@ describe('useFieldPreviewValue', () => {
     const fieldName = 'stage';
     const fieldMetadataItem = mockedOpportunityObjectMetadataItem?.fields.find(
       ({ name, type }) =>
-        name === fieldName && type === FieldMetadataType.Select,
+        name === fieldName && type === FieldMetadataType.SELECT,
     );
 
     if (!fieldMetadataItem) {
@@ -151,7 +153,7 @@ describe('useFieldPreviewValue', () => {
     ];
     const fieldMetadataItem = {
       name: 'industry',
-      type: FieldMetadataType.MultiSelect,
+      type: FieldMetadataType.MULTI_SELECT,
       options,
     };
 

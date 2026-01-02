@@ -1,13 +1,16 @@
 import { gql } from '@apollo/client';
-import { isUndefined } from '@sniptt/guards';
+import { isNonEmptyArray, isUndefined } from '@sniptt/guards';
 import { useRecoilValue } from 'recoil';
 
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
+import { getObjectPermissionsForObject } from '@/object-metadata/utils/getObjectPermissionsForObject';
 import { mapObjectMetadataToGraphQLQuery } from '@/object-metadata/utils/mapObjectMetadataToGraphQLQuery';
-import { RecordGqlOperationSignature } from '@/object-record/graphql/types/RecordGqlOperationSignature';
-import { generateDepthOneRecordGqlFields } from '@/object-record/graphql/utils/generateDepthOneRecordGqlFields';
-import { isNonEmptyArray } from '~/utils/isNonEmptyArray';
-import { capitalize } from '~/utils/string/capitalize';
+import { type RecordGqlOperationSignature } from '@/object-record/graphql/types/RecordGqlOperationSignature';
+import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
+import { getCombinedFindManyRecordsQueryFilteringPart } from '@/object-record/multiple-objects/utils/getCombinedFindManyRecordsQueryFilteringPart';
+import isEmpty from 'lodash.isempty';
+import { capitalize } from 'twenty-shared/utils';
+import { generateDepthRecordGqlFieldsFromObject } from '@/object-record/graphql/record-gql-fields/utils/generateDepthRecordGqlFieldsFromObject';
 
 export const useGenerateCombinedFindManyRecordsQuery = ({
   operationSignatures,
@@ -15,88 +18,92 @@ export const useGenerateCombinedFindManyRecordsQuery = ({
   operationSignatures: RecordGqlOperationSignature[];
 }) => {
   const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
+  const { objectPermissionsByObjectMetadataId } = useObjectPermissions();
 
   if (!isNonEmptyArray(operationSignatures)) {
     return null;
   }
 
-  const filterPerMetadataItemArray = operationSignatures
-    .map(
-      ({ objectNameSingular }) =>
-        `$filter${capitalize(objectNameSingular)}: ${capitalize(
-          objectNameSingular,
-        )}FilterInput`,
-    )
-    .join(', ');
-
-  const orderByPerMetadataItemArray = operationSignatures
-    .map(
-      ({ objectNameSingular }) =>
-        `$orderBy${capitalize(objectNameSingular)}: [${capitalize(
-          objectNameSingular,
-        )}OrderByInput]`,
-    )
-    .join(', ');
-
-  const lastCursorPerMetadataItemArray = operationSignatures
-    .map(
-      ({ objectNameSingular }) =>
-        `$lastCursor${capitalize(objectNameSingular)}: String`,
-    )
-    .join(', ');
-
-  const limitPerMetadataItemArray = operationSignatures
-    .map(
-      ({ objectNameSingular }) =>
-        `$limit${capitalize(objectNameSingular)}: Int`,
-    )
-    .join(', ');
-
-  const queryKeyWithObjectMetadataItemArray = operationSignatures.map(
-    (queryKey) => {
+  const queryOperationSignatureWithObjectMetadataItemArray = operationSignatures
+    .map((operationSignature) => {
       const objectMetadataItem = objectMetadataItems.find(
         (objectMetadataItem) =>
-          objectMetadataItem.nameSingular === queryKey.objectNameSingular,
+          objectMetadataItem.nameSingular ===
+          operationSignature.objectNameSingular,
       );
 
       if (isUndefined(objectMetadataItem)) {
         throw new Error(
-          `Object metadata item not found for object name singular: ${queryKey.objectNameSingular}`,
+          `Object metadata item not found for object name singular: ${operationSignature.objectNameSingular}`,
         );
       }
 
-      return { ...queryKey, objectMetadataItem };
-    },
-  );
+      return { operationSignature, objectMetadataItem };
+    })
+    .filter(
+      ({ objectMetadataItem }) =>
+        getObjectPermissionsForObject(
+          objectPermissionsByObjectMetadataId,
+          objectMetadataItem.id,
+        )?.canReadObjectRecords,
+    );
+
+  const filterPerMetadataItemArray =
+    queryOperationSignatureWithObjectMetadataItemArray
+      .map(
+        ({ objectMetadataItem }) =>
+          `$filter${capitalize(objectMetadataItem.nameSingular)}: ${capitalize(
+            objectMetadataItem.nameSingular,
+          )}FilterInput`,
+      )
+      .join(', ');
+
+  const orderByPerMetadataItemArray =
+    queryOperationSignatureWithObjectMetadataItemArray
+      .map(
+        ({ objectMetadataItem }) =>
+          `$orderBy${capitalize(objectMetadataItem.nameSingular)}: [${capitalize(
+            objectMetadataItem.nameSingular,
+          )}OrderByInput]`,
+      )
+      .join(', ');
+
+  const cursorFilteringPerMetadataItemArray =
+    queryOperationSignatureWithObjectMetadataItemArray
+      .map(
+        ({ objectMetadataItem }) =>
+          `$after${capitalize(objectMetadataItem.nameSingular)}: String, $before${capitalize(objectMetadataItem.nameSingular)}: String, $first${capitalize(objectMetadataItem.nameSingular)}: Int, $last${capitalize(objectMetadataItem.nameSingular)}: Int`,
+      )
+      .join(', ');
+
+  if (isEmpty(queryOperationSignatureWithObjectMetadataItemArray)) {
+    return null;
+  }
 
   return gql`
     query CombinedFindManyRecords(
       ${filterPerMetadataItemArray}, 
       ${orderByPerMetadataItemArray}, 
-      ${lastCursorPerMetadataItemArray}, 
-      ${limitPerMetadataItemArray}
+      ${cursorFilteringPerMetadataItemArray},
     ) {
-      ${queryKeyWithObjectMetadataItemArray
+      ${queryOperationSignatureWithObjectMetadataItemArray
         .map(
-          ({ objectMetadataItem, fields }) =>
-            `${objectMetadataItem.namePlural}(filter: $filter${capitalize(
-              objectMetadataItem.nameSingular,
-            )}, orderBy: $orderBy${capitalize(
-              objectMetadataItem.nameSingular,
-            )}, first: $limit${capitalize(
-              objectMetadataItem.nameSingular,
-            )}, after: $lastCursor${capitalize(
-              objectMetadataItem.nameSingular,
-            )}){
+          ({ objectMetadataItem, operationSignature }) =>
+            `${getCombinedFindManyRecordsQueryFilteringPart(
+              objectMetadataItem,
+            )} {
           edges {
             node ${mapObjectMetadataToGraphQLQuery({
               objectMetadataItems: objectMetadataItems,
               objectMetadataItem,
               recordGqlFields:
-                fields ??
-                generateDepthOneRecordGqlFields({
+                operationSignature.fields ??
+                generateDepthRecordGqlFieldsFromObject({
+                  objectMetadataItems,
+                  depth: 1,
                   objectMetadataItem,
                 }),
+              objectPermissionsByObjectMetadataId,
             })}
             cursor
           }

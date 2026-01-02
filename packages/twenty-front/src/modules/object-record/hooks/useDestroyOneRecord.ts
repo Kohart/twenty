@@ -1,16 +1,17 @@
-import { useApolloClient } from '@apollo/client';
 import { useCallback } from 'react';
 
 import { triggerCreateRecordsOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerCreateRecordsOptimisticEffect';
 import { triggerDestroyRecordsOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerDestroyRecordsOptimisticEffect';
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
 import { useGetRecordFromCache } from '@/object-record/cache/hooks/useGetRecordFromCache';
 import { useDestroyOneRecordMutation } from '@/object-record/hooks/useDestroyOneRecordMutation';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
+import { useRegisterObjectOperation } from '@/object-record/hooks/useRegisterObjectOperation';
+import { useUpsertRecordsInStore } from '@/object-record/record-store/hooks/useUpsertRecordsInStore';
 import { getDestroyOneRecordMutationResponseField } from '@/object-record/utils/getDestroyOneRecordMutationResponseField';
-import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
-import { capitalize } from '~/utils/string/capitalize';
+import { capitalize, isDefined } from 'twenty-shared/utils';
 
 type useDestroyOneRecordProps = {
   objectNameSingular: string;
@@ -20,33 +21,34 @@ type useDestroyOneRecordProps = {
 export const useDestroyOneRecord = ({
   objectNameSingular,
 }: useDestroyOneRecordProps) => {
-  const apolloClient = useApolloClient();
+  const { registerObjectOperation } = useRegisterObjectOperation();
+  const { upsertRecordsInStore } = useUpsertRecordsInStore();
+
+  const apolloCoreClient = useApolloCoreClient();
 
   const { objectMetadataItem } = useObjectMetadataItem({
     objectNameSingular,
   });
 
-  const getRecordFromCache = useGetRecordFromCache({
-    objectNameSingular,
-  });
+  const getRecordFromCache = useGetRecordFromCache({ objectNameSingular });
 
   const { destroyOneRecordMutation } = useDestroyOneRecordMutation({
     objectNameSingular,
   });
 
   const { objectMetadataItems } = useObjectMetadataItems();
-
+  const { objectPermissionsByObjectMetadataId } = useObjectPermissions();
   const mutationResponseField =
     getDestroyOneRecordMutationResponseField(objectNameSingular);
 
   const destroyOneRecord = useCallback(
     async (idToDestroy: string) => {
-      const originalRecord: ObjectRecord | null = getRecordFromCache(
+      const originalRecord = getRecordFromCache(
         idToDestroy,
-        apolloClient.cache,
+        apolloCoreClient.cache,
       );
 
-      const deletedRecord = await apolloClient
+      const deletedRecord = await apolloCoreClient
         .mutate({
           mutation: destroyOneRecordMutation,
           variables: { idToDestroy },
@@ -58,43 +60,52 @@ export const useDestroyOneRecord = ({
           },
           update: (cache, { data }) => {
             const record = data?.[mutationResponseField];
-
-            if (!record) return;
+            if (!isDefined(record)) return;
 
             const cachedRecord = getRecordFromCache(record.id, cache);
-
-            if (!cachedRecord) return;
-
+            if (!isDefined(cachedRecord)) return;
             triggerDestroyRecordsOptimisticEffect({
               cache,
               objectMetadataItem,
               recordsToDestroy: [cachedRecord],
               objectMetadataItems,
+              upsertRecordsInStore,
+              objectPermissionsByObjectMetadataId,
             });
           },
         })
         .catch((error: Error) => {
-          if (!isUndefinedOrNull(originalRecord)) {
+          if (isDefined(originalRecord)) {
             triggerCreateRecordsOptimisticEffect({
-              cache: apolloClient.cache,
+              cache: apolloCoreClient.cache,
               objectMetadataItem,
               recordsToCreate: [originalRecord],
               objectMetadataItems,
+              objectPermissionsByObjectMetadataId,
+              upsertRecordsInStore,
             });
           }
+
           throw error;
         });
+
+      registerObjectOperation(objectMetadataItem, {
+        type: 'destroy-one',
+      });
 
       return deletedRecord.data?.[mutationResponseField] ?? null;
     },
     [
-      apolloClient,
-      destroyOneRecordMutation,
       getRecordFromCache,
+      apolloCoreClient,
+      destroyOneRecordMutation,
       mutationResponseField,
-      objectMetadataItem,
       objectNameSingular,
+      registerObjectOperation,
+      objectMetadataItem,
       objectMetadataItems,
+      upsertRecordsInStore,
+      objectPermissionsByObjectMetadataId,
     ],
   );
 

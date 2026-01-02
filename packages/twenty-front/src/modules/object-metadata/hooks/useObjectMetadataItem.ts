@@ -3,9 +3,9 @@ import { useRecoilValue } from 'recoil';
 import { ObjectMetadataItemNotFoundError } from '@/object-metadata/errors/ObjectMetadataNotFoundError';
 import { objectMetadataItemFamilySelector } from '@/object-metadata/states/objectMetadataItemFamilySelector';
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { isDefined } from '~/utils/isDefined';
 
-import { ObjectMetadataItemIdentifier } from '../types/ObjectMetadataItemIdentifier';
+import { isDefined } from 'twenty-shared/utils';
+import { type ObjectMetadataItemIdentifier } from '@/object-metadata/types/ObjectMetadataItemIdentifier';
 
 export const useObjectMetadataItem = ({
   objectNameSingular,

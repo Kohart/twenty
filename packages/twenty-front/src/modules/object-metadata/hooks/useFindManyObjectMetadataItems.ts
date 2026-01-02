@@ -1,57 +1,51 @@
 import { useQuery } from '@apollo/client';
 import { useMemo } from 'react';
 
-import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import {
-  FieldFilter,
-  ObjectFilter,
-  ObjectMetadataItemsQuery,
-  ObjectMetadataItemsQueryVariables,
+  type ObjectMetadataItemsQuery,
+  type ObjectMetadataItemsQueryVariables,
 } from '~/generated-metadata/graphql';
 import { logError } from '~/utils/logError';
 
-import { FIND_MANY_OBJECT_METADATA_ITEMS } from '../graphql/queries';
-import { mapPaginatedObjectMetadataItemsToObjectMetadataItems } from '../utils/mapPaginatedObjectMetadataItemsToObjectMetadataItems';
-
-import { useApolloMetadataClient } from './useApolloMetadataClient';
+import { enrichObjectMetadataItemsWithPermissions } from '@/object-metadata/utils/enrichObjectMetadataItemsWithPermissions';
+import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
+import { FIND_MANY_OBJECT_METADATA_ITEMS } from '@/object-metadata/graphql/queries';
+import { mapPaginatedObjectMetadataItemsToObjectMetadataItems } from '@/object-metadata/utils/mapPaginatedObjectMetadataItemsToObjectMetadataItems';
 
 export const useFindManyObjectMetadataItems = ({
   skip,
-  objectFilter,
-  fieldFilter,
 }: {
   skip?: boolean;
-  objectFilter?: ObjectFilter;
-  fieldFilter?: FieldFilter;
 } = {}) => {
-  const apolloMetadataClient = useApolloMetadataClient();
+  const { enqueueErrorSnackBar } = useSnackBar();
 
-  const { enqueueSnackBar } = useSnackBar();
+  const { objectPermissionsByObjectMetadataId } = useObjectPermissions();
 
   const { data, loading, error, refetch } = useQuery<
     ObjectMetadataItemsQuery,
     ObjectMetadataItemsQueryVariables
   >(FIND_MANY_OBJECT_METADATA_ITEMS, {
-    variables: {
-      objectFilter,
-      fieldFilter,
-    },
-    client: apolloMetadataClient ?? undefined,
-    skip: skip || !apolloMetadataClient,
+    skip,
     onError: (error) => {
       logError('useFindManyObjectMetadataItems error : ' + error);
-      enqueueSnackBar(`${error.message}`, {
-        variant: SnackBarVariant.Error,
+      enqueueErrorSnackBar({
+        apolloError: error,
       });
     },
   });
 
   const objectMetadataItems = useMemo(() => {
-    return mapPaginatedObjectMetadataItemsToObjectMetadataItems({
-      pagedObjectMetadataItems: data,
+    const objectMetadataItemsArray =
+      mapPaginatedObjectMetadataItemsToObjectMetadataItems({
+        pagedObjectMetadataItems: data,
+      });
+
+    return enrichObjectMetadataItemsWithPermissions({
+      objectMetadataItems: objectMetadataItemsArray,
+      objectPermissionsByObjectMetadataId,
     });
-  }, [data]);
+  }, [data, objectPermissionsByObjectMetadataId]);
 
   return {
     objectMetadataItems,

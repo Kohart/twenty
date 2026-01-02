@@ -1,17 +1,18 @@
+import { ObjectType } from '@nestjs/graphql';
+
 import {
-  Entity,
   Column,
-  PrimaryGeneratedColumn,
   CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
-  ManyToOne,
-  Relation,
 } from 'typeorm';
 
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { WorkspaceRelatedEntity } from 'src/engine/workspace-manager/workspace-sync/types/workspace-related-entity';
 
 @Entity({ name: 'postgresCredentials', schema: 'core' })
-export class PostgresCredentials {
+@ObjectType('PostgresCredentials')
+export class PostgresCredentialsEntity extends WorkspaceRelatedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -29,12 +30,4 @@ export class PostgresCredentials {
 
   @Column({ nullable: true, type: 'timestamptz' })
   deletedAt: Date;
-
-  @ManyToOne(() => Workspace, (workspace) => workspace.allPostgresCredentials, {
-    onDelete: 'CASCADE',
-  })
-  workspace: Relation<Workspace>;
-
-  @Column({ nullable: false, type: 'uuid' })
-  workspaceId: string;
 }

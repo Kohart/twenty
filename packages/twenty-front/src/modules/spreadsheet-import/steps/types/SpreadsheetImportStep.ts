@@ -1,7 +1,7 @@
-import { Columns } from '@/spreadsheet-import/steps/components/MatchColumnsStep/MatchColumnsStep';
-import { SpreadsheetImportStepType } from '@/spreadsheet-import/steps/types/SpreadsheetImportStepType';
-import { ImportedRow } from '@/spreadsheet-import/types';
-import { WorkBook } from 'xlsx-ugnis';
+import { type SpreadsheetImportStepType } from '@/spreadsheet-import/steps/types/SpreadsheetImportStepType';
+import { type ImportedRow } from '@/spreadsheet-import/types';
+import { type SpreadsheetColumns } from '@/spreadsheet-import/types/SpreadsheetColumns';
+import { type WorkBook } from 'xlsx-ugnis';
 
 export type SpreadsheetImportStep =
   | {
@@ -23,8 +23,12 @@ export type SpreadsheetImportStep =
   | {
       type: SpreadsheetImportStepType.validateData;
       data: any[];
-      importedColumns: Columns<string>;
+      importedColumns: SpreadsheetColumns;
     }
   | {
       type: SpreadsheetImportStepType.loading;
+    }
+  | {
+      type: SpreadsheetImportStepType.importData;
+      recordsToImportCount: number;
     };

@@ -1,15 +1,19 @@
-import { useLastVisitedView } from '@/navigation/hooks/useLastVisitedView';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { usePrefetchedData } from '@/prefetch/hooks/usePrefetchedData';
-import { PrefetchKey } from '@/prefetch/types/PrefetchKey';
+import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainContextStoreInstanceId';
+import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
+import { lastVisitedViewPerObjectMetadataItemState } from '@/navigation/states/lastVisitedViewPerObjectMetadataItemState';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
 import { NavigationDrawerItemsCollapsableContainer } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItemsCollapsableContainer';
 import { NavigationDrawerSubItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSubItem';
 import { getNavigationSubItemLeftAdornment } from '@/ui/navigation/navigation-drawer/utils/getNavigationSubItemLeftAdornment';
-import { View } from '@/views/types/View';
-import { getObjectMetadataItemViews } from '@/views/utils/getObjectMetadataItemViews';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { coreViewsFromObjectMetadataItemFamilySelector } from '@/views/states/selectors/coreViewsFromObjectMetadataItemFamilySelector';
 import { useLocation } from 'react-router-dom';
-import { useIcons } from 'twenty-ui';
+import { useRecoilValue } from 'recoil';
+import { AppPath } from 'twenty-shared/types';
+import { getAppPath } from 'twenty-shared/utils';
+import { useIcons } from 'twenty-ui/display';
+import { AnimatedExpandableContainer } from 'twenty-ui/layout';
 
 export type NavigationDrawerItemForObjectMetadataItemProps = {
   objectMetadataItem: ObjectMetadataItem;
@@ -18,39 +22,53 @@ export type NavigationDrawerItemForObjectMetadataItemProps = {
 export const NavigationDrawerItemForObjectMetadataItem = ({
   objectMetadataItem,
 }: NavigationDrawerItemForObjectMetadataItemProps) => {
-  const { records: views } = usePrefetchedData<View>(PrefetchKey.AllViews);
-
-  const objectMetadataViews = getObjectMetadataItemViews(
-    objectMetadataItem.id,
-    views,
+  const views = useRecoilValue(
+    coreViewsFromObjectMetadataItemFamilySelector({
+      objectMetadataItemId: objectMetadataItem.id,
+    }),
   );
+
+  const contextStoreCurrentViewId = useRecoilComponentValue(
+    contextStoreCurrentViewIdComponentState,
+    MAIN_CONTEXT_STORE_INSTANCE_ID,
+  );
+
+  const lastVisitedViewPerObjectMetadataItem = useRecoilValue(
+    lastVisitedViewPerObjectMetadataItemState,
+  );
+
+  const lastVisitedViewId =
+    lastVisitedViewPerObjectMetadataItem?.[objectMetadataItem.id];
 
   const { getIcon } = useIcons();
   const currentPath = useLocation().pathname;
-  const { getLastVisitedViewIdFromObjectMetadataItemId } = useLastVisitedView();
 
-  const lastVisitedViewId = getLastVisitedViewIdFromObjectMetadataItemId(
-    objectMetadataItem.id,
+  const navigationPath = getAppPath(
+    AppPath.RecordIndexPage,
+    { objectNamePlural: objectMetadataItem.namePlural },
+    lastVisitedViewId ? { viewId: lastVisitedViewId } : undefined,
   );
 
-  const viewId = lastVisitedViewId ?? objectMetadataViews[0]?.id;
-
-  const navigationPath = `/objects/${objectMetadataItem.namePlural}${
-    viewId ? `?view=${viewId}` : ''
-  }`;
-
   const isActive =
-    currentPath === `/objects/${objectMetadataItem.namePlural}` ||
-    currentPath.includes(`object/${objectMetadataItem.nameSingular}/`);
+    currentPath ===
+      getAppPath(AppPath.RecordIndexPage, {
+        objectNamePlural: objectMetadataItem.namePlural,
+      }) ||
+    currentPath.includes(
+      getAppPath(AppPath.RecordShowPage, {
+        objectNameSingular: objectMetadataItem.nameSingular,
+        objectRecordId: '',
+      }) + '/',
+    );
 
-  const shouldSubItemsBeDisplayed = isActive && objectMetadataViews.length > 1;
+  const shouldSubItemsBeDisplayed = isActive && views.length > 1;
 
-  const sortedObjectMetadataViews = [...objectMetadataViews].sort(
+  const sortedObjectMetadataViews = [...views].sort(
     (viewA, viewB) => viewA.position - viewB.position,
   );
 
   const selectedSubItemIndex = sortedObjectMetadataViews.findIndex(
-    (view) => viewId === view.id,
+    (view) => contextStoreCurrentViewId === view.id,
   );
 
   const subItemArrayLength = sortedObjectMetadataViews.length;
@@ -66,12 +84,22 @@ export const NavigationDrawerItemForObjectMetadataItem = ({
         Icon={getIcon(objectMetadataItem.icon)}
         active={isActive}
       />
-      {shouldSubItemsBeDisplayed &&
-        sortedObjectMetadataViews.map((view, index) => (
+
+      <AnimatedExpandableContainer
+        isExpanded={shouldSubItemsBeDisplayed}
+        dimension="height"
+        mode="fit-content"
+        containAnimation
+      >
+        {sortedObjectMetadataViews.map((view, index) => (
           <NavigationDrawerSubItem
             label={view.name}
-            to={`/objects/${objectMetadataItem.namePlural}?view=${view.id}`}
-            active={viewId === view.id}
+            to={getAppPath(
+              AppPath.RecordIndexPage,
+              { objectNamePlural: objectMetadataItem.namePlural },
+              { viewId: view.id },
+            )}
+            active={contextStoreCurrentViewId === view.id}
             subItemState={getNavigationSubItemLeftAdornment({
               index,
               arrayLength: subItemArrayLength,
@@ -81,6 +109,7 @@ export const NavigationDrawerItemForObjectMetadataItem = ({
             key={view.id}
           />
         ))}
+      </AnimatedExpandableContainer>
     </NavigationDrawerItemsCollapsableContainer>
   );
 };

@@ -6,14 +6,14 @@ import { useCreateFavorite } from '@/favorites/hooks/useCreateFavorite';
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 import {
   favoriteTargetObjectRecord,
   initialFavorites,
   mockId,
   mockWorkspaceMember,
   mocks,
-} from '../__mocks__/useFavorites';
+} from '@/favorites/hooks/__mocks__/useFavorites';
 
 jest.mock('uuid', () => ({
   v4: () => mockId,

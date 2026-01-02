@@ -1,4 +1,4 @@
-import { BLOCK_SCHEMA } from '@/activities/blocks/constants/Schema';
+import { type BLOCK_SCHEMA } from '@/activities/blocks/constants/Schema';
 
 import { useComponentsContext } from '@blocknote/react';
 
@@ -31,10 +31,9 @@ export const CustomAddBlockItem = ({
     const [firstElement] = currentBlockContent || [];
 
     if (firstElement === undefined) {
-      editor.openSelectionMenu('/');
+      editor.openSuggestionMenu('/');
     } else {
-      editor.sideMenu.addBlock();
-      editor.openSelectionMenu('/');
+      editor.openSuggestionMenu('/');
       editor.sideMenu.unfreezeMenu();
     }
   };

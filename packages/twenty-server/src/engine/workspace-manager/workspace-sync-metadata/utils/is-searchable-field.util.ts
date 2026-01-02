@@ -1,12 +1,13 @@
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-
+import { FieldMetadataType } from 'twenty-shared/types';
 const SEARCHABLE_FIELD_TYPES = [
   FieldMetadataType.TEXT,
   FieldMetadataType.FULL_NAME,
   FieldMetadataType.EMAILS,
   FieldMetadataType.ADDRESS,
   FieldMetadataType.LINKS,
+  FieldMetadataType.PHONES,
   FieldMetadataType.RICH_TEXT,
+  FieldMetadataType.RICH_TEXT_V2,
 ] as const;
 
 export type SearchableFieldType = (typeof SEARCHABLE_FIELD_TYPES)[number];

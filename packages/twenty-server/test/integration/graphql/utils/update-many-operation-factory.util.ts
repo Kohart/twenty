@@ -1,6 +1,5 @@
 import gql from 'graphql-tag';
-
-import { capitalize } from 'src/utils/capitalize';
+import { capitalize } from 'twenty-shared/utils';
 
 type UpdateManyOperationFactoryParams = {
   objectMetadataSingularName: string;
@@ -19,8 +18,8 @@ export const updateManyOperationFactory = ({
 }: UpdateManyOperationFactoryParams) => ({
   query: gql`
     mutation Update${capitalize(objectMetadataPluralName)}(
-      $data: ${capitalize(objectMetadataSingularName)}UpdateInput
-      $filter: ${capitalize(objectMetadataSingularName)}FilterInput
+      $data: ${capitalize(objectMetadataSingularName)}UpdateInput!
+      $filter: ${capitalize(objectMetadataSingularName)}FilterInput!
     ) {
       update${capitalize(objectMetadataPluralName)}(data: $data, filter: $filter) {
         ${gqlFields}

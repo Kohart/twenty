@@ -1,11 +1,16 @@
-import { ModalWrapper } from '@/spreadsheet-import/components/ModalWrapper';
 import { ReactSpreadsheetImportContextProvider } from '@/spreadsheet-import/components/ReactSpreadsheetImportContextProvider';
+import { SpreadSheetImportModalWrapper } from '@/spreadsheet-import/components/SpreadSheetImportModalWrapper';
+import { SPREADSHEET_IMPORT_MODAL_ID } from '@/spreadsheet-import/constants/SpreadsheetImportModalId';
+import { SPREADSHEET_MAX_RECORD_IMPORT_CAPACITY } from '@/spreadsheet-import/constants/SpreadsheetMaxRecordImportCapacity';
+import { useSpreadsheetImportInitialStep } from '@/spreadsheet-import/hooks/useSpreadsheetImportInitialStep';
+import { useSpreadsheetImportInternal } from '@/spreadsheet-import/hooks/useSpreadsheetImportInternal';
 import { SpreadsheetImportStepperContainer } from '@/spreadsheet-import/steps/components/SpreadsheetImportStepperContainer';
-import { SpreadsheetImportDialogOptions as SpreadsheetImportProps } from '@/spreadsheet-import/types';
+import { type SpreadsheetImportDialogOptions as SpreadsheetImportProps } from '@/spreadsheet-import/types';
+import { useDialogManager } from '@/ui/feedback/dialog-manager/hooks/useDialogManager';
+import { useStepBar } from '@/ui/navigation/step-bar/hooks/useStepBar';
+import { useLingui } from '@lingui/react/macro';
 
-export const defaultSpreadsheetImportProps: Partial<
-  SpreadsheetImportProps<any>
-> = {
+export const defaultSpreadsheetImportProps: Partial<SpreadsheetImportProps> = {
   autoMapHeaders: true,
   allowInvalidSubmit: true,
   autoMapDistance: 2,
@@ -18,22 +23,58 @@ export const defaultSpreadsheetImportProps: Partial<
   dateFormat: 'yyyy-mm-dd', // ISO 8601,
   parseRaw: true,
   selectHeader: false,
-  maxRecords: 2000,
+  maxRecords: SPREADSHEET_MAX_RECORD_IMPORT_CAPACITY,
 } as const;
 
-export const SpreadsheetImport = <T extends string>(
-  props: SpreadsheetImportProps<T>,
-) => {
+export const SpreadsheetImport = (props: SpreadsheetImportProps) => {
   const mergedProps = {
     ...defaultSpreadsheetImportProps,
     ...props,
-  } as SpreadsheetImportProps<T>;
+  } as SpreadsheetImportProps;
+
+  const { enqueueDialog } = useDialogManager();
+
+  const { initialStepState } = useSpreadsheetImportInternal();
+
+  const { initialStep } = useSpreadsheetImportInitialStep(
+    initialStepState?.type,
+  );
+
+  const { activeStep } = useStepBar({
+    initialStep,
+  });
+
+  const { t } = useLingui();
+
+  const confirmOnClose = () => {
+    if (activeStep < 1) {
+      mergedProps.onClose();
+      return;
+    }
+
+    enqueueDialog({
+      title: t`Exit import flow`,
+      message: t`Are you sure? Your current information will not be saved.`,
+      buttons: [
+        { title: t`Cancel` },
+        {
+          title: t`Exit`,
+          onClick: mergedProps.onClose,
+          accent: 'danger',
+          role: 'confirm',
+        },
+      ],
+    });
+  };
 
   return (
     <ReactSpreadsheetImportContextProvider values={mergedProps}>
-      <ModalWrapper isOpen={mergedProps.isOpen} onClose={mergedProps.onClose}>
+      <SpreadSheetImportModalWrapper
+        modalId={SPREADSHEET_IMPORT_MODAL_ID}
+        onClose={confirmOnClose}
+      >
         <SpreadsheetImportStepperContainer />
-      </ModalWrapper>
+      </SpreadSheetImportModalWrapper>
     </ReactSpreadsheetImportContextProvider>
   );
 };

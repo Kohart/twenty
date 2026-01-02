@@ -1,26 +1,33 @@
-import { ApolloCache } from '@apollo/client/cache';
+import { type ApolloCache } from '@apollo/client/cache';
 import gql from 'graphql-tag';
 
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { mapObjectMetadataToGraphQLQuery } from '@/object-metadata/utils/mapObjectMetadataToGraphQLQuery';
 import { getRecordNodeFromRecord } from '@/object-record/cache/utils/getRecordNodeFromRecord';
-import { RecordGqlNode } from '@/object-record/graphql/types/RecordGqlNode';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type RecordGqlFields } from '@/object-record/graphql/record-gql-fields/types/RecordGqlFields';
+import { type RecordGqlNode } from '@/object-record/graphql/types/RecordGqlNode';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type ObjectPermissions } from 'twenty-shared/types';
+import { capitalize } from 'twenty-shared/utils';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
-import { capitalize } from '~/utils/string/capitalize';
 
 export const updateRecordFromCache = <T extends ObjectRecord>({
   objectMetadataItems,
   objectMetadataItem,
   cache,
-  recordGqlFields = undefined,
+  recordGqlFields,
   record,
+  objectPermissionsByObjectMetadataId,
 }: {
   objectMetadataItems: ObjectMetadataItem[];
   objectMetadataItem: ObjectMetadataItem;
   cache: ApolloCache<object>;
-  recordGqlFields?: Record<string, any>;
+  recordGqlFields: RecordGqlFields;
   record: T;
+  objectPermissionsByObjectMetadataId: Record<
+    string,
+    ObjectPermissions & { objectMetadataId: string }
+  >;
 }) => {
   if (isUndefinedOrNull(objectMetadataItem)) {
     return null;
@@ -35,6 +42,7 @@ export const updateRecordFromCache = <T extends ObjectRecord>({
           objectMetadataItem,
           computeReferences: true,
           recordGqlFields,
+          objectPermissionsByObjectMetadataId,
         },
       )}
     `;

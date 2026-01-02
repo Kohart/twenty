@@ -1,6 +1,9 @@
-import { createState } from 'twenty-ui';
-
-import { Workspace } from '~/generated/graphql';
+import { createState } from 'twenty-ui/utilities';
+import {
+  type Application,
+  type Role,
+  type Workspace,
+} from '~/generated/graphql';
 
 export type CurrentWorkspace = Pick<
   Workspace,
@@ -11,12 +14,31 @@ export type CurrentWorkspace = Pick<
   | 'allowImpersonation'
   | 'featureFlags'
   | 'activationStatus'
+  | 'billingSubscriptions'
   | 'currentBillingSubscription'
   | 'workspaceMembersCount'
   | 'isPublicInviteLinkEnabled'
-  | 'hasValidEntrepriseKey'
+  | 'isGoogleAuthEnabled'
+  | 'isGoogleAuthBypassEnabled'
+  | 'isMicrosoftAuthEnabled'
+  | 'isMicrosoftAuthBypassEnabled'
+  | 'isPasswordAuthEnabled'
+  | 'isPasswordAuthBypassEnabled'
+  | 'isCustomDomainEnabled'
+  | 'hasValidEnterpriseKey'
+  | 'subdomain'
+  | 'customDomain'
+  | 'workspaceUrls'
   | 'metadataVersion'
->;
+  | 'isTwoFactorAuthenticationEnforced'
+  | 'trashRetentionDays'
+  | 'fastModel'
+  | 'smartModel'
+  | 'editableProfileFields'
+> & {
+  defaultRole?: Omit<Role, 'workspaceMembers' | 'agents' | 'apiKeys'> | null;
+  workspaceCustomApplication: Pick<Application, 'id'> | null;
+};
 
 export const currentWorkspaceState = createState<CurrentWorkspace | null>({
   key: 'currentWorkspaceState',

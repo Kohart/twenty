@@ -2,7 +2,7 @@ import {
   AuthException,
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
-import { GoogleAPIsRequest } from 'src/engine/core-modules/auth/types/google-api-request.type';
+import { type GoogleAPIsRequest } from 'src/engine/core-modules/auth/types/google-api-request.type';
 
 type GoogleAPIsRequestExtraParams = {
   transientToken?: string;
@@ -10,6 +10,8 @@ type GoogleAPIsRequestExtraParams = {
   calendarVisibility?: string;
   messageVisibility?: string;
   loginHint?: string;
+  userId?: string;
+  workspaceId?: string;
 };
 
 export const setRequestExtraParams = (
@@ -22,6 +24,8 @@ export const setRequestExtraParams = (
     calendarVisibility,
     messageVisibility,
     loginHint,
+    userId,
+    workspaceId,
   } = params;
 
   if (!transientToken) {
@@ -44,7 +48,16 @@ export const setRequestExtraParams = (
   if (messageVisibility) {
     request.params.messageVisibility = messageVisibility;
   }
+
   if (loginHint) {
     request.params.loginHint = loginHint;
+  }
+
+  if (userId) {
+    request.params.userId = userId;
+  }
+
+  if (workspaceId) {
+    request.params.workspaceId = workspaceId;
   }
 };

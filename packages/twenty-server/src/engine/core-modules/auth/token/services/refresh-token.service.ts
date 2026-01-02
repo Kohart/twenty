@@ -6,34 +6,39 @@ import ms from 'ms';
 import { Repository } from 'typeorm';
 
 import {
-  AppToken,
+  AppTokenEntity,
   AppTokenType,
 } from 'src/engine/core-modules/app-token/app-token.entity';
 import {
   AuthException,
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
-import { AuthToken } from 'src/engine/core-modules/auth/dto/token.entity';
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import { type AuthToken } from 'src/engine/core-modules/auth/dto/auth-token.dto';
+import {
+  type RefreshTokenJwtPayload,
+  JwtTokenTypeEnum,
+} from 'src/engine/core-modules/auth/types/auth-context.type';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
-import { User } from 'src/engine/core-modules/user/user.entity';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { UserEntity } from 'src/engine/core-modules/user/user.entity';
 
 @Injectable()
 export class RefreshTokenService {
   constructor(
     private readonly jwtWrapperService: JwtWrapperService,
-    private readonly environmentService: EnvironmentService,
-    @InjectRepository(AppToken, 'core')
-    private readonly appTokenRepository: Repository<AppToken>,
-    @InjectRepository(User, 'core')
-    private readonly userRepository: Repository<User>,
+    private readonly twentyConfigService: TwentyConfigService,
+    @InjectRepository(AppTokenEntity)
+    private readonly appTokenRepository: Repository<AppTokenEntity>,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
   ) {}
 
   async verifyRefreshToken(refreshToken: string) {
-    const coolDown = this.environmentService.get('REFRESH_TOKEN_COOL_DOWN');
+    const coolDown = this.twentyConfigService.get('REFRESH_TOKEN_COOL_DOWN');
 
-    await this.jwtWrapperService.verifyWorkspaceToken(refreshToken, 'REFRESH');
-    const jwtPayload = await this.jwtWrapperService.decode(refreshToken);
+    await this.jwtWrapperService.verifyJwtToken(refreshToken);
+    const jwtPayload =
+      this.jwtWrapperService.decode<RefreshTokenJwtPayload>(refreshToken);
 
     if (!(jwtPayload.jti && jwtPayload.sub)) {
       throw new AuthException(
@@ -90,18 +95,28 @@ export class RefreshTokenService {
       );
     }
 
-    return { user, token };
+    return {
+      user,
+      token,
+      authProvider: jwtPayload.authProvider,
+      targetedTokenType: jwtPayload.targetedTokenType,
+      isImpersonating: jwtPayload.isImpersonating,
+      impersonatorUserWorkspaceId: jwtPayload.impersonatorUserWorkspaceId,
+      impersonatedUserWorkspaceId: jwtPayload.impersonatedUserWorkspaceId,
+    };
   }
 
   async generateRefreshToken(
-    userId: string,
-    workspaceId: string,
+    payload: Omit<RefreshTokenJwtPayload, 'type' | 'sub' | 'jti'>,
+    isImpersonationToken: boolean = false,
   ): Promise<AuthToken> {
     const secret = this.jwtWrapperService.generateAppSecret(
-      'REFRESH',
-      workspaceId,
+      JwtTokenTypeEnum.REFRESH,
+      payload.workspaceId ?? payload.userId,
     );
-    const expiresIn = this.environmentService.get('REFRESH_TOKEN_EXPIRES_IN');
+    const expiresIn = isImpersonationToken
+      ? '1d'
+      : this.twentyConfigService.get('REFRESH_TOKEN_EXPIRES_IN');
 
     if (!expiresIn) {
       throw new AuthException(
@@ -112,26 +127,27 @@ export class RefreshTokenService {
 
     const expiresAt = addMilliseconds(new Date().getTime(), ms(expiresIn));
 
-    const refreshTokenPayload = {
-      userId,
+    const refreshToken = this.appTokenRepository.create({
+      ...payload,
       expiresAt,
       type: AppTokenType.RefreshToken,
-    };
-    const jwtPayload = {
-      sub: userId,
-    };
-
-    const refreshToken = this.appTokenRepository.create(refreshTokenPayload);
+    });
 
     await this.appTokenRepository.save(refreshToken);
 
     return {
-      token: this.jwtWrapperService.sign(jwtPayload, {
-        secret,
-        expiresIn,
-        // Jwtid will be used to link RefreshToken entity to this token
-        jwtid: refreshToken.id,
-      }),
+      token: this.jwtWrapperService.sign(
+        {
+          ...payload,
+          sub: payload.userId,
+          type: JwtTokenTypeEnum.REFRESH,
+        },
+        {
+          secret,
+          expiresIn,
+          jwtid: refreshToken.id,
+        },
+      ),
       expiresAt,
     };
   }

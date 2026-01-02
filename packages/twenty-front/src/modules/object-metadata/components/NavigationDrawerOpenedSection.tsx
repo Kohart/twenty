@@ -1,21 +1,22 @@
 import { useParams } from 'react-router-dom';
 
-import { useFilteredObjectMetadataItemsForWorkspaceFavorites } from '@/navigation/hooks/useObjectMetadataItemsInWorkspaceFavorites';
+import { useWorkspaceFavorites } from '@/favorites/hooks/useWorkspaceFavorites';
 import { NavigationDrawerSectionForObjectMetadataItems } from '@/object-metadata/components/NavigationDrawerSectionForObjectMetadataItems';
 import { NavigationDrawerSectionForObjectMetadataItemsSkeletonLoader } from '@/object-metadata/components/NavigationDrawerSectionForObjectMetadataItemsSkeletonLoader';
 import { useFilteredObjectMetadataItems } from '@/object-metadata/hooks/useFilteredObjectMetadataItems';
 import { useIsPrefetchLoading } from '@/prefetch/hooks/useIsPrefetchLoading';
+import { useLingui } from '@lingui/react/macro';
 
 export const NavigationDrawerOpenedSection = () => {
+  const { t } = useLingui();
+
   const { activeObjectMetadataItems } = useFilteredObjectMetadataItems();
-  const filteredActiveObjectMetadataItems = activeObjectMetadataItems.filter(
-    (item) => !item.isRemote,
-  );
+  const filteredActiveNonSystemObjectMetadataItems =
+    activeObjectMetadataItems.filter((item) => !item.isRemote);
 
   const loading = useIsPrefetchLoading();
 
-  const { activeObjectMetadataItems: workspaceFavoritesObjectMetadataItems } =
-    useFilteredObjectMetadataItemsForWorkspaceFavorites();
+  const { workspaceFavoritesObjectMetadataItems } = useWorkspaceFavorites();
 
   const {
     objectNamePlural: currentObjectNamePlural,
@@ -26,7 +27,7 @@ export const NavigationDrawerOpenedSection = () => {
     return;
   }
 
-  const objectMetadataItem = filteredActiveObjectMetadataItems.find(
+  const objectMetadataItem = filteredActiveNonSystemObjectMetadataItems.find(
     (item) =>
       item.namePlural === currentObjectNamePlural ||
       item.nameSingular === currentObjectNameSingular,
@@ -48,7 +49,7 @@ export const NavigationDrawerOpenedSection = () => {
   return (
     shouldDisplayObjectInOpenedSection && (
       <NavigationDrawerSectionForObjectMetadataItems
-        sectionTitle={'Opened'}
+        sectionTitle={t`Opened`}
         objectMetadataItems={[objectMetadataItem]}
         isRemote={false}
       />

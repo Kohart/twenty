@@ -1,18 +1,18 @@
-import { createState } from 'twenty-ui';
+import { createState } from 'twenty-ui/utilities';
+import { type SpreadsheetImportDialogOptions } from '@/spreadsheet-import/types';
 
-import { SpreadsheetImportDialogOptions } from '../types';
-
-export type SpreadsheetImportDialogState<T extends string> = {
+export type SpreadsheetImportDialogState = {
   isOpen: boolean;
-  options: Omit<SpreadsheetImportDialogOptions<T>, 'isOpen' | 'onClose'> | null;
+  isStepBarVisible: boolean;
+  options: Omit<SpreadsheetImportDialogOptions, 'isOpen' | 'onClose'> | null;
 };
 
-export const spreadsheetImportDialogState = createState<
-  SpreadsheetImportDialogState<any>
->({
-  key: 'spreadsheetImportDialogState',
-  defaultValue: {
-    isOpen: false,
-    options: null,
-  },
-});
+export const spreadsheetImportDialogState =
+  createState<SpreadsheetImportDialogState>({
+    key: 'spreadsheetImportDialogState',
+    defaultValue: {
+      isOpen: false,
+      isStepBarVisible: true,
+      options: null,
+    },
+  });

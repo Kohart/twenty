@@ -1,6 +1,7 @@
+import { assertUnreachable } from 'twenty-shared/utils';
+
 import {
   ConflictError,
-  InternalServerError,
   NotFoundError,
   UserInputError,
 } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
@@ -21,8 +22,9 @@ export const remoteTableGraphqlApiExceptionHandler = (error: Error) => {
         throw new UserInputError(error.message);
       case RemoteTableExceptionCode.REMOTE_TABLE_ALREADY_EXISTS:
         throw new ConflictError(error.message);
-      default:
-        throw new InternalServerError(error.message);
+      default: {
+        return assertUnreachable(error.code);
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 import { useTheme } from '@emotion/react';
 
-import IconLockRaw from '@ui/display/icon/assets/lock.svg?react';
-import { IconComponentProps } from '@ui/display/icon/types/IconComponent';
+import IconLockRaw from '@assets/icons/lock.svg?react';
+import { type IconComponentProps } from '@ui/display/icon/types/IconComponent';
 
 type IconLockCustomProps = Pick<IconComponentProps, 'size'>;
 

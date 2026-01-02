@@ -1,23 +1,29 @@
 import styled from '@emotion/styled';
+import { t } from '@lingui/core/macro';
 import { isUndefined } from '@sniptt/guards';
 
-import { useOpenCalendarEventRightDrawer } from '@/activities/calendar/right-drawer/hooks/useOpenCalendarEventRightDrawer';
-import { CalendarEvent } from '@/activities/calendar/types/CalendarEvent';
+import { CalendarEventNotSharedContent } from '@/activities/calendar/components/CalendarEventNotSharedContent';
+import { CalendarEventParticipantsAvatarGroup } from '@/activities/calendar/components/CalendarEventParticipantsAvatarGroup';
+import { type CalendarEvent } from '@/activities/calendar/types/CalendarEvent';
+import { useOpenCalendarEventInCommandMenu } from '@/command-menu/hooks/useOpenCalendarEventInCommandMenu';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
 import { useUpsertRecordsInStore } from '@/object-record/record-store/hooks/useUpsertRecordsInStore';
 import { UserContext } from '@/users/contexts/UserContext';
 import { useContext } from 'react';
+import { FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED } from 'twenty-shared/constants';
+import { isDefined } from 'twenty-shared/utils';
 import {
   formatToHumanReadableDay,
   formatToHumanReadableMonth,
   formatToHumanReadableTime,
 } from '~/utils/format/formatDate';
-import { isDefined } from '~/utils/isDefined';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
-const StyledEventCardCalendarEventContainer = styled.div`
-  cursor: pointer;
+const StyledEventCardCalendarEventContainer = styled.div<{
+  canOpen?: boolean;
+}>`
+  cursor: ${({ canOpen }) => (canOpen ? 'pointer' : 'not-allowed')};
   display: flex;
   flex-direction: row;
   gap: ${({ theme }) => theme.spacing(2)};
@@ -30,12 +36,14 @@ const StyledCalendarEventContent = styled.div`
   gap: ${({ theme }) => theme.spacing(2)};
   justify-content: center;
   overflow: hidden;
+  width: 100%;
 `;
 
 const StyledCalendarEventTop = styled.div`
   align-items: center;
-  align-self: stretch;
   display: flex;
+  width: 100%;
+  gap: ${({ theme }) => theme.spacing(2)};
   justify-content: space-between;
 `;
 
@@ -87,7 +95,9 @@ export const EventCardCalendarEvent = ({
 }: {
   calendarEventId: string;
 }) => {
-  const { upsertRecords } = useUpsertRecordsInStore();
+  const { upsertRecordsInStore } = useUpsertRecordsInStore();
+  const { openCalendarEventInCommandMenu } =
+    useOpenCalendarEventInCommandMenu();
 
   const {
     record: calendarEvent,
@@ -101,13 +111,17 @@ export const EventCardCalendarEvent = ({
       title: true,
       startsAt: true,
       endsAt: true,
+      calendarEventParticipants: {
+        person: true,
+        workspaceMember: true,
+        handle: true,
+        displayName: true,
+      },
     },
     onCompleted: (data) => {
-      upsertRecords([data]);
+      upsertRecordsInStore({ partialRecords: [data] });
     },
   });
-
-  const { openCalendarEventRightDrawer } = useOpenCalendarEventRightDrawer();
 
   const { timeZone } = useContext(UserContext);
 
@@ -117,7 +131,7 @@ export const EventCardCalendarEvent = ({
     );
 
     if (shouldHideMessageContent) {
-      return <div>Calendar event not shared</div>;
+      return <CalendarEventNotSharedContent />;
     }
 
     const shouldHandleNotFound = error.graphQLErrors.some(
@@ -125,14 +139,14 @@ export const EventCardCalendarEvent = ({
     );
 
     if (shouldHandleNotFound) {
-      return <div>Calendar event not found</div>;
+      return <div>{t`Calendar event not found`}</div>;
     }
 
-    return <div>Error loading calendar event</div>;
+    return <div>{t`Error loading calendar event`}</div>;
   }
 
   if (loading || isUndefined(calendarEvent)) {
-    return <div>Loading...</div>;
+    return <div>{t`Loading...`}</div>;
   }
 
   const startsAtDate = calendarEvent?.startsAt;
@@ -151,9 +165,19 @@ export const EventCardCalendarEvent = ({
     ? formatToHumanReadableTime(endsAtDate, timeZone)
     : null;
 
+  const canOpen =
+    calendarEvent.title !== FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED;
+
+  const handleClick = () => {
+    if (canOpen) {
+      openCalendarEventInCommandMenu(calendarEventId);
+    }
+  };
+
   return (
     <StyledEventCardCalendarEventContainer
-      onClick={() => openCalendarEventRightDrawer(calendarEvent.id)}
+      onClick={handleClick}
+      canOpen={canOpen}
     >
       <StyledCalendarEventDateCard>
         <StyledCalendarEventDateCardMonth>
@@ -165,10 +189,21 @@ export const EventCardCalendarEvent = ({
       </StyledCalendarEventDateCard>
       <StyledCalendarEventContent>
         <StyledCalendarEventTop>
-          <StyledCalendarEventTitle>
-            {calendarEvent.title}
-          </StyledCalendarEventTitle>
+          {calendarEvent.title ===
+          FIELD_RESTRICTED_ADDITIONAL_PERMISSIONS_REQUIRED ? (
+            <CalendarEventNotSharedContent />
+          ) : (
+            <StyledCalendarEventTitle>
+              {calendarEvent.title}
+            </StyledCalendarEventTitle>
+          )}
+          {!!calendarEvent.calendarEventParticipants?.length && (
+            <CalendarEventParticipantsAvatarGroup
+              participants={calendarEvent.calendarEventParticipants}
+            />
+          )}
         </StyledCalendarEventTop>
+
         <StyledCalendarEventBody>
           {startsAtHour} {endsAtHour && <>→ {endsAtHour}</>}
         </StyledCalendarEventBody>

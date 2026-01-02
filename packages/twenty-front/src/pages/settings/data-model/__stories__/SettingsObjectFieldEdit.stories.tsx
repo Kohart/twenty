@@ -1,20 +1,20 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 
-import { SettingsObjectFieldEdit } from '../SettingsObjectFieldEdit';
+import { SettingsObjectFieldEdit } from '~/pages/settings/data-model/SettingsObjectFieldEdit';
 
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/Settings/DataModel/SettingsObjectFieldEdit',
   component: SettingsObjectFieldEdit,
   decorators: [PageDecorator],
   args: {
-    routePath: '/settings/objects/:objectSlug/:fieldSlug',
-    routeParams: { ':objectSlug': 'companies', ':fieldSlug': 'name' },
+    routePath: '/settings/objects/:objectNamePlural/:fieldName',
+    routeParams: { ':objectNamePlural': 'companies', ':fieldName': 'name' },
   },
   parameters: {
     msw: graphqlMocks,
@@ -30,8 +30,8 @@ export const StandardField: Story = {};
 export const CustomField: Story = {
   args: {
     routeParams: {
-      ':objectSlug': 'companies',
-      ':fieldSlug': 'employees',
+      ':objectNamePlural': 'companies',
+      ':fieldName': 'employees',
     },
   },
 };

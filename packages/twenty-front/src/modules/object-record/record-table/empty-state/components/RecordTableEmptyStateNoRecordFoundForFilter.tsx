@@ -1,34 +1,35 @@
-import { IconPlus } from 'twenty-ui';
-
 import { useObjectLabel } from '@/object-metadata/hooks/useObjectLabel';
-import { RecordTableContext } from '@/object-record/record-table/contexts/RecordTableContext';
+import { useRecordTableContextOrThrow } from '@/object-record/record-table/contexts/RecordTableContext';
 import { RecordTableEmptyStateDisplay } from '@/object-record/record-table/empty-state/components/RecordTableEmptyStateDisplay';
-import { useCreateNewTableRecord } from '@/object-record/record-table/hooks/useCreateNewTableRecords';
-import { useContext } from 'react';
+import { useCreateNewIndexRecord } from '@/object-record/record-table/hooks/useCreateNewIndexRecord';
+import { t } from '@lingui/core/macro';
+import { IconPlus } from 'twenty-ui/display';
 
 export const RecordTableEmptyStateNoRecordFoundForFilter = () => {
-  const { createNewTableRecord } = useCreateNewTableRecord();
+  const { objectMetadataItem } = useRecordTableContextOrThrow();
 
-  const { objectMetadataItem } = useContext(RecordTableContext);
+  const { createNewIndexRecord } = useCreateNewIndexRecord({
+    objectMetadataItem,
+  });
 
   const handleButtonClick = () => {
-    createNewTableRecord();
+    createNewIndexRecord();
   };
 
-  const objectLabel = useObjectLabel(objectMetadataItem);
+  const objectLabelSingular = useObjectLabel(objectMetadataItem);
 
-  const buttonTitle = `Add a ${objectLabel}`;
+  const buttonTitle = t`Add a ${objectLabelSingular}`;
 
-  const title = `No ${objectLabel} found`;
+  const title = t`No ${objectLabelSingular} found`;
 
-  const subTitle = 'No records matching the filter criteria were found.';
+  const subTitle = t`No records matching the filter criteria were found.`;
 
   return (
     <RecordTableEmptyStateDisplay
       buttonTitle={buttonTitle}
       subTitle={subTitle}
       title={title}
-      Icon={IconPlus}
+      ButtonIcon={IconPlus}
       animatedPlaceholderType="noMatchRecord"
       onClick={handleButtonClick}
     />

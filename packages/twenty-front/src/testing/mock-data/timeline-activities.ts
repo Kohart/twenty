@@ -1,4 +1,4 @@
-import { TimelineActivity } from '@/activities/timeline-activities/types/TimelineActivity';
+import { type TimelineActivity } from '@/activities/timeline-activities/types/TimelineActivity';
 
 export const mockedTimelineActivities: Array<TimelineActivity> = [
   {
@@ -20,6 +20,7 @@ export const mockedTimelineActivities: Array<TimelineActivity> = [
         firstName: 'Tim',
         lastName: 'Apple',
       },
+      userEmail: 'tim@apple.com',
       colorScheme: 'Light',
     },
     workspaceMemberId: '20202020-0687-4c41-b707-ed1bfca972a7',
@@ -45,6 +46,7 @@ export const mockedTimelineActivities: Array<TimelineActivity> = [
         firstName: 'Tim',
         lastName: 'Apple',
       },
+      userEmail: 'tim@apple.com',
       colorScheme: 'Light',
     },
     workspaceMemberId: '20202020-0687-4c41-b707-ed1bfca972a7',
@@ -70,6 +72,7 @@ export const mockedTimelineActivities: Array<TimelineActivity> = [
         firstName: 'Tim',
         lastName: 'Apple',
       },
+      userEmail: 'tim@apple.com',
       colorScheme: 'Light',
     },
     workspaceMemberId: '20202020-0687-4c41-b707-ed1bfca972a7',
@@ -94,7 +97,7 @@ export const mockedTimelineActivities: Array<TimelineActivity> = [
     createdAt: '2023-04-26T10:12:42.33625+00:00',
     workspaceMember: {
       __typename: 'WorkspaceMember',
-      id: '20202020-1553-45c6-a028-5a9064cce07f',
+      id: '20202020-463f-435b-828c-107e007a2711',
       avatarUrl: '',
       locale: 'en',
       name: {
@@ -102,9 +105,10 @@ export const mockedTimelineActivities: Array<TimelineActivity> = [
         firstName: 'Jane',
         lastName: 'Doe',
       },
+      userEmail: 'jane@doe.com',
       colorScheme: 'Light',
     },
-    workspaceMemberId: '20202020-1553-45c6-a028-5a9064cce07f',
+    workspaceMemberId: '20202020-463f-435b-828c-107e007a2711',
     deletedAt: null,
     __typename: 'TimelineActivity',
   },
@@ -128,6 +132,7 @@ export const mockedTimelineActivities: Array<TimelineActivity> = [
         firstName: 'Tim',
         lastName: 'Apple',
       },
+      userEmail: 'tim@apple.com',
       colorScheme: 'Light',
     },
     workspaceMemberId: '20202020-0687-4c41-b707-ed1bfca972a7',

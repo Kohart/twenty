@@ -1,25 +1,17 @@
-import React, { PropsWithChildren } from 'react';
-import { Container } from '@react-email/components';
+import { Column, Container, Row } from '@react-email/components';
+import React from 'react';
 
 import { emailTheme } from 'src/common-style';
 
-type HighlightedContainerProps = PropsWithChildren;
+type HighlightedContainerProps = {
+  children: JSX.Element | JSX.Element[] | string;
+};
 
 const highlightedContainerStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
   background: emailTheme.background.colors.highlight,
   border: `1px solid ${emailTheme.border.color.highlighted}`,
   borderRadius: emailTheme.border.radius.md,
   padding: '24px 48px',
-  gap: '24px',
-};
-
-const divStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
 } as React.CSSProperties;
 
 export const HighlightedContainer = ({
@@ -27,7 +19,11 @@ export const HighlightedContainer = ({
 }: HighlightedContainerProps) => {
   return (
     <Container style={highlightedContainerStyle}>
-      <div style={divStyle}>{children}</div>
+      {React.Children.map(children, (child) => (
+        <Row>
+          <Column align="center">{child}</Column>
+        </Row>
+      ))}
     </Container>
   );
 };

@@ -3,7 +3,7 @@ import { RecoilRoot, useSetRecoilState } from 'recoil';
 
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { useColorScheme } from '@/ui/theme/hooks/useColorScheme';
-import { WorkspaceMember } from '@/workspace-member/types/WorkspaceMember';
+import { type WorkspaceMember } from '@/workspace-member/types/WorkspaceMember';
 
 const updateOneRecordMock = jest.fn();
 
@@ -15,7 +15,7 @@ jest.mock('@/object-record/hooks/useUpdateOneRecord', () => ({
 
 const workspaceMember: Omit<
   WorkspaceMember,
-  'createdAt' | 'updatedAt' | 'userId' | 'userEmail'
+  'createdAt' | 'updatedAt' | 'userId'
 > = {
   __typename: 'WorkspaceMember',
   id: 'id',
@@ -24,6 +24,8 @@ const workspaceMember: Omit<
     lastName: 'lastName',
   },
   locale: 'en',
+  colorScheme: 'System',
+  userEmail: 'userEmail',
 };
 
 describe('useColorScheme', () => {

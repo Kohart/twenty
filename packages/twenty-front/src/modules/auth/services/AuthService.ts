@@ -3,17 +3,17 @@ import {
   ApolloLink,
   HttpLink,
   InMemoryCache,
-  UriFunction,
+  type UriFunction,
 } from '@apollo/client';
 
 import { loggerLink } from '@/apollo/utils/loggerLink';
+import { isDefined } from 'twenty-shared/utils';
 import {
-  AuthTokenPair,
+  type AuthTokenPair,
   RenewTokenDocument,
-  RenewTokenMutation,
-  RenewTokenMutationVariables,
-} from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
+  type RenewTokenMutation,
+  type RenewTokenMutationVariables,
+} from '~/generated-metadata/graphql';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 const logger = loggerLink(() => 'Twenty-Refresh');

@@ -1,10 +1,14 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconChevronRight } from 'twenty-ui';
 
-import { Webhook } from '@/settings/developers/types/webhook/Webhook';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
+import { getUrlHostnameOrThrow, isValidUrl } from 'twenty-shared/utils';
+import {
+  IconChevronRight,
+  OverflowingTextWithTooltip,
+} from 'twenty-ui/display';
+import { type Webhook } from '~/generated-metadata/graphql';
 
 export const StyledApisFieldTableRow = styled(TableRow)`
   grid-template-columns: 1fr 28px;
@@ -18,8 +22,7 @@ const StyledIconTableCell = styled(TableCell)`
 
 const StyledUrlTableCell = styled(TableCell)`
   color: ${({ theme }) => theme.font.color.primary};
-  overflow-x: scroll;
-  white-space: nowrap;
+  overflow: hidden;
 `;
 
 const StyledIconChevronRight = styled(IconChevronRight)`
@@ -27,17 +30,28 @@ const StyledIconChevronRight = styled(IconChevronRight)`
 `;
 
 export const SettingsDevelopersWebhookTableRow = ({
-  fieldItem,
+  webhook,
   to,
 }: {
-  fieldItem: Webhook;
+  webhook: Pick<
+    Webhook,
+    'id' | 'targetUrl' | 'operations' | 'description' | 'secret'
+  >;
   to: string;
 }) => {
   const theme = useTheme();
 
   return (
     <StyledApisFieldTableRow to={to}>
-      <StyledUrlTableCell>{fieldItem.targetUrl}</StyledUrlTableCell>
+      <StyledUrlTableCell>
+        <OverflowingTextWithTooltip
+          text={
+            isValidUrl(webhook.targetUrl)
+              ? getUrlHostnameOrThrow(webhook.targetUrl)
+              : webhook.targetUrl
+          }
+        />
+      </StyledUrlTableCell>
       <StyledIconTableCell>
         <StyledIconChevronRight
           size={theme.icon.size.md}

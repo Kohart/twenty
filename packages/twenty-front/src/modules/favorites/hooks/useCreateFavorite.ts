@@ -1,6 +1,6 @@
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { usePrefetchedFavoritesData } from './usePrefetchedFavoritesData';
 
 export const useCreateFavorite = () => {
@@ -17,7 +17,7 @@ export const useCreateFavorite = () => {
     const relevantFavorites = favoriteFolderId
       ? favorites.filter((fav) => fav.favoriteFolderId === favoriteFolderId)
       : favorites.filter(
-          (fav) => !fav.favoriteFolderId && fav.workspaceMemberId,
+          (fav) => !fav.favoriteFolderId && fav.forWorkspaceMemberId,
         );
 
     const maxPosition = Math.max(
@@ -26,10 +26,9 @@ export const useCreateFavorite = () => {
     );
 
     createOneFavorite({
-      [targetObjectNameSingular]: targetRecord,
       [`${targetObjectNameSingular}Id`]: targetRecord.id,
       position: maxPosition + 1,
-      workspaceMemberId: currentWorkspaceMemberId,
+      forWorkspaceMemberId: currentWorkspaceMemberId,
       favoriteFolderId,
     });
   };

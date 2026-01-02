@@ -1,27 +1,26 @@
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { ViewType } from '@/views/types/ViewType';
 import { useCreateViewFromCurrentState } from '@/views/view-picker/hooks/useCreateViewFromCurrentState';
 import { useDeleteViewFromCurrentState } from '@/views/view-picker/hooks/useDeleteViewFromCurrentState';
 import { useGetAvailableFieldsForKanban } from '@/views/view-picker/hooks/useGetAvailableFieldsForKanban';
 import { useViewPickerMode } from '@/views/view-picker/hooks/useViewPickerMode';
 import { viewPickerIsPersistingComponentState } from '@/views/view-picker/states/viewPickerIsPersistingComponentState';
-import { viewPickerKanbanFieldMetadataIdComponentState } from '@/views/view-picker/states/viewPickerKanbanFieldMetadataIdComponentState';
+import { viewPickerMainGroupByFieldMetadataIdComponentState } from '@/views/view-picker/states/viewPickerMainGroupByFieldMetadataIdComponentState';
 import { viewPickerTypeComponentState } from '@/views/view-picker/states/viewPickerTypeComponentState';
-import { Button } from 'twenty-ui';
+import { t } from '@lingui/core/macro';
+import { Button } from 'twenty-ui/input';
 
 export const ViewPickerEditButton = () => {
   const { availableFieldsForKanban, navigateToSelectSettings } =
     useGetAvailableFieldsForKanban();
 
   const { viewPickerMode } = useViewPickerMode();
-  const viewPickerType = useRecoilComponentValueV2(
-    viewPickerTypeComponentState,
-  );
-  const viewPickerIsPersisting = useRecoilComponentValueV2(
+  const viewPickerType = useRecoilComponentValue(viewPickerTypeComponentState);
+  const viewPickerIsPersisting = useRecoilComponentValue(
     viewPickerIsPersistingComponentState,
   );
-  const viewPickerKanbanFieldMetadataId = useRecoilComponentValueV2(
-    viewPickerKanbanFieldMetadataIdComponentState,
+  const viewPickerMainGroupByFieldMetadataId = useRecoilComponentValue(
+    viewPickerMainGroupByFieldMetadataIdComponentState,
   );
 
   const { createViewFromCurrentState } = useCreateViewFromCurrentState();
@@ -30,7 +29,7 @@ export const ViewPickerEditButton = () => {
   if (viewPickerMode === 'edit') {
     return (
       <Button
-        title="Delete"
+        title={t`Delete`}
         onClick={deleteViewFromCurrentState}
         accent="danger"
         fullWidth
@@ -49,7 +48,7 @@ export const ViewPickerEditButton = () => {
   ) {
     return (
       <Button
-        title="Go to Settings"
+        title={t`Go to Settings`}
         onClick={navigateToSelectSettings}
         size="small"
         accent="blue"
@@ -61,11 +60,11 @@ export const ViewPickerEditButton = () => {
 
   if (
     viewPickerType === ViewType.Table ||
-    viewPickerKanbanFieldMetadataId !== ''
+    viewPickerMainGroupByFieldMetadataId !== ''
   ) {
     return (
       <Button
-        title="Create"
+        title={t`Create`}
         onClick={createViewFromCurrentState}
         accent="blue"
         fullWidth
@@ -74,7 +73,7 @@ export const ViewPickerEditButton = () => {
         disabled={
           viewPickerIsPersisting ||
           (viewPickerType === ViewType.Kanban &&
-            viewPickerKanbanFieldMetadataId === '')
+            viewPickerMainGroupByFieldMetadataId === '')
         }
       />
     );

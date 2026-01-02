@@ -1,13 +1,11 @@
 import { useCallback } from 'react';
-import { useTrackMutation } from '~/generated/graphql';
-export interface EventData {
-  pathname: string;
-  userAgent: string;
-  timeZone: string;
-  locale: string;
-  href: string;
-  referrer: string;
-}
+import { v4 } from 'uuid';
+import {
+  AnalyticsType,
+  type MutationTrackAnalyticsArgs,
+  useTrackAnalyticsMutation,
+} from '~/generated-metadata/graphql';
+
 export const ANALYTICS_COOKIE_NAME = 'analyticsCookie';
 export const getSessionId = (): string => {
   const cookie: { [key: string]: string } = {};
@@ -19,7 +17,7 @@ export const getSessionId = (): string => {
 };
 
 export const setSessionId = (domain?: string): void => {
-  const sessionId = getSessionId() || crypto.randomUUID();
+  const sessionId = getSessionId() || v4();
   const baseCookie = `${ANALYTICS_COOKIE_NAME}=${sessionId}; Max-Age=1800; path=/; secure`;
   const cookie = domain ? baseCookie + `; domain=${domain}` : baseCookie;
 
@@ -27,16 +25,22 @@ export const setSessionId = (domain?: string): void => {
 };
 
 export const useEventTracker = () => {
-  const [createEventMutation] = useTrackMutation();
+  const [createEventMutation] = useTrackAnalyticsMutation();
 
   return useCallback(
-    (eventAction: string, eventPayload: EventData) => {
+    (
+      type: AnalyticsType,
+      payload: Omit<MutationTrackAnalyticsArgs, 'type'>,
+    ) => {
       createEventMutation({
         variables: {
-          action: eventAction,
-          payload: {
-            sessionId: getSessionId(),
-            ...eventPayload,
+          type,
+          ...payload,
+          properties: {
+            ...payload.properties,
+            ...(type === AnalyticsType['PAGEVIEW']
+              ? { sessionId: getSessionId() }
+              : {}),
           },
         },
       });

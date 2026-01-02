@@ -1,14 +1,13 @@
-import { createState } from 'twenty-ui';
-
-import { AuthProviders } from '~/generated/graphql';
+import { type AuthProviders } from '~/generated/graphql';
+import { createState } from 'twenty-ui/utilities';
 
 export const authProvidersState = createState<AuthProviders>({
   key: 'authProvidersState',
   defaultValue: {
-    google: false,
+    google: true,
     magicLink: false,
-    password: false,
+    password: true,
     microsoft: false,
-    sso: false,
+    sso: [],
   },
 });

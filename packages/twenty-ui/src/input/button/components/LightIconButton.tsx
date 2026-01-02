@@ -1,7 +1,7 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconComponent } from '@ui/display';
-import { ComponentProps, MouseEvent } from 'react';
+import { type IconComponent } from '@ui/display';
+import { type ComponentProps, type MouseEvent } from 'react';
 
 export type LightIconButtonAccent = 'secondary' | 'tertiary';
 export type LightIconButtonSize = 'small' | 'medium';
@@ -30,7 +30,7 @@ const StyledButton = styled.button<
     !disabled && focus ? `1px solid ${theme.color.blue}` : 'none'};
   border-radius: ${({ theme }) => theme.border.radius.sm};
   box-shadow: ${({ disabled, theme, focus }) =>
-    !disabled && focus ? `0 0 0 3px ${theme.color.blue10}` : 'none'};
+    !disabled && focus ? `0 0 0 3px ${theme.color.blue3}` : 'none'};
   color: ${({ theme, accent, active, disabled, focus }) => {
     switch (accent) {
       case 'secondary':
@@ -54,14 +54,17 @@ const StyledButton = styled.button<
   font-family: ${({ theme }) => theme.font.family};
   font-weight: ${({ theme }) => theme.font.weight.regular};
   gap: ${({ theme }) => theme.spacing(1)};
-  height: ${({ size }) => (size === 'small' ? '24px' : '32px')};
+  height: ${({ size, theme }) =>
+    size === 'small' ? theme.spacing(6) : theme.spacing(8)};
   justify-content: center;
   padding: ${({ theme }) => theme.spacing(1)};
   transition: background 0.1s ease;
 
   white-space: nowrap;
-  width: ${({ size }) => (size === 'small' ? '24px' : '32px')};
-  min-width: ${({ size }) => (size === 'small' ? '24px' : '32px')};
+  width: ${({ size, theme }) =>
+    size === 'small' ? theme.spacing(6) : theme.spacing(8)};
+  min-width: ${({ size, theme }) =>
+    size === 'small' ? theme.spacing(6) : theme.spacing(8)};
 
   &:hover {
     background: ${({ theme, disabled }) =>
@@ -92,6 +95,7 @@ export const LightIconButton = ({
   title,
 }: LightIconButtonProps) => {
   const theme = useTheme();
+
   return (
     <StyledButton
       data-testid={testId}

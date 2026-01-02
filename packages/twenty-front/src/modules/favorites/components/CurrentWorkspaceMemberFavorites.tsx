@@ -1,25 +1,39 @@
 import { FavoriteFolderNavigationDrawerItemDropdown } from '@/favorites/components/FavoriteFolderNavigationDrawerItemDropdown';
 import { FavoriteIcon } from '@/favorites/components/FavoriteIcon';
+import { FavoritesDroppable } from '@/favorites/components/FavoritesDroppable';
+import { FAVORITE_FOLDER_DELETE_MODAL_ID } from '@/favorites/constants/FavoriteFolderDeleteModalId';
+import { FavoritesDragContext } from '@/favorites/contexts/FavoritesDragContext';
 import { useDeleteFavorite } from '@/favorites/hooks/useDeleteFavorite';
 import { useDeleteFavoriteFolder } from '@/favorites/hooks/useDeleteFavoriteFolder';
 import { useRenameFavoriteFolder } from '@/favorites/hooks/useRenameFavoriteFolder';
-import { useReorderFavorite } from '@/favorites/hooks/useReorderFavorite';
-import { activeFavoriteFolderIdState } from '@/favorites/states/activeFavoriteFolderIdState';
+import { openFavoriteFolderIdsState } from '@/favorites/states/openFavoriteFolderIdsState';
+import { getFavoriteSecondaryLabel } from '@/favorites/utils/getFavoriteSecondaryLabel';
 import { isLocationMatchingFavorite } from '@/favorites/utils/isLocationMatchingFavorite';
-import { ProcessedFavorite } from '@/favorites/utils/sortFavorites';
+import { type ProcessedFavorite } from '@/favorites/utils/sortFavorites';
+import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
 import { DraggableItem } from '@/ui/layout/draggable-list/components/DraggableItem';
-import { DraggableList } from '@/ui/layout/draggable-list/components/DraggableList';
-import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
+import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
+import { isDropdownOpenComponentState } from '@/ui/layout/dropdown/states/isDropdownOpenComponentState';
 import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
+import { useModal } from '@/ui/layout/modal/hooks/useModal';
+import { isModalOpenedComponentState } from '@/ui/layout/modal/states/isModalOpenedComponentState';
 import { NavigationDrawerInput } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerInput';
 import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
 import { NavigationDrawerItemsCollapsableContainer } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItemsCollapsableContainer';
 import { NavigationDrawerSubItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSubItem';
+import { currentFavoriteFolderIdState } from '@/ui/navigation/navigation-drawer/states/currentFavoriteFolderIdState';
 import { getNavigationSubItemLeftAdornment } from '@/ui/navigation/navigation-drawer/utils/getNavigationSubItemLeftAdornment';
-import { useState } from 'react';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { Droppable } from '@hello-pangea/dnd';
+import { useLingui } from '@lingui/react/macro';
+import { useContext, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
-import { useRecoilState } from 'recoil';
-import { IconFolder, IconHeartOff, LightIconButton } from 'twenty-ui';
+import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
+import { IconFolder, IconFolderOpen, IconHeartOff } from 'twenty-ui/display';
+import { LightIconButton } from 'twenty-ui/input';
+import { AnimatedExpandableContainer } from 'twenty-ui/layout';
+import { useIsMobile } from 'twenty-ui/utilities';
 
 type CurrentWorkspaceMemberFavoritesProps = {
   folder: {
@@ -34,34 +48,59 @@ export const CurrentWorkspaceMemberFavorites = ({
   folder,
   isGroup,
 }: CurrentWorkspaceMemberFavoritesProps) => {
+  const { t } = useLingui();
+  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
   const currentPath = useLocation().pathname;
   const currentViewPath = useLocation().pathname + useLocation().search;
-
+  const { isDragging } = useContext(FavoritesDragContext);
   const [isFavoriteFolderRenaming, setIsFavoriteFolderRenaming] =
     useState(false);
   const [favoriteFolderName, setFavoriteFolderName] = useState(
     folder.folderName,
   );
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [activeFavoriteFolderId, setActiveFavoriteFolderId] = useRecoilState(
-    activeFavoriteFolderIdState,
+  const { openModal } = useModal();
+
+  const isMobile = useIsMobile();
+
+  const [openFavoriteFolderIds, setOpenFavoriteFolderIds] = useRecoilState(
+    openFavoriteFolderIdsState,
   );
-  const isOpen = activeFavoriteFolderId === folder.folderId;
+
+  const setCurrentFolderId = useSetRecoilState(currentFavoriteFolderIdState);
+
+  const isOpen = openFavoriteFolderIds.includes(folder.folderId);
 
   const handleToggle = () => {
-    setActiveFavoriteFolderId(isOpen ? null : folder.folderId);
+    if (isMobile) {
+      setCurrentFolderId((prev) =>
+        prev === folder.folderId ? null : folder.folderId,
+      );
+    } else {
+      setOpenFavoriteFolderIds((currentOpenFolders) => {
+        if (isOpen) {
+          return currentOpenFolders.filter((id) => id !== folder.folderId);
+        } else {
+          return [...currentOpenFolders, folder.folderId];
+        }
+      });
+    }
   };
 
   const { renameFavoriteFolder } = useRenameFavoriteFolder();
   const { deleteFavoriteFolder } = useDeleteFavoriteFolder();
-  const {
-    closeDropdown: closeFavoriteFolderEditDropdown,
-    isDropdownOpen: isFavoriteFolderEditDropdownOpen,
-  } = useDropdown(`favorite-folder-edit-${folder.folderId}`);
+
+  const dropdownId = `favorite-folder-edit-${folder.folderId}`;
+
+  const isDropdownOpenComponent = useRecoilComponentValue(
+    isDropdownOpenComponentState,
+    dropdownId,
+  );
+
+  const { closeDropdown } = useCloseDropdown();
+
   const selectedFavoriteIndex = folder.favorites.findIndex((favorite) =>
     isLocationMatchingFavorite(currentPath, currentViewPath, favorite),
   );
-  const { handleReorderFavorite } = useReorderFavorite();
 
   const { deleteFavorite } = useDeleteFavorite();
 
@@ -92,19 +131,20 @@ export const CurrentWorkspaceMemberFavorites = ({
     setIsFavoriteFolderRenaming(false);
   };
 
+  const modalId = `${FAVORITE_FOLDER_DELETE_MODAL_ID}-${folder.folderId}`;
+
   const handleFavoriteFolderDelete = async () => {
     if (folder.favorites.length > 0) {
-      setIsDeleteModalOpen(true);
-      closeFavoriteFolderEditDropdown();
+      openModal(modalId);
+      closeDropdown(dropdownId);
     } else {
       await deleteFavoriteFolder(folder.folderId);
-      closeFavoriteFolderEditDropdown();
+      closeDropdown(dropdownId);
     }
   };
 
   const handleConfirmDelete = async () => {
     await deleteFavoriteFolder(folder.folderId);
-    setIsDeleteModalOpen(false);
   };
 
   const rightOptions = (
@@ -112,9 +152,18 @@ export const CurrentWorkspaceMemberFavorites = ({
       folderId={folder.folderId}
       onRename={() => setIsFavoriteFolderRenaming(true)}
       onDelete={handleFavoriteFolderDelete}
-      closeDropdown={closeFavoriteFolderEditDropdown}
+      closeDropdown={() => {
+        closeDropdown(dropdownId);
+      }}
     />
   );
+
+  const isModalOpened = useRecoilComponentValue(
+    isModalOpenedComponentState,
+    modalId,
+  );
+
+  const favoriteCount = folder.favorites.length;
 
   return (
     <>
@@ -130,25 +179,37 @@ export const CurrentWorkspaceMemberFavorites = ({
             onSubmit={handleSubmitRename}
             onCancel={handleCancelRename}
             onClickOutside={handleClickOutside}
-            hotkeyScope="favorites-folder-input"
           />
         ) : (
-          <NavigationDrawerItem
-            key={folder.folderId}
-            label={folder.folderName}
-            Icon={IconFolder}
-            onClick={handleToggle}
-            rightOptions={rightOptions}
-            className="navigation-drawer-item"
-            active={isFavoriteFolderEditDropdownOpen}
-          />
+          <FavoritesDroppable droppableId={`folder-header-${folder.folderId}`}>
+            <NavigationDrawerItem
+              label={folder.folderName}
+              Icon={isOpen ? IconFolderOpen : IconFolder}
+              onClick={handleToggle}
+              rightOptions={rightOptions}
+              className="navigation-drawer-item"
+              isRightOptionsDropdownOpen={isDropdownOpenComponent}
+              triggerEvent="CLICK"
+              preventCollapseOnMobile={isMobile}
+            />
+          </FavoritesDroppable>
         )}
 
-        {isOpen && (
-          <DraggableList
-            onDragEnd={handleReorderFavorite}
-            draggableItems={
-              <>
+        <AnimatedExpandableContainer
+          isExpanded={isOpen}
+          dimension="height"
+          mode="fit-content"
+          containAnimation
+        >
+          <Droppable droppableId={`folder-${folder.folderId}`}>
+            {(provided) => (
+              <div
+                ref={provided.innerRef}
+                // eslint-disable-next-line react/jsx-props-no-spreading
+                {...provided.droppableProps}
+                // TODO: (Drag Drop Bug) Adding bottom margin to ensure drag-to-last-position works. Need to find better solution that doesn't affect spacing.
+                // Issue: Without margin, dragging to last position triggers next folder drop area
+              >
                 {folder.favorites.map((favorite, index) => (
                   <DraggableItem
                     key={favorite.id}
@@ -157,10 +218,14 @@ export const CurrentWorkspaceMemberFavorites = ({
                     isInsideScrollableContainer
                     itemComponent={
                       <NavigationDrawerSubItem
-                        key={favorite.id}
+                        secondaryLabel={getFavoriteSecondaryLabel({
+                          objectMetadataItems,
+                          favoriteObjectNameSingular:
+                            favorite.objectNameSingular,
+                        })}
                         label={favorite.labelIdentifier}
                         Icon={() => <FavoriteIcon favorite={favorite} />}
-                        to={favorite.link}
+                        to={isDragging ? undefined : favorite.link}
                         active={index === selectedFavoriteIndex}
                         subItemState={getNavigationSubItemLeftAdornment({
                           index,
@@ -174,25 +239,38 @@ export const CurrentWorkspaceMemberFavorites = ({
                             accent="tertiary"
                           />
                         }
-                        isDraggable
+                        isDragging={isDragging}
+                        triggerEvent="CLICK"
                       />
                     }
                   />
                 ))}
-              </>
-            }
-          />
-        )}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </AnimatedExpandableContainer>
       </NavigationDrawerItemsCollapsableContainer>
 
-      <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        setIsOpen={setIsDeleteModalOpen}
-        title={`Remove ${folder.favorites.length} ${folder.favorites.length > 1 ? 'favorites' : 'favorite'}?`}
-        subtitle={`This action will delete this favorite folder ${folder.favorites.length > 1 ? `and all ${folder.favorites.length} favorites` : 'and the favorite'} inside. Do you want to continue?`}
-        onConfirmClick={handleConfirmDelete}
-        deleteButtonText="Delete Folder"
-      />
+      {isModalOpened &&
+        createPortal(
+          <ConfirmationModal
+            modalId={modalId}
+            title={
+              folder.favorites.length > 1
+                ? t`Remove ${favoriteCount} favorites?`
+                : t`Remove ${favoriteCount} favorite?`
+            }
+            subtitle={
+              folder.favorites.length > 1
+                ? t`This action will delete this favorite folder and all ${favoriteCount} favorites inside. Do you want to continue?`
+                : t`This action will delete this favorite folder and the favorite inside. Do you want to continue?`
+            }
+            onConfirmClick={handleConfirmDelete}
+            confirmButtonText={t`Delete Folder`}
+          />,
+          document.body,
+        )}
     </>
   );
 };

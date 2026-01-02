@@ -1,35 +1,36 @@
-import { GlobalActionMenuEntriesSetter } from '@/action-menu/actions/global-actions/components/GlobalActionMenuEntriesSetter';
-import { RecordActionMenuEntriesSetter } from '@/action-menu/actions/record-actions/components/RecordActionMenuEntriesSetter';
-import { ActionMenuConfirmationModals } from '@/action-menu/components/ActionMenuConfirmationModals';
-import { RecordIndexActionMenuBar } from '@/action-menu/components/RecordIndexActionMenuBar';
+import { PageHeaderActionMenuButtons } from '@/action-menu/components/PageHeaderActionMenuButtons';
 import { RecordIndexActionMenuDropdown } from '@/action-menu/components/RecordIndexActionMenuDropdown';
-import { RecordIndexActionMenuEffect } from '@/action-menu/components/RecordIndexActionMenuEffect';
-import { ActionMenuContext } from '@/action-menu/contexts/ActionMenuContext';
-
-import { contextStoreCurrentObjectMetadataIdComponentState } from '@/context-store/states/contextStoreCurrentObjectMetadataIdComponentState';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { ActionMenuContextProvider } from '@/action-menu/contexts/ActionMenuContextProvider';
+import { contextStoreCurrentObjectMetadataItemIdComponentState } from '@/context-store/states/contextStoreCurrentObjectMetadataItemIdComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { useIsMobile } from 'twenty-ui/utilities';
 
 export const RecordIndexActionMenu = () => {
-  const contextStoreCurrentObjectMetadataId = useRecoilComponentValueV2(
-    contextStoreCurrentObjectMetadataIdComponentState,
+  const contextStoreCurrentObjectMetadataItemId = useRecoilComponentValue(
+    contextStoreCurrentObjectMetadataItemIdComponentState,
   );
+
+  const isMobile = useIsMobile();
 
   return (
     <>
-      {contextStoreCurrentObjectMetadataId && (
-        <ActionMenuContext.Provider
-          value={{
-            isInRightDrawer: false,
-            onActionExecutedCallback: () => {},
-          }}
-        >
-          <RecordIndexActionMenuBar />
-          <RecordIndexActionMenuDropdown />
-          <ActionMenuConfirmationModals />
-          <RecordIndexActionMenuEffect />
-          <RecordActionMenuEntriesSetter />
-          <GlobalActionMenuEntriesSetter />
-        </ActionMenuContext.Provider>
+      {contextStoreCurrentObjectMetadataItemId && (
+        <>
+          <ActionMenuContextProvider
+            isInRightDrawer={false}
+            displayType="button"
+            actionMenuType="index-page-action-menu"
+          >
+            {!isMobile && <PageHeaderActionMenuButtons />}
+          </ActionMenuContextProvider>
+          <ActionMenuContextProvider
+            isInRightDrawer={false}
+            displayType="dropdownItem"
+            actionMenuType="index-page-action-menu-dropdown"
+          >
+            <RecordIndexActionMenuDropdown />
+          </ActionMenuContextProvider>
+        </>
       )}
     </>
   );

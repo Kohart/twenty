@@ -1,46 +1,5 @@
-import {
-  ObjectRecordFilter,
-  ObjectRecordOrderBy,
-} from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
-
-type ObjectRecord = Record<string, any>;
-
-export enum WorkflowRecordCRUDType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  READ = 'read',
-}
-
-export type WorkflowCreateRecordActionInput = {
-  type: WorkflowRecordCRUDType.CREATE;
-  objectName: string;
-  objectRecord: ObjectRecord;
-};
-
-export type WorkflowUpdateRecordActionInput = {
-  type: WorkflowRecordCRUDType.UPDATE;
-  objectName: string;
-  objectRecord: ObjectRecord;
-  objectRecordId: string;
-};
-
-export type WorkflowDeleteRecordActionInput = {
-  type: WorkflowRecordCRUDType.DELETE;
-  objectName: string;
-  objectRecordId: string;
-};
-
-export type WorkflowReadRecordActionInput = {
-  type: WorkflowRecordCRUDType.READ;
-  objectName: string;
-  filter?: Partial<ObjectRecordFilter>;
-  orderBy?: Partial<ObjectRecordOrderBy>;
-  limit?: number;
-};
-
-export type WorkflowRecordCRUDActionInput =
-  | WorkflowCreateRecordActionInput
-  | WorkflowUpdateRecordActionInput
-  | WorkflowDeleteRecordActionInput
-  | WorkflowReadRecordActionInput;
+export type { CreateRecordInput as WorkflowCreateRecordActionInput } from 'src/engine/core-modules/record-crud/types/record-crud-input.type';
+export type { UpdateRecordInput as WorkflowUpdateRecordActionInput } from 'src/engine/core-modules/record-crud/types/record-crud-input.type';
+export type { DeleteRecordInput as WorkflowDeleteRecordActionInput } from 'src/engine/core-modules/record-crud/types/record-crud-input.type';
+export type { FindRecordsInput as WorkflowFindRecordsActionInput } from 'src/engine/core-modules/record-crud/types/record-crud-input.type';
+export type { UpsertRecordInput as WorkflowUpsertRecordActionInput } from 'src/engine/core-modules/record-crud/types/record-crud-input.type';

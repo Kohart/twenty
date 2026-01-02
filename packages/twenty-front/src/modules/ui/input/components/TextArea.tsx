@@ -1,24 +1,26 @@
 import styled from '@emotion/styled';
-import { FocusEventHandler, useId } from 'react';
+import { type FocusEventHandler, useId } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
-import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
-
-import { RGBA } from 'twenty-ui';
+import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
+import { useRemoveFocusItemFromFocusStackById } from '@/ui/utilities/focus/hooks/useRemoveFocusItemFromFocusStackById';
+import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
 import { turnIntoEmptyStringIfWhitespacesOnly } from '~/utils/string/turnIntoEmptyStringIfWhitespacesOnly';
-import { InputHotkeyScope } from '../types/InputHotkeyScope';
 
 const MAX_ROWS = 5;
 
 export type TextAreaProps = {
+  textAreaId: string;
   label?: string;
   disabled?: boolean;
   minRows?: number;
+  maxRows?: number;
   onChange?: (value: string) => void;
   placeholder?: string;
   value?: string;
   className?: string;
   onBlur?: () => void;
+  readOnly?: boolean;
 };
 
 const StyledContainer = styled.div`
@@ -53,7 +55,7 @@ const StyledTextArea = styled(TextareaAutosize)`
   &:focus {
     outline: none;
     ${({ theme }) => {
-      return `box-shadow: 0px 0px 0px 3px ${RGBA(theme.color.blue, 0.1)};
+      return `box-shadow: 0px 0px 0px 3px ${theme.color.transparent.blue2};
       border-color: ${theme.color.blue};`;
     }};
   }
@@ -69,41 +71,52 @@ const StyledTextArea = styled(TextareaAutosize)`
 `;
 
 export const TextArea = ({
+  textAreaId,
   label,
   disabled,
   placeholder,
   minRows = 1,
+  maxRows = MAX_ROWS,
   value = '',
   className,
   onChange,
   onBlur,
+  readOnly = false,
 }: TextAreaProps) => {
-  const computedMinRows = Math.min(minRows, MAX_ROWS);
+  const computedMinRows = Math.min(minRows, maxRows);
 
-  const inputId = useId();
+  const instanceId = useId();
 
-  const {
-    goBackToPreviousHotkeyScope,
-    setHotkeyScopeAndMemorizePreviousScope,
-  } = usePreviousHotkeyScope();
+  const { pushFocusItemToFocusStack } = usePushFocusItemToFocusStack();
+  const { removeFocusItemFromFocusStackById } =
+    useRemoveFocusItemFromFocusStackById();
 
   const handleFocus: FocusEventHandler<HTMLTextAreaElement> = () => {
-    setHotkeyScopeAndMemorizePreviousScope(InputHotkeyScope.TextInput);
+    pushFocusItemToFocusStack({
+      focusId: textAreaId,
+      component: {
+        type: FocusComponentType.TEXT_AREA,
+        instanceId: textAreaId,
+      },
+      globalHotkeysConfig: {
+        enableGlobalHotkeysConflictingWithKeyboard: false,
+      },
+    });
   };
 
   const handleBlur: FocusEventHandler<HTMLTextAreaElement> = () => {
-    goBackToPreviousHotkeyScope();
+    removeFocusItemFromFocusStackById({ focusId: textAreaId });
     onBlur?.();
   };
 
   return (
     <StyledContainer>
-      {label && <StyledLabel htmlFor={inputId}>{label}</StyledLabel>}
+      {label && <StyledLabel htmlFor={instanceId}>{label}</StyledLabel>}
 
       <StyledTextArea
-        id={inputId}
+        id={instanceId}
         placeholder={placeholder}
-        maxRows={MAX_ROWS}
+        maxRows={maxRows}
         minRows={computedMinRows}
         value={value}
         onChange={(event) =>
@@ -113,6 +126,7 @@ export const TextArea = ({
         onBlur={handleBlur}
         disabled={disabled}
         className={className}
+        readOnly={readOnly}
       />
     </StyledContainer>
   );

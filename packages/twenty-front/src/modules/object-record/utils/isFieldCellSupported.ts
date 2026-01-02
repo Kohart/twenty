@@ -1,11 +1,8 @@
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { isObjectMetadataAvailableForRelation } from '@/object-metadata/utils/isObjectMetadataAvailableForRelation';
-import {
-  FieldMetadataType,
-  RelationDefinitionType,
-} from '~/generated-metadata/graphql';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 export const isFieldCellSupported = (
   fieldMetadataItem: FieldMetadataItem,
@@ -13,17 +10,17 @@ export const isFieldCellSupported = (
 ) => {
   if (
     [
-      FieldMetadataType.Uuid,
-      FieldMetadataType.Position,
-      FieldMetadataType.RichText,
+      FieldMetadataType.UUID,
+      FieldMetadataType.POSITION,
+      FieldMetadataType.RICH_TEXT,
     ].includes(fieldMetadataItem.type)
   ) {
     return false;
   }
 
-  if (fieldMetadataItem.type === FieldMetadataType.Relation) {
+  if (fieldMetadataItem.type === FieldMetadataType.RELATION) {
     const relationObjectMetadataItemId =
-      fieldMetadataItem.relationDefinition?.targetObjectMetadata.id;
+      fieldMetadataItem.relation?.targetObjectMetadata.id;
 
     const relationObjectMetadataItem = objectMetadataItems.find(
       (item) => item.id === relationObjectMetadataItemId,
@@ -31,28 +28,25 @@ export const isFieldCellSupported = (
 
     // Hack to display targets on Notes and Tasks
     if (
-      fieldMetadataItem.relationDefinition?.targetObjectMetadata
-        ?.nameSingular === CoreObjectNameSingular.NoteTarget &&
-      fieldMetadataItem.relationDefinition?.sourceObjectMetadata
-        .nameSingular === CoreObjectNameSingular.Note
+      fieldMetadataItem.relation?.targetObjectMetadata?.nameSingular ===
+        CoreObjectNameSingular.NoteTarget &&
+      fieldMetadataItem.relation?.sourceObjectMetadata.nameSingular ===
+        CoreObjectNameSingular.Note
     ) {
       return true;
     }
 
     if (
-      fieldMetadataItem.relationDefinition?.targetObjectMetadata
-        ?.nameSingular === CoreObjectNameSingular.TaskTarget &&
-      fieldMetadataItem.relationDefinition?.sourceObjectMetadata
-        .nameSingular === CoreObjectNameSingular.Task
+      fieldMetadataItem.relation?.targetObjectMetadata?.nameSingular ===
+        CoreObjectNameSingular.TaskTarget &&
+      fieldMetadataItem.relation?.sourceObjectMetadata.nameSingular ===
+        CoreObjectNameSingular.Task
     ) {
       return true;
     }
 
     if (
-      !fieldMetadataItem.relationDefinition ||
-      // TODO: Many to many relations are not supported yet.
-      fieldMetadataItem.relationDefinition.direction ===
-        RelationDefinitionType.ManyToMany ||
+      !fieldMetadataItem.relation ||
       !relationObjectMetadataItem ||
       !isObjectMetadataAvailableForRelation(relationObjectMetadataItem)
     ) {

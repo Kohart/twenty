@@ -1,28 +1,20 @@
 import { css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { t } from '@lingui/core/macro';
 import { format } from 'date-fns';
-import { useContext } from 'react';
 import { useRecoilValue } from 'recoil';
-import {
-  Avatar,
-  AvatarGroup,
-  IconArrowRight,
-  IconLock,
-  isDefined,
-  Card,
-  CardContent,
-} from 'twenty-ui';
 
-import { CalendarCurrentEventCursor } from '@/activities/calendar/components/CalendarCurrentEventCursor';
-import { CalendarContext } from '@/activities/calendar/contexts/CalendarContext';
-import { useOpenCalendarEventRightDrawer } from '@/activities/calendar/right-drawer/hooks/useOpenCalendarEventRightDrawer';
+import { CalendarEventNotSharedContent } from '@/activities/calendar/components/CalendarEventNotSharedContent';
+import { CalendarEventParticipantsAvatarGroup } from '@/activities/calendar/components/CalendarEventParticipantsAvatarGroup';
 import { getCalendarEventEndDate } from '@/activities/calendar/utils/getCalendarEventEndDate';
 import { getCalendarEventStartDate } from '@/activities/calendar/utils/getCalendarEventStartDate';
 import { hasCalendarEventEnded } from '@/activities/calendar/utils/hasCalendarEventEnded';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { useOpenCalendarEventInCommandMenu } from '@/command-menu/hooks/useOpenCalendarEventInCommandMenu';
+import { IconArrowRight } from 'twenty-ui/display';
 import {
   CalendarChannelVisibility,
-  TimelineCalendarEvent,
+  type TimelineCalendarEvent,
 } from '~/generated-metadata/graphql';
 
 type CalendarEventRowProps = {
@@ -70,7 +62,10 @@ const StyledTime = styled.div`
 
 const StyledTitle = styled.div<{ active: boolean; canceled: boolean }>`
   flex: 1 0 auto;
-
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: ${({ theme }) => theme.spacing(10)};
   ${({ theme, active }) =>
     active &&
     css`
@@ -85,40 +80,21 @@ const StyledTitle = styled.div<{ active: boolean; canceled: boolean }>`
     `}
 `;
 
-const StyledVisibilityCard = styled(Card)<{ active: boolean }>`
-  color: ${({ active, theme }) =>
-    active ? theme.font.color.primary : theme.font.color.light};
-  border-color: ${({ theme }) => theme.border.color.light};
-  flex: 1 0 auto;
-  transition: color ${({ theme }) => theme.animation.duration.normal} ease;
-`;
-
-const StyledVisibilityCardContent = styled(CardContent)`
-  align-items: center;
-  font-size: ${({ theme }) => theme.font.size.sm};
-  font-weight: ${({ theme }) => theme.font.weight.medium};
-  display: flex;
-  gap: ${({ theme }) => theme.spacing(1)};
-  padding: ${({ theme }) => theme.spacing(0, 1)};
-  height: ${({ theme }) => theme.spacing(6)};
-  background-color: ${({ theme }) => theme.background.transparent.lighter};
-`;
-
 export const CalendarEventRow = ({
   calendarEvent,
   className,
 }: CalendarEventRowProps) => {
   const theme = useTheme();
   const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
-  const { displayCurrentEventCursor = false } = useContext(CalendarContext);
-  const { openCalendarEventRightDrawer } = useOpenCalendarEventRightDrawer();
+  const { openCalendarEventInCommandMenu } =
+    useOpenCalendarEventInCommandMenu();
 
   const startsAt = getCalendarEventStartDate(calendarEvent);
   const endsAt = getCalendarEventEndDate(calendarEvent);
   const hasEnded = hasCalendarEventEnded(calendarEvent);
 
   const startTimeLabel = calendarEvent.isFullDay
-    ? 'All day'
+    ? t`All day`
     : format(startsAt, 'HH:mm');
   const endTimeLabel = calendarEvent.isFullDay ? '' : format(endsAt, 'HH:mm');
 
@@ -126,7 +102,7 @@ export const CalendarEventRow = ({
     ({ workspaceMemberId }) => workspaceMemberId === currentWorkspaceMember?.id,
   );
   const showTitle =
-    calendarEvent.visibility === CalendarChannelVisibility.ShareEverything;
+    calendarEvent.visibility === CalendarChannelVisibility.SHARE_EVERYTHING;
 
   return (
     <StyledContainer
@@ -134,7 +110,9 @@ export const CalendarEventRow = ({
       showTitle={showTitle}
       onClick={
         showTitle
-          ? () => openCalendarEventRightDrawer(calendarEvent.id)
+          ? () => {
+              openCalendarEventInCommandMenu(calendarEvent.id);
+            }
           : undefined
       }
     >
@@ -154,37 +132,13 @@ export const CalendarEventRow = ({
             {calendarEvent.title}
           </StyledTitle>
         ) : (
-          <StyledVisibilityCard active={!hasEnded}>
-            <StyledVisibilityCardContent>
-              <IconLock size={theme.icon.size.sm} />
-              Not shared
-            </StyledVisibilityCardContent>
-          </StyledVisibilityCard>
+          <CalendarEventNotSharedContent />
         )}
       </StyledLabels>
       {!!calendarEvent.participants?.length && (
-        <AvatarGroup
-          avatars={calendarEvent.participants.map((participant) => (
-            <Avatar
-              key={[participant.workspaceMemberId, participant.displayName]
-                .filter(isDefined)
-                .join('-')}
-              avatarUrl={participant.avatarUrl}
-              placeholder={
-                participant.firstName && participant.lastName
-                  ? `${participant.firstName} ${participant.lastName}`
-                  : participant.displayName
-              }
-              placeholderColorSeed={
-                participant.workspaceMemberId || participant.personId
-              }
-              type="rounded"
-            />
-          ))}
+        <CalendarEventParticipantsAvatarGroup
+          participants={calendarEvent.participants}
         />
-      )}
-      {displayCurrentEventCursor && (
-        <CalendarCurrentEventCursor calendarEvent={calendarEvent} />
       )}
     </StyledContainer>
   );

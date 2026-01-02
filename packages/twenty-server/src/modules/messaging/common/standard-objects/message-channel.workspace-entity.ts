@@ -1,15 +1,16 @@
 import { registerEnumType } from '@nestjs/graphql';
 
+import { msg } from '@lingui/core/macro';
+import { STANDARD_OBJECT_IDS } from 'twenty-shared/metadata';
+import { FieldMetadataType, RelationOnDeleteAction } from 'twenty-shared/types';
+
+import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
 import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import {
-  RelationMetadataType,
-  RelationOnDeleteAction,
-} from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 import { BaseWorkspaceEntity } from 'src/engine/twenty-orm/base.workspace-entity';
 import { WorkspaceEntity } from 'src/engine/twenty-orm/decorators/workspace-entity.decorator';
 import { WorkspaceField } from 'src/engine/twenty-orm/decorators/workspace-field.decorator';
+import { WorkspaceIsFieldUIReadOnly } from 'src/engine/twenty-orm/decorators/workspace-is-field-ui-readonly.decorator';
 import { WorkspaceIsNotAuditLogged } from 'src/engine/twenty-orm/decorators/workspace-is-not-audit-logged.decorator';
 import { WorkspaceIsNullable } from 'src/engine/twenty-orm/decorators/workspace-is-nullable.decorator';
 import { WorkspaceIsSystem } from 'src/engine/twenty-orm/decorators/workspace-is-system.decorator';
@@ -17,9 +18,9 @@ import { WorkspaceJoinColumn } from 'src/engine/twenty-orm/decorators/workspace-
 import { WorkspaceRelation } from 'src/engine/twenty-orm/decorators/workspace-relation.decorator';
 import { MESSAGE_CHANNEL_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { STANDARD_OBJECT_ICONS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-icons';
-import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
 import { MessageChannelMessageAssociationWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-channel-message-association.workspace-entity';
+import { MessageFolderWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-folder.workspace-entity';
 
 export enum MessageChannelSyncStatus {
   NOT_SYNCED = 'NOT_SYNCED',
@@ -30,10 +31,12 @@ export enum MessageChannelSyncStatus {
 }
 
 export enum MessageChannelSyncStage {
-  FULL_MESSAGE_LIST_FETCH_PENDING = 'FULL_MESSAGE_LIST_FETCH_PENDING',
-  PARTIAL_MESSAGE_LIST_FETCH_PENDING = 'PARTIAL_MESSAGE_LIST_FETCH_PENDING',
+  PENDING_CONFIGURATION = 'PENDING_CONFIGURATION',
+  MESSAGE_LIST_FETCH_PENDING = 'MESSAGE_LIST_FETCH_PENDING',
+  MESSAGE_LIST_FETCH_SCHEDULED = 'MESSAGE_LIST_FETCH_SCHEDULED',
   MESSAGE_LIST_FETCH_ONGOING = 'MESSAGE_LIST_FETCH_ONGOING',
   MESSAGES_IMPORT_PENDING = 'MESSAGES_IMPORT_PENDING',
+  MESSAGES_IMPORT_SCHEDULED = 'MESSAGES_IMPORT_SCHEDULED',
   MESSAGES_IMPORT_ONGOING = 'MESSAGES_IMPORT_ONGOING',
   FAILED = 'FAILED',
 }
@@ -45,13 +48,24 @@ export enum MessageChannelVisibility {
 }
 
 export enum MessageChannelType {
-  EMAIL = 'email',
-  SMS = 'sms',
+  EMAIL = 'EMAIL',
+  SMS = 'SMS',
 }
 
 export enum MessageChannelContactAutoCreationPolicy {
   SENT_AND_RECEIVED = 'SENT_AND_RECEIVED',
   SENT = 'SENT',
+  NONE = 'NONE',
+}
+
+export enum MessageFolderImportPolicy {
+  ALL_FOLDERS = 'ALL_FOLDERS',
+  SELECTED_FOLDERS = 'SELECTED_FOLDERS',
+}
+
+export enum MessageChannelPendingGroupEmailsAction {
+  GROUP_EMAILS_DELETION = 'GROUP_EMAILS_DELETION',
+  GROUP_EMAILS_IMPORT = 'GROUP_EMAILS_IMPORT',
   NONE = 'NONE',
 }
 
@@ -75,12 +89,21 @@ registerEnumType(MessageChannelContactAutoCreationPolicy, {
   name: 'MessageChannelContactAutoCreationPolicy',
 });
 
+registerEnumType(MessageFolderImportPolicy, {
+  name: 'MessageFolderImportPolicy',
+});
+
+registerEnumType(MessageChannelPendingGroupEmailsAction, {
+  name: 'MessageChannelPendingGroupEmailsAction',
+});
+
 @WorkspaceEntity({
   standardId: STANDARD_OBJECT_IDS.messageChannel,
+
   namePlural: 'messageChannels',
-  labelSingular: 'Message Channel',
-  labelPlural: 'Message Channels',
-  description: 'Message Channels',
+  labelSingular: msg`Message Channel`,
+  labelPlural: msg`Message Channels`,
+  description: msg`Message Channels`,
   icon: STANDARD_OBJECT_ICONS.messageChannel,
   labelIdentifierStandardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.handle,
 })
@@ -90,8 +113,8 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.visibility,
     type: FieldMetadataType.SELECT,
-    label: 'Visibility',
-    description: 'Visibility',
+    label: msg`Visibility`,
+    description: msg`Visibility`,
     icon: 'IconEyeglass',
     options: [
       {
@@ -115,22 +138,25 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
     ],
     defaultValue: `'${MessageChannelVisibility.SHARE_EVERYTHING}'`,
   })
+  @WorkspaceIsFieldUIReadOnly()
   visibility: string;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.handle,
     type: FieldMetadataType.TEXT,
-    label: 'Handle',
-    description: 'Handle',
+    label: msg`Handle`,
+    description: msg`Handle`,
     icon: 'IconAt',
   })
-  handle: string;
+  @WorkspaceIsFieldUIReadOnly()
+  @WorkspaceIsNullable()
+  handle: string | null;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.type,
     type: FieldMetadataType.SELECT,
-    label: 'Type',
-    description: 'Channel Type',
+    label: msg`Type`,
+    description: msg`Channel Type`,
     icon: 'IconMessage',
     options: [
       {
@@ -148,25 +174,26 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
     ],
     defaultValue: `'${MessageChannelType.EMAIL}'`,
   })
+  @WorkspaceIsFieldUIReadOnly()
   type: string;
 
   // TODO: Deprecate this field and migrate data to contactAutoCreationFor
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.isContactAutoCreationEnabled,
     type: FieldMetadataType.BOOLEAN,
-    label: 'Is Contact Auto Creation Enabled',
-    description: 'Is Contact Auto Creation Enabled',
+    label: msg`Is Contact Auto Creation Enabled`,
+    description: msg`Is Contact Auto Creation Enabled`,
     icon: 'IconUserCircle',
     defaultValue: true,
   })
+  @WorkspaceIsFieldUIReadOnly()
   isContactAutoCreationEnabled: boolean;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.contactAutoCreationPolicy,
     type: FieldMetadataType.SELECT,
-    label: 'Contact auto creation policy',
-    description:
-      'Automatically create People records when receiving or sending emails',
+    label: msg`Contact auto creation policy`,
+    description: msg`Automatically create People records when receiving or sending emails`,
     icon: 'IconUserCircle',
     options: [
       {
@@ -190,62 +217,125 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
     ],
     defaultValue: `'${MessageChannelContactAutoCreationPolicy.SENT}'`,
   })
+  @WorkspaceIsFieldUIReadOnly()
   contactAutoCreationPolicy: MessageChannelContactAutoCreationPolicy;
+
+  @WorkspaceField({
+    standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.messageFolderImportPolicy,
+    type: FieldMetadataType.SELECT,
+    label: msg`Message folder import policy`,
+    description: msg`Message folder import policy`,
+    icon: 'IconFolder',
+    options: [
+      {
+        value: MessageFolderImportPolicy.ALL_FOLDERS,
+        label: 'All folders',
+        position: 0,
+        color: 'green',
+      },
+      {
+        value: MessageFolderImportPolicy.SELECTED_FOLDERS,
+        label: 'Selected folders',
+        position: 1,
+        color: 'blue',
+      },
+    ],
+    defaultValue: `'${MessageFolderImportPolicy.ALL_FOLDERS}'`,
+  })
+  @WorkspaceIsFieldUIReadOnly()
+  messageFolderImportPolicy: MessageFolderImportPolicy;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.excludeNonProfessionalEmails,
     type: FieldMetadataType.BOOLEAN,
-    label: 'Exclude non professional emails',
-    description: 'Exclude non professional emails',
+    label: msg`Exclude non professional emails`,
+    description: msg`Exclude non professional emails`,
     icon: 'IconBriefcase',
     defaultValue: true,
   })
+  @WorkspaceIsFieldUIReadOnly()
   excludeNonProfessionalEmails: boolean;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.excludeGroupEmails,
     type: FieldMetadataType.BOOLEAN,
-    label: 'Exclude group emails',
-    description: 'Exclude group emails',
+    label: msg`Exclude group emails`,
+    description: msg`Exclude group emails`,
     icon: 'IconUsersGroup',
     defaultValue: true,
   })
+  @WorkspaceIsFieldUIReadOnly()
   excludeGroupEmails: boolean;
+
+  @WorkspaceField({
+    standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.pendingGroupEmailsAction,
+    type: FieldMetadataType.SELECT,
+    label: msg`Pending group emails action`,
+    description: msg`Pending action for group emails`,
+    icon: 'IconUsersGroup',
+    options: [
+      {
+        value: MessageChannelPendingGroupEmailsAction.GROUP_EMAILS_DELETION,
+        label: 'Group emails deletion',
+        position: 0,
+        color: 'red',
+      },
+      {
+        value: MessageChannelPendingGroupEmailsAction.GROUP_EMAILS_IMPORT,
+        label: 'Group emails import',
+        position: 1,
+        color: 'green',
+      },
+      {
+        value: MessageChannelPendingGroupEmailsAction.NONE,
+        label: 'None',
+        position: 2,
+        color: 'blue',
+      },
+    ],
+    defaultValue: `'${MessageChannelPendingGroupEmailsAction.NONE}'`,
+  })
+  @WorkspaceIsFieldUIReadOnly()
+  pendingGroupEmailsAction: MessageChannelPendingGroupEmailsAction;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.isSyncEnabled,
     type: FieldMetadataType.BOOLEAN,
-    label: 'Is Sync Enabled',
-    description: 'Is Sync Enabled',
+    label: msg`Is Sync Enabled`,
+    description: msg`Is Sync Enabled`,
     icon: 'IconRefresh',
     defaultValue: true,
   })
+  @WorkspaceIsFieldUIReadOnly()
   isSyncEnabled: boolean;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.syncCursor,
     type: FieldMetadataType.TEXT,
-    label: 'Last sync cursor',
-    description: 'Last sync cursor',
+    label: msg`Last sync cursor`,
+    description: msg`Last sync cursor`,
     icon: 'IconHistory',
   })
-  syncCursor: string;
+  @WorkspaceIsFieldUIReadOnly()
+  @WorkspaceIsNullable()
+  syncCursor: string | null;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.syncedAt,
     type: FieldMetadataType.DATE_TIME,
-    label: 'Last sync date',
-    description: 'Last sync date',
+    label: msg`Last sync date`,
+    description: msg`Last sync date`,
     icon: 'IconHistory',
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   syncedAt: string | null;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.syncStatus,
     type: FieldMetadataType.SELECT,
-    label: 'Sync status',
-    description: 'Sync status',
+    label: msg`Sync status`,
+    description: msg`Sync status`,
     icon: 'IconStatusChange',
     options: [
       {
@@ -280,27 +370,28 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
       },
     ],
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   syncStatus: MessageChannelSyncStatus | null;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.syncStage,
     type: FieldMetadataType.SELECT,
-    label: 'Sync stage',
-    description: 'Sync stage',
+    label: msg`Sync stage`,
+    description: msg`Sync stage`,
     icon: 'IconStatusChange',
     options: [
       {
-        value: MessageChannelSyncStage.FULL_MESSAGE_LIST_FETCH_PENDING,
-        label: 'Full messages list fetch pending',
+        value: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+        label: 'Messages list fetch pending',
         position: 0,
         color: 'blue',
       },
       {
-        value: MessageChannelSyncStage.PARTIAL_MESSAGE_LIST_FETCH_PENDING,
-        label: 'Partial messages list fetch pending',
+        value: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+        label: 'Messages list fetch scheduled',
         position: 1,
-        color: 'blue',
+        color: 'green',
       },
       {
         value: MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING,
@@ -315,51 +406,68 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
         color: 'blue',
       },
       {
+        value: MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED,
+        label: 'Messages import scheduled',
+        position: 4,
+        color: 'green',
+      },
+      {
         value: MessageChannelSyncStage.MESSAGES_IMPORT_ONGOING,
         label: 'Messages import ongoing',
-        position: 4,
+        position: 5,
         color: 'orange',
       },
       {
         value: MessageChannelSyncStage.FAILED,
         label: 'Failed',
-        position: 5,
+        position: 6,
         color: 'red',
       },
+      {
+        value: MessageChannelSyncStage.PENDING_CONFIGURATION,
+        label: 'Pending configuration',
+        position: 7,
+        color: 'gray',
+      },
     ],
-    defaultValue: `'${MessageChannelSyncStage.FULL_MESSAGE_LIST_FETCH_PENDING}'`,
+    defaultValue: `'${MessageChannelSyncStage.PENDING_CONFIGURATION}'`,
   })
+  @WorkspaceIsFieldUIReadOnly()
   syncStage: MessageChannelSyncStage;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.syncStageStartedAt,
     type: FieldMetadataType.DATE_TIME,
-    label: 'Sync stage started at',
-    description: 'Sync stage started at',
+    label: msg`Sync stage started at`,
+    description: msg`Sync stage started at`,
     icon: 'IconHistory',
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   syncStageStartedAt: string | null;
 
   @WorkspaceField({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.throttleFailureCount,
     type: FieldMetadataType.NUMBER,
-    label: 'Throttle Failure Count',
-    description: 'Throttle Failure Count',
+    label: msg`Throttle Failure Count`,
+    description: msg`Throttle Failure Count`,
     icon: 'IconX',
     defaultValue: 0,
   })
+  @WorkspaceIsFieldUIReadOnly()
   throttleFailureCount: number;
 
   @WorkspaceRelation({
     standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.connectedAccount,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Connected Account',
-    description: 'Connected Account',
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Connected Account`,
+    description: msg`Connected Account`,
     icon: 'IconUserCircle',
     inverseSideTarget: () => ConnectedAccountWorkspaceEntity,
     inverseSideFieldKey: 'messageChannels',
+    onDelete: RelationOnDeleteAction.CASCADE,
   })
+  @WorkspaceIsFieldUIReadOnly()
   connectedAccount: Relation<ConnectedAccountWorkspaceEntity>;
 
   @WorkspaceJoinColumn('connectedAccount')
@@ -368,15 +476,29 @@ export class MessageChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceRelation({
     standardId:
       MESSAGE_CHANNEL_STANDARD_FIELD_IDS.messageChannelMessageAssociations,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Message Channel Association',
-    description: 'Messages from the channel.',
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Message Channel Association`,
+    description: msg`Messages from the channel.`,
     icon: 'IconMessage',
     inverseSideTarget: () => MessageChannelMessageAssociationWorkspaceEntity,
     onDelete: RelationOnDeleteAction.CASCADE,
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   messageChannelMessageAssociations: Relation<
     MessageChannelMessageAssociationWorkspaceEntity[]
   >;
+
+  @WorkspaceRelation({
+    standardId: MESSAGE_CHANNEL_STANDARD_FIELD_IDS.messageFolders,
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Message Folders`,
+    description: msg`Message Folders`,
+    icon: 'IconFolder',
+    inverseSideTarget: () => MessageFolderWorkspaceEntity,
+    onDelete: RelationOnDeleteAction.CASCADE,
+  })
+  @WorkspaceIsFieldUIReadOnly()
+  @WorkspaceIsNullable()
+  messageFolders: Relation<MessageFolderWorkspaceEntity[]>;
 }

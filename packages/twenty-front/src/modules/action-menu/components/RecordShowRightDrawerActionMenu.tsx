@@ -1,31 +1,23 @@
-import { GlobalActionMenuEntriesSetter } from '@/action-menu/actions/global-actions/components/GlobalActionMenuEntriesSetter';
-import { RecordActionMenuEntriesSetter } from '@/action-menu/actions/record-actions/components/RecordActionMenuEntriesSetter';
-import { ActionMenuConfirmationModals } from '@/action-menu/components/ActionMenuConfirmationModals';
-import { RightDrawerActionMenuDropdown } from '@/action-menu/components/RightDrawerActionMenuDropdown';
-import { ActionMenuContext } from '@/action-menu/contexts/ActionMenuContext';
-
-import { contextStoreCurrentObjectMetadataIdComponentState } from '@/context-store/states/contextStoreCurrentObjectMetadataIdComponentState';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { CommandMenuActionMenuDropdown } from '@/action-menu/components/CommandMenuActionMenuDropdown';
+import { ActionMenuContextProvider } from '@/action-menu/contexts/ActionMenuContextProvider';
+import { contextStoreCurrentObjectMetadataItemIdComponentState } from '@/context-store/states/contextStoreCurrentObjectMetadataItemIdComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 
 export const RecordShowRightDrawerActionMenu = () => {
-  const contextStoreCurrentObjectMetadataId = useRecoilComponentValueV2(
-    contextStoreCurrentObjectMetadataIdComponentState,
+  const contextStoreCurrentObjectMetadataItemId = useRecoilComponentValue(
+    contextStoreCurrentObjectMetadataItemIdComponentState,
   );
 
   return (
     <>
-      {contextStoreCurrentObjectMetadataId && (
-        <ActionMenuContext.Provider
-          value={{
-            isInRightDrawer: true,
-            onActionExecutedCallback: () => {},
-          }}
+      {contextStoreCurrentObjectMetadataItemId && (
+        <ActionMenuContextProvider
+          isInRightDrawer={true}
+          displayType="dropdownItem"
+          actionMenuType="command-menu-show-page-action-menu-dropdown"
         >
-          <RightDrawerActionMenuDropdown />
-          <ActionMenuConfirmationModals />
-          <RecordActionMenuEntriesSetter />
-          <GlobalActionMenuEntriesSetter />
-        </ActionMenuContext.Provider>
+          <CommandMenuActionMenuDropdown />
+        </ActionMenuContextProvider>
       )}
     </>
   );

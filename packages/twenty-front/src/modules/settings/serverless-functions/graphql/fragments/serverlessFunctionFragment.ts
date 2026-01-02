@@ -6,10 +6,31 @@ export const SERVERLESS_FUNCTION_FRAGMENT = gql`
     name
     description
     runtime
-    syncStatus
+    timeoutSeconds
     latestVersion
-    latestVersionInputSchema
     publishedVersions
+    handlerPath
+    handlerName
+    cronTriggers {
+      id
+      settings
+      createdAt
+      updatedAt
+    }
+    databaseEventTriggers {
+      id
+      settings
+      createdAt
+      updatedAt
+    }
+    routeTriggers {
+      id
+      path
+      isAuthRequired
+      httpMethod
+      createdAt
+      updatedAt
+    }
     createdAt
     updatedAt
   }

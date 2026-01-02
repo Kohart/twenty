@@ -1,55 +1,46 @@
-import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
-import { isScrollEnabledForRecordTableState } from '@/object-record/record-table/states/isScrollEnabledForRecordTableState';
-import { ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
+import { type RecordField } from '@/object-record/record-field/types/RecordField';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
-import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
-import styled from '@emotion/styled';
+import { useToggleScrollWrapper } from '@/ui/utilities/scroll/hooks/useToggleScrollWrapper';
 import { useCallback } from 'react';
 import { RecordTableColumnHead } from './RecordTableColumnHead';
 import { RecordTableColumnHeadDropdownMenu } from './RecordTableColumnHeadDropdownMenu';
 
 type RecordTableColumnHeadWithDropdownProps = {
-  column: ColumnDefinition<FieldMetadata>;
+  recordField: RecordField;
+  objectMetadataId: string;
 };
 
-const StyledDropdown = styled(Dropdown)`
-  display: flex;
-  flex: 1;
-  z-index: ${({ theme }) => theme.lastLayerZIndex};
-`;
-
 export const RecordTableColumnHeadWithDropdown = ({
-  column,
+  objectMetadataId,
+  recordField,
 }: RecordTableColumnHeadWithDropdownProps) => {
-  const setIsScrollEnabledForRecordTable = useSetRecoilComponentStateV2(
-    isScrollEnabledForRecordTableState,
-  );
+  const { toggleScrollXWrapper, toggleScrollYWrapper } =
+    useToggleScrollWrapper();
 
   const handleDropdownOpen = useCallback(() => {
-    setIsScrollEnabledForRecordTable({
-      enableXScroll: false,
-      enableYScroll: false,
-    });
-  }, [setIsScrollEnabledForRecordTable]);
+    toggleScrollXWrapper(false);
+    toggleScrollYWrapper(false);
+  }, [toggleScrollXWrapper, toggleScrollYWrapper]);
 
   const handleDropdownClose = useCallback(() => {
-    setIsScrollEnabledForRecordTable({
-      enableXScroll: true,
-      enableYScroll: true,
-    });
-  }, [setIsScrollEnabledForRecordTable]);
+    toggleScrollXWrapper(true);
+    toggleScrollYWrapper(true);
+  }, [toggleScrollXWrapper, toggleScrollYWrapper]);
 
   return (
-    <StyledDropdown
+    <Dropdown
       onOpen={handleDropdownOpen}
       onClose={handleDropdownClose}
-      dropdownId={column.fieldMetadataId + '-header'}
-      clickableComponent={<RecordTableColumnHead column={column} />}
-      dropdownComponents={<RecordTableColumnHeadDropdownMenu column={column} />}
+      dropdownId={recordField.fieldMetadataItemId + '-header'}
+      clickableComponent={<RecordTableColumnHead recordField={recordField} />}
+      dropdownComponents={
+        <RecordTableColumnHeadDropdownMenu
+          recordField={recordField}
+          objectMetadataId={objectMetadataId}
+        />
+      }
       dropdownOffset={{ x: -1 }}
-      usePortal
       dropdownPlacement="bottom-start"
-      dropdownHotkeyScope={{ scope: column.fieldMetadataId + '-header' }}
     />
   );
 };

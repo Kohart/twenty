@@ -1,62 +1,28 @@
-import { DataSource, EntityManager } from 'typeorm';
+import { type DataSource, type EntityManager } from 'typeorm';
 
-import { seedWorkspaceFavorites } from 'src/database/typeorm-seeds/workspace/favorites';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
-import { shouldSeedWorkspaceFavorite } from 'src/engine/utils/should-seed-workspace-favorite';
-import { companyPrefillData } from 'src/engine/workspace-manager/standard-objects-prefill-data/company';
-import { personPrefillData } from 'src/engine/workspace-manager/standard-objects-prefill-data/person';
-import { viewPrefillData } from 'src/engine/workspace-manager/standard-objects-prefill-data/view';
+import { type FlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-maps.type';
+import { type FlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/types/flat-field-metadata.type';
+import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object-metadata/types/flat-object-metadata.type';
+import { prefillCompanies } from 'src/engine/workspace-manager/standard-objects-prefill-data/prefill-companies';
+import { prefillPeople } from 'src/engine/workspace-manager/standard-objects-prefill-data/prefill-people';
+import { prefillWorkflows } from 'src/engine/workspace-manager/standard-objects-prefill-data/prefill-workflows';
 
 export const standardObjectsPrefillData = async (
-  workspaceDataSource: DataSource,
+  dataSource: DataSource,
   schemaName: string,
-  objectMetadata: ObjectMetadataEntity[],
-  isWorkflowEnabled: boolean,
+  flatObjectMetadataMaps: FlatEntityMaps<FlatObjectMetadata>,
+  flatFieldMetadataMaps: FlatEntityMaps<FlatFieldMetadata>,
 ) => {
-  const objectMetadataMap = objectMetadata.reduce((acc, object) => {
-    if (!object.standardId) {
-      throw new Error('Standard Id is not set for object: ${object.name}');
-    }
+  dataSource.transaction(async (entityManager: EntityManager) => {
+    await prefillCompanies(entityManager, schemaName);
 
-    acc[object.standardId] = {
-      id: object.id,
-      fields: object.fields.reduce((acc, field) => {
-        if (!field.standardId) {
-          throw new Error('Standard Id is not set for field: ${field.name}');
-        }
+    await prefillPeople(entityManager, schemaName);
 
-        acc[field.standardId] = field.id;
-
-        return acc;
-      }, {}),
-    };
-
-    return acc;
-  }, {});
-
-  workspaceDataSource.transaction(async (entityManager: EntityManager) => {
-    await companyPrefillData(entityManager, schemaName);
-    await personPrefillData(entityManager, schemaName);
-    const viewDefinitionsWithId = await viewPrefillData(
+    await prefillWorkflows(
       entityManager,
       schemaName,
-      objectMetadataMap,
-      isWorkflowEnabled,
-    );
-
-    await seedWorkspaceFavorites(
-      viewDefinitionsWithId
-        .filter(
-          (view) =>
-            view.key === 'INDEX' &&
-            shouldSeedWorkspaceFavorite(
-              view.objectMetadataId,
-              objectMetadataMap,
-            ),
-        )
-        .map((view) => view.id),
-      entityManager,
-      schemaName,
+      flatObjectMetadataMaps,
+      flatFieldMetadataMaps,
     );
   });
 };

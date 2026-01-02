@@ -1,9 +1,16 @@
-import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
+import { STANDARD_OBJECT_IDS } from 'twenty-shared/metadata';
+
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 
 export const shouldSeedWorkspaceFavorite = (
-  objectMetadataId,
-  objectMetadataMap,
+  objectMetadataId: string,
+  objectMetadataItems: ObjectMetadataEntity[],
 ): boolean =>
   objectMetadataId !==
-    objectMetadataMap[STANDARD_OBJECT_IDS.workflowVersion]?.id &&
-  objectMetadataId !== objectMetadataMap[STANDARD_OBJECT_IDS.workflowRun]?.id;
+    objectMetadataItems.find(
+      (item) => item.standardId === STANDARD_OBJECT_IDS.workflowVersion,
+    )?.id &&
+  objectMetadataId !==
+    objectMetadataItems.find(
+      (item) => item.standardId === STANDARD_OBJECT_IDS.workflowRun,
+    )?.id;

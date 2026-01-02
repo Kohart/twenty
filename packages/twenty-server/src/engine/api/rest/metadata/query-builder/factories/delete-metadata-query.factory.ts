@@ -1,15 +1,24 @@
 import { Injectable } from '@nestjs/common';
 
-import { capitalize } from 'src/utils/capitalize';
+import { capitalize } from 'twenty-shared/utils';
+
+import {
+  type ObjectName,
+  type Singular,
+} from 'src/engine/api/rest/metadata/types/metadata-entity.type';
 
 @Injectable()
 export class DeleteMetadataQueryFactory {
-  create(objectNameSingular: string): string {
+  create(objectNameSingular: Singular<ObjectName>): string {
     const objectNameCapitalized = capitalize(objectNameSingular);
+    const formattedObjectName =
+      objectNameCapitalized === 'RelationMetadata'
+        ? 'Relation'
+        : objectNameCapitalized;
 
     return `
-      mutation Delete${objectNameCapitalized}($input: DeleteOne${objectNameCapitalized}Input!) {
-        deleteOne${objectNameCapitalized}(input: $input) {
+      mutation Delete${objectNameCapitalized}($input: DeleteOne${formattedObjectName}Input!) {
+        deleteOne${formattedObjectName}(input: $input) {
           id
         }
       }

@@ -1,4 +1,4 @@
-import { RawJsonFilter } from '../../graphql/types/RecordGqlOperationFilter';
+import { type RawJsonFilter } from 'twenty-shared/types';
 
 export const isMatchingRawJsonFilter = ({
   rawJsonFilter,
@@ -10,9 +10,9 @@ export const isMatchingRawJsonFilter = ({
   switch (true) {
     case rawJsonFilter.like !== undefined: {
       const regexPattern = rawJsonFilter.like.replace(/%/g, '.*');
-      const regexCaseInsensitive = new RegExp(`^${regexPattern}$`, 'i');
+      const regexCaseInsensitive = new RegExp(`^${regexPattern}$`, 'is');
 
-      const stringValue = JSON.stringify(value);
+      const stringValue = JSON.stringify(value, null, 1);
 
       return regexCaseInsensitive.test(stringValue);
     }

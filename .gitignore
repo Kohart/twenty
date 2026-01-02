@@ -9,6 +9,7 @@
 
 .nx/installation
 .nx/cache
+.nx/workspace-data
 
 .pnp.*
 .yarn/*
@@ -18,6 +19,7 @@
 !.yarn/sdks
 !.yarn/versions
 .vercel
+.swc
 
 **/**/logs/**
 
@@ -30,3 +32,20 @@ storybook-static
 test-results/
 dump.rdb
 .tinyb
+
+.notes
+/data/
+/.devenv/
+/.direnv/
+/.pre-commit-config.yaml
+/.envrc
+/devenv.nix
+/flake.lock
+/flake.nix
+
+.crowdin.yml
+.react-email/
+
+mcp.json
+/.junie/
+TRANSLATION_QA_REPORT.md

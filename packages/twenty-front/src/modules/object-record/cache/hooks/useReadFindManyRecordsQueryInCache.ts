@@ -1,22 +1,24 @@
-import { useApolloClient } from '@apollo/client';
-
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { getRecordsFromRecordConnection } from '@/object-record/cache/utils/getRecordsFromRecordConnection';
-import { RecordGqlOperationFindManyResult } from '@/object-record/graphql/types/RecordGqlOperationFindManyResult';
-import { RecordGqlOperationVariables } from '@/object-record/graphql/types/RecordGqlOperationVariables';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type RecordGqlOperationFindManyResult } from '@/object-record/graphql/types/RecordGqlOperationFindManyResult';
+import { type RecordGqlOperationVariables } from '@/object-record/graphql/types/RecordGqlOperationVariables';
+import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { generateFindManyRecordsQuery } from '@/object-record/utils/generateFindManyRecordsQuery';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared/utils';
 
 export const useReadFindManyRecordsQueryInCache = ({
   objectMetadataItem,
 }: {
   objectMetadataItem: ObjectMetadataItem;
 }) => {
-  const apolloClient = useApolloClient();
+  const apolloCoreClient = useApolloCoreClient();
 
   const { objectMetadataItems } = useObjectMetadataItems();
+
+  const { objectPermissionsByObjectMetadataId } = useObjectPermissions();
 
   const readFindManyRecordsQueryInCache = <
     T extends ObjectRecord = ObjectRecord,
@@ -31,10 +33,11 @@ export const useReadFindManyRecordsQueryInCache = ({
       objectMetadataItem,
       objectMetadataItems,
       recordGqlFields,
+      objectPermissionsByObjectMetadataId,
     });
 
     const existingRecordsQueryResult =
-      apolloClient.readQuery<RecordGqlOperationFindManyResult>({
+      apolloCoreClient.readQuery<RecordGqlOperationFindManyResult>({
         query: findManyRecordsQueryForCacheRead,
         variables: queryVariables,
       });

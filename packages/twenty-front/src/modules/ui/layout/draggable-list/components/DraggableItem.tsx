@@ -1,12 +1,19 @@
 import { useTheme } from '@emotion/react';
 import { Draggable } from '@hello-pangea/dnd';
+import { isFunction } from '@sniptt/guards';
+import { isDefined } from 'twenty-shared/utils';
 
 type DraggableItemProps = {
   draggableId: string;
   isDragDisabled?: boolean;
   index: number;
-  itemComponent: JSX.Element;
+  itemComponent:
+    | JSX.Element
+    | ((props: { isDragging: boolean }) => JSX.Element);
   isInsideScrollableContainer?: boolean;
+  draggableComponentStyles?: React.CSSProperties;
+  disableDraggingBackground?: boolean;
+  containerOffsetY?: number;
 };
 
 export const DraggableItem = ({
@@ -15,8 +22,12 @@ export const DraggableItem = ({
   index,
   itemComponent,
   isInsideScrollableContainer,
+  draggableComponentStyles,
+  disableDraggingBackground,
+  containerOffsetY,
 }: DraggableItemProps) => {
   const theme = useTheme();
+
   return (
     <Draggable
       key={draggableId}
@@ -26,7 +37,8 @@ export const DraggableItem = ({
     >
       {(draggableProvided, draggableSnapshot) => {
         const draggableStyle = draggableProvided.draggableProps.style;
-        const isDragged = draggableSnapshot.isDragging;
+        const isDragging = draggableSnapshot.isDragging;
+
         return (
           <div
             ref={draggableProvided.innerRef}
@@ -35,19 +47,29 @@ export const DraggableItem = ({
             // eslint-disable-next-line react/jsx-props-no-spreading
             {...draggableProvided.dragHandleProps}
             style={{
+              ...draggableComponentStyles,
               ...draggableStyle,
               left: 'auto',
-              ...(isInsideScrollableContainer ? {} : { top: 'auto' }),
               transform: draggableStyle?.transform?.replace(
                 /\(-?\d+px,/,
                 '(0,',
               ),
-              background: isDragged
-                ? theme.background.transparent.light
-                : 'none',
+              ...(isInsideScrollableContainer
+                ? {
+                    top: `${(isDefined(draggableStyle) && 'top' in draggableStyle ? draggableStyle.top : 0) - (containerOffsetY ?? 0)}px`,
+                  }
+                : { top: 'auto' }),
+              background:
+                !disableDraggingBackground && isDragging
+                  ? theme.background.transparent.light
+                  : 'none',
             }}
           >
-            {itemComponent}
+            {isFunction(itemComponent)
+              ? itemComponent({
+                  isDragging,
+                })
+              : itemComponent}
           </div>
         );
       }}

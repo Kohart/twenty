@@ -1,14 +1,15 @@
 import styled from '@emotion/styled';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
-import { TEXT_INPUT_STYLE } from 'twenty-ui';
 
-import { LightCopyIconButton } from '@/object-record/record-field/components/LightCopyIconButton';
-import { useRegisterInputEvents } from '@/object-record/record-field/meta-types/input/hooks/useRegisterInputEvents';
-import { isDefined } from '~/utils/isDefined';
+import { LightCopyIconButton } from '@/object-record/record-field/ui/components/LightCopyIconButton';
+import { useRegisterInputEvents } from '@/object-record/record-field/ui/meta-types/input/hooks/useRegisterInputEvents';
+import { isDefined } from 'twenty-shared/utils';
+import { TEXT_INPUT_STYLE } from 'twenty-ui/theme';
 import { turnIntoEmptyStringIfWhitespacesOnly } from '~/utils/string/turnIntoEmptyStringIfWhitespacesOnly';
 
 export type TextAreaInputProps = {
+  instanceId: string;
   disabled?: boolean;
   className?: string;
   placeholder?: string;
@@ -19,7 +20,6 @@ export type TextAreaInputProps = {
   onTab?: (newText: string) => void;
   onShiftTab?: (newText: string) => void;
   onClickOutside: (event: MouseEvent | TouchEvent, inputValue: string) => void;
-  hotkeyScope: string;
   onChange?: (newText: string) => void;
   maxRows?: number;
   copyButton?: boolean;
@@ -33,41 +33,25 @@ const StyledTextArea = styled(TextareaAutosize)`
   resize: none;
   max-height: 400px;
   width: calc(100% - ${({ theme }) => theme.spacing(7)});
-  background: transparent;
-`;
 
-const StyledTextAreaContainer = styled.div`
-  background: ${({ theme }) => theme.background.primary};
-  border: ${({ theme }) => `1px solid ${theme.border.color.medium}`};
-  position: relative;
-  width: 100%;
-  padding: ${({ theme }) => theme.spacing(2)} ${({ theme }) => theme.spacing(0)};
-  border-radius: ${({ theme }) => theme.border.radius.sm};
-
-  @supports (
-    (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))
-  ) {
-    background: ${({ theme }) => theme.background.transparent.secondary};
-    backdrop-filter: ${({ theme }) => theme.blur.medium};
-    -webkit-backdrop-filter: ${({ theme }) => theme.blur.medium};
-  }
+  line-height: 18px;
 `;
 
 const StyledLightIconButtonContainer = styled.div`
   background: transparent;
   position: absolute;
-  top: 50%;
+  top: 16px;
   transform: translateY(-50%);
   right: 0;
 `;
 
 export const TextAreaInput = ({
+  instanceId,
   disabled,
   className,
   placeholder,
   autoFocus,
   value,
-  hotkeyScope,
   onEnter,
   onEscape,
   onTab,
@@ -99,6 +83,7 @@ export const TextAreaInput = ({
   }, []);
 
   useRegisterInputEvents({
+    focusId: instanceId,
     inputRef: wrapperRef,
     copyRef: copyRef,
     inputValue: internalText,
@@ -107,11 +92,10 @@ export const TextAreaInput = ({
     onClickOutside,
     onTab,
     onShiftTab,
-    hotkeyScope,
   });
 
   return (
-    <StyledTextAreaContainer>
+    <>
       <StyledTextArea
         placeholder={placeholder}
         disabled={disabled}
@@ -127,6 +111,6 @@ export const TextAreaInput = ({
           <LightCopyIconButton copyText={internalText} />
         </StyledLightIconButtonContainer>
       )}
-    </StyledTextAreaContainer>
+    </>
   );
 };

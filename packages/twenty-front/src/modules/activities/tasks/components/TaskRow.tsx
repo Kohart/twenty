@@ -1,22 +1,22 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import {
-  Checkbox,
-  CheckboxShape,
-  IconCalendar,
-  OverflowingTextWithTooltip,
-} from 'twenty-ui';
+import { t } from '@lingui/core/macro';
 
-import { useOpenActivityRightDrawer } from '@/activities/hooks/useOpenActivityRightDrawer';
 import { ActivityTargetsInlineCell } from '@/activities/inline-cell/components/ActivityTargetsInlineCell';
 import { getActivitySummary } from '@/activities/utils/getActivitySummary';
 import { beautifyExactDate, hasDatePassed } from '~/utils/date-utils';
 
 import { ActivityRow } from '@/activities/components/ActivityRow';
-import { Task } from '@/activities/types/Task';
+import { useActivityTargetsComponentInstanceId } from '@/activities/inline-cell/hooks/useActivityTargetsComponentInstanceId';
+import { type Task } from '@/activities/types/Task';
+import { useOpenRecordInCommandMenu } from '@/command-menu/hooks/useOpenRecordInCommandMenu';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { useFieldContext } from '@/object-record/hooks/useFieldContext';
-import { useCompleteTask } from '../hooks/useCompleteTask';
+import { StopPropagationContainer } from '@/object-record/record-board/record-board-card/components/StopPropagationContainer';
+import { RecordFieldsScopeContextProvider } from '@/object-record/record-field-list/contexts/RecordFieldsScopeContext';
+import { FieldContextProvider } from '@/object-record/record-field/ui/components/FieldContextProvider';
+import { IconCalendar, OverflowingTextWithTooltip } from 'twenty-ui/display';
+import { Checkbox, CheckboxShape } from 'twenty-ui/input';
+import { useCompleteTask } from '@/activities/tasks/hooks/useCompleteTask';
 
 const StyledTaskBody = styled.div`
   color: ${({ theme }) => theme.font.color.tertiary};
@@ -60,6 +60,11 @@ const StyledRightSideContainer = styled.div`
   max-width: 50%;
 `;
 
+const StyledActivityTargetsContainer = styled.div`
+  overflow: clip;
+  width: 100%;
+`;
+
 const StyledPlaceholder = styled.div`
   color: ${({ theme }) => theme.font.color.light};
 `;
@@ -78,24 +83,24 @@ const StyledCheckboxContainer = styled.div`
 
 export const TaskRow = ({ task }: { task: Task }) => {
   const theme = useTheme();
-  const openActivityRightDrawer = useOpenActivityRightDrawer({
-    objectNameSingular: CoreObjectNameSingular.Task,
-  });
+  const { openRecordInCommandMenu } = useOpenRecordInCommandMenu();
 
-  const body = getActivitySummary(task.body);
+  const body = getActivitySummary(task?.bodyV2?.blocknote ?? null);
+
   const { completeTask } = useCompleteTask(task);
 
-  const { FieldContextProvider: TaskTargetsContextProvider } = useFieldContext({
-    objectNameSingular: CoreObjectNameSingular.Task,
-    objectRecordId: task.id,
-    fieldMetadataName: 'taskTargets',
-    fieldPosition: 0,
-  });
+  const baseComponentInstanceId = `task-row-targets-${task.id}`;
+  const componentInstanceId = useActivityTargetsComponentInstanceId(
+    baseComponentInstanceId,
+  );
 
   return (
     <ActivityRow
       onClick={() => {
-        openActivityRightDrawer(task.id);
+        openRecordInCommandMenu({
+          recordId: task.id,
+          objectNameSingular: CoreObjectNameSingular.Task,
+        });
       }}
     >
       <StyledLeftSideContainer>
@@ -111,7 +116,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
           />
         </StyledCheckboxContainer>
         <StyledTaskTitle completed={task.status === 'DONE'}>
-          {task.title || <StyledPlaceholder>Task title</StyledPlaceholder>}
+          {task.title || <StyledPlaceholder>{t`Task title`}</StyledPlaceholder>}
         </StyledTaskTitle>
         <StyledTaskBody>
           <OverflowingTextWithTooltip text={body} />
@@ -126,17 +131,32 @@ export const TaskRow = ({ task }: { task: Task }) => {
             {beautifyExactDate(task.dueAt)}
           </StyledDueDate>
         )}
-        {TaskTargetsContextProvider && (
-          <TaskTargetsContextProvider>
-            <ActivityTargetsInlineCell
-              activityObjectNameSingular={CoreObjectNameSingular.Task}
-              activity={task}
-              showLabel={false}
-              maxWidth={200}
-              readonly
-            />
-          </TaskTargetsContextProvider>
-        )}
+        {
+          <StyledActivityTargetsContainer>
+            <FieldContextProvider
+              objectNameSingular={CoreObjectNameSingular.Task}
+              objectRecordId={task.id}
+              fieldMetadataName="taskTargets"
+              fieldPosition={0}
+            >
+              <RecordFieldsScopeContextProvider
+                value={{
+                  scopeInstanceId: task.id,
+                }}
+              >
+                <StopPropagationContainer>
+                  <ActivityTargetsInlineCell
+                    activityObjectNameSingular={CoreObjectNameSingular.Task}
+                    activityRecordId={task.id}
+                    showLabel={false}
+                    maxWidth={200}
+                    componentInstanceId={componentInstanceId}
+                  />
+                </StopPropagationContainer>
+              </RecordFieldsScopeContextProvider>
+            </FieldContextProvider>
+          </StyledActivityTargetsContainer>
+        }
       </StyledRightSideContainer>
     </ActivityRow>
   );

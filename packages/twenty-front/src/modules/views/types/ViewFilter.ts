@@ -1,5 +1,5 @@
-import { FilterDefinition } from '@/object-record/object-filter-dropdown/types/FilterDefinition';
-import { ViewFilterOperand } from './ViewFilterOperand';
+import { type CompositeFieldSubFieldName } from '@/settings/data-model/types/CompositeFieldSubFieldName';
+import { type ViewFilterOperand } from 'twenty-shared/types';
 
 export type ViewFilter = {
   __typename: 'ViewFilter';
@@ -14,5 +14,5 @@ export type ViewFilter = {
   viewId?: string;
   viewFilterGroupId?: string;
   positionInViewFilterGroup?: number | null;
-  definition?: FilterDefinition;
+  subFieldName?: CompositeFieldSubFieldName | null;
 };

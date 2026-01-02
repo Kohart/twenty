@@ -1,57 +1,122 @@
+import { useIsFieldInputOnly } from '@/object-record/record-field/ui/hooks/useIsFieldInputOnly';
+import { RecordFieldComponentInstanceContext } from '@/object-record/record-field/ui/states/contexts/RecordFieldComponentInstanceContext';
+import { recordFieldInputIsFieldInErrorComponentState } from '@/object-record/record-field/ui/states/recordFieldInputIsFieldInErrorComponentState';
+import { recordFieldInputLayoutDirectionComponentState } from '@/object-record/record-field/ui/states/recordFieldInputLayoutDirectionComponentState';
+import { recordFieldInputLayoutDirectionLoadingComponentState } from '@/object-record/record-field/ui/states/recordFieldInputLayoutDirectionLoadingComponentState';
+import { RecordTableCellContext } from '@/object-record/record-table/contexts/RecordTableCellContext';
+import { useFocusRecordTableCell } from '@/object-record/record-table/record-table-cell/hooks/useFocusRecordTableCell';
+import { OverlayContainer } from '@/ui/layout/overlay/components/OverlayContainer';
+import { useAvailableComponentInstanceIdOrThrow } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceIdOrThrow';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { useSetRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentState';
 import styled from '@emotion/styled';
-import { autoUpdate, flip, offset, useFloating } from '@floating-ui/react';
-import { ReactElement } from 'react';
+import {
+  autoUpdate,
+  flip,
+  offset,
+  useFloating,
+  type MiddlewareState,
+} from '@floating-ui/react';
+import { useContext, type ReactElement } from 'react';
 
-const StyledEditableCellEditModeContainer = styled.div<RecordTableCellEditModeProps>`
-  position: absolute;
+const StyledEditableCellEditModeContainer = styled.div<{
+  isFieldInputOnly: boolean;
+}>`
   align-items: center;
   display: flex;
-  min-width: 200px;
-  width: calc(100% + 2px);
-  z-index: 1;
   height: 100%;
+  position: absolute;
+  width: calc(100% + 2px);
 `;
 
-const StyledTableCellInput = styled.div`
+const StyledInputModeOnlyContainer = styled.div`
   align-items: center;
   display: flex;
-
-  min-height: 32px;
-  min-width: 200px;
-
-  z-index: 10;
+  height: 100%;
+  overflow: hidden;
+  padding-left: 8px;
+  width: 100%;
 `;
 
 export type RecordTableCellEditModeProps = {
   children: ReactElement;
-  transparent?: boolean;
-  maxContentWidth?: number;
-  initialValue?: string;
 };
 
 export const RecordTableCellEditMode = ({
   children,
 }: RecordTableCellEditModeProps) => {
+  const isFieldInError = useRecoilComponentValue(
+    recordFieldInputIsFieldInErrorComponentState,
+  );
+
+  const recordFieldComponentInstanceId = useAvailableComponentInstanceIdOrThrow(
+    RecordFieldComponentInstanceContext,
+  );
+  const setFieldInputLayoutDirection = useSetRecoilComponentState(
+    recordFieldInputLayoutDirectionComponentState,
+    recordFieldComponentInstanceId,
+  );
+
+  const setFieldInputLayoutDirectionLoading = useSetRecoilComponentState(
+    recordFieldInputLayoutDirectionLoadingComponentState,
+    recordFieldComponentInstanceId,
+  );
+
+  const setFieldInputLayoutDirectionMiddleware = {
+    name: 'middleware',
+    fn: async (state: MiddlewareState) => {
+      setFieldInputLayoutDirection(
+        state.placement.startsWith('bottom') ? 'downward' : 'upward',
+      );
+      setFieldInputLayoutDirectionLoading(false);
+      return {};
+    },
+  };
+
   const { refs, floatingStyles } = useFloating({
-    placement: 'top-start',
+    placement: 'bottom-start',
     middleware: [
       flip(),
       offset({
-        mainAxis: -32,
-        crossAxis: 0,
+        mainAxis: -33,
+        crossAxis: -3,
       }),
+      setFieldInputLayoutDirectionMiddleware,
     ],
+
     whileElementsMounted: autoUpdate,
   });
+
+  const isFieldInputOnly = useIsFieldInputOnly();
+
+  const { cellPosition } = useContext(RecordTableCellContext);
+
+  const { focusRecordTableCell } = useFocusRecordTableCell();
 
   return (
     <StyledEditableCellEditModeContainer
       ref={refs.setReference}
       data-testid="editable-cell-edit-mode-container"
+      isFieldInputOnly={isFieldInputOnly}
     >
-      <StyledTableCellInput ref={refs.setFloating} style={floatingStyles}>
-        {children}
-      </StyledTableCellInput>
+      {isFieldInputOnly ? (
+        <StyledInputModeOnlyContainer
+          onClick={() => {
+            focusRecordTableCell(cellPosition);
+          }}
+        >
+          {children}
+        </StyledInputModeOnlyContainer>
+      ) : (
+        <OverlayContainer
+          ref={refs.setFloating}
+          style={floatingStyles}
+          borderRadius="sm"
+          hasDangerBorder={isFieldInError}
+        >
+          {children}
+        </OverlayContainer>
+      )}
     </StyledEditableCellEditModeContainer>
   );
 };

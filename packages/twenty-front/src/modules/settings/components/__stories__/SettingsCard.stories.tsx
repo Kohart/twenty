@@ -1,7 +1,8 @@
 import { SettingsCard } from '@/settings/components/SettingsCard';
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import React from 'react';
-import { ComponentDecorator, IconMailCog } from 'twenty-ui';
+import { IconMailCog } from 'twenty-ui/display';
+import { ComponentDecorator } from 'twenty-ui/testing';
 
 const meta: Meta<typeof SettingsCard> = {
   title: 'Modules/Settings/SettingsCard',
@@ -18,7 +19,7 @@ export const Default: Story = {
     title: 'Settings Card',
   },
   argTypes: {
-    className: { control: 'false' },
-    Icon: { control: 'false' },
+    className: { control: false },
+    Icon: { control: false },
   },
 };

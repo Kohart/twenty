@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
-import { VerifyCallback } from 'passport-google-oauth20';
+import { type VerifyCallback } from 'passport-google-oauth20';
 
 import { GoogleAPIsOauthCommonStrategy } from 'src/engine/core-modules/auth/strategies/google-apis-oauth-common.auth.strategy';
-import { GoogleAPIsRequest } from 'src/engine/core-modules/auth/types/google-api-request.type';
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import { type GoogleAPIsRequest } from 'src/engine/core-modules/auth/types/google-api-request.type';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 
 export type GoogleAPIScopeConfig = {
   isCalendarEnabled?: boolean;
@@ -12,18 +12,15 @@ export type GoogleAPIScopeConfig = {
 
 @Injectable()
 export class GoogleAPIsOauthExchangeCodeForTokenStrategy extends GoogleAPIsOauthCommonStrategy {
-  constructor(
-    environmentService: EnvironmentService,
-    scopeConfig: GoogleAPIScopeConfig,
-    isGmailSendEmailScopeEnabled = false,
-  ) {
-    super(environmentService, scopeConfig, isGmailSendEmailScopeEnabled);
+  constructor(twentyConfigService: TwentyConfigService) {
+    super(twentyConfigService);
   }
 
   async validate(
     request: GoogleAPIsRequest,
     accessToken: string,
     refreshToken: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     profile: any,
     done: VerifyCallback,
   ): Promise<void> {

@@ -1,6 +1,6 @@
 import isObject from 'lodash.isobject';
 import lodashKebabCase from 'lodash.kebabcase';
-import { KebabCase, KebabCasedPropertiesDeep } from 'type-fest';
+import { type KebabCase, type KebabCasedPropertiesDeep } from 'type-fest';
 
 export const kebabCase = <T>(text: T) =>
   lodashKebabCase(text as unknown as string) as KebabCase<T>;
@@ -13,6 +13,7 @@ export const kebabCaseDeep = <T>(value: T): KebabCasedPropertiesDeep<T> => {
 
   // Check if it's an object
   if (isObject(value)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: Record<string, any> = {};
 
     for (const key in value) {

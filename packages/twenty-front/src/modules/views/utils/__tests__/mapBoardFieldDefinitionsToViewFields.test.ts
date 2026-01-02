@@ -1,7 +1,7 @@
-import { RecordBoardFieldDefinition } from '@/object-record/record-board/types/RecordBoardFieldDefinition';
-import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
+import { type RecordBoardFieldDefinition } from '@/object-record/record-board/types/RecordBoardFieldDefinition';
+import { type FieldMetadata } from '@/object-record/record-field/ui/types/FieldMetadata';
 import { mapBoardFieldDefinitionsToViewFields } from '@/views/utils/mapBoardFieldDefinitionsToViewFields';
-import { FieldMetadataType } from '~/generated/graphql';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 describe('mapBoardFieldDefinitionsToViewFields', () => {
   it('should map board field definitions to view fields', () => {
@@ -10,7 +10,7 @@ describe('mapBoardFieldDefinitionsToViewFields', () => {
         fieldMetadataId: 'fieldMetadataId',
         label: 'label',
         iconName: 'iconName',
-        type: FieldMetadataType.Boolean,
+        type: FieldMetadataType.BOOLEAN,
         metadata: {
           objectMetadataNameSingular: 'objectMetadataNameSingular',
           fieldName: 'fieldName',
@@ -23,7 +23,7 @@ describe('mapBoardFieldDefinitionsToViewFields', () => {
         fieldMetadataId: 'fieldMetadataId1',
         label: 'label1',
         iconName: 'iconName1',
-        type: FieldMetadataType.Number,
+        type: FieldMetadataType.NUMBER,
         metadata: {
           objectMetadataNameSingular: 'objectMetadataNameSingular1',
           fieldName: 'fieldName1',

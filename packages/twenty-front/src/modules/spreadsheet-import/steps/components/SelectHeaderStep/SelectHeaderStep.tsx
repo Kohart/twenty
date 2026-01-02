@@ -3,13 +3,15 @@ import { useCallback, useState } from 'react';
 
 import { Heading } from '@/spreadsheet-import/components/Heading';
 import { StepNavigationButton } from '@/spreadsheet-import/components/StepNavigationButton';
-import { ImportedRow } from '@/spreadsheet-import/types';
+import { type ImportedRow } from '@/spreadsheet-import/types';
 
 import { Modal } from '@/ui/layout/modal/components/Modal';
 
+import { useComputeColumnSuggestionsAndAutoMatch } from '@/spreadsheet-import/hooks/useComputeColumnSuggestionsAndAutoMatch';
 import { useSpreadsheetImportInternal } from '@/spreadsheet-import/hooks/useSpreadsheetImportInternal';
-import { SpreadsheetImportStep } from '@/spreadsheet-import/steps/types/SpreadsheetImportStep';
+import { type SpreadsheetImportStep } from '@/spreadsheet-import/steps/types/SpreadsheetImportStep';
 import { SpreadsheetImportStepType } from '@/spreadsheet-import/steps/types/SpreadsheetImportStepType';
+import { useLingui } from '@lingui/react/macro';
 import { SelectHeaderTable } from './components/SelectHeaderTable';
 
 const StyledHeading = styled(Heading)`
@@ -49,11 +51,20 @@ export const SelectHeaderStep = ({
 
   const { selectHeaderStepHook } = useSpreadsheetImportInternal();
 
+  const computeColumnSuggestionsAndAutoMatch =
+    useComputeColumnSuggestionsAndAutoMatch();
+
   const handleContinue = useCallback(
     async (...args: Parameters<typeof selectHeaderStepHook>) => {
       try {
         const { importedRows: data, headerRow: headerValues } =
           await selectHeaderStepHook(...args);
+
+        await computeColumnSuggestionsAndAutoMatch({
+          headerValues,
+          data,
+        });
+
         setCurrentStepState({
           type: SpreadsheetImportStepType.matchColumns,
           data,
@@ -72,6 +83,7 @@ export const SelectHeaderStep = ({
       setPreviousStepState,
       setCurrentStepState,
       currentStepState,
+      computeColumnSuggestionsAndAutoMatch,
     ],
   );
 
@@ -87,10 +99,12 @@ export const SelectHeaderStep = ({
     setIsLoading(false);
   }, [handleContinue, importedRows, selectedRowIndexes]);
 
+  const { t } = useLingui();
+
   return (
     <>
       <Modal.Content>
-        <StyledHeading title="Select header row" />
+        <StyledHeading title={t`Select header row`} />
         <StyledTableContainer>
           <SelectHeaderTable
             importedRows={importedRows}
@@ -100,9 +114,9 @@ export const SelectHeaderStep = ({
         </StyledTableContainer>
       </Modal.Content>
       <StepNavigationButton
-        onClick={handleOnContinue}
+        onContinue={handleOnContinue}
         onBack={onBack}
-        title="Continue"
+        continueTitle={t`Continue`}
         isLoading={isLoading}
       />
     </>

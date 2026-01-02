@@ -1,7 +1,9 @@
 import styled from '@emotion/styled';
-import { ReactNode } from 'react';
-
-import { Card, CardContent, Radio } from 'twenty-ui';
+import { type MessageDescriptor } from '@lingui/core';
+import { Trans } from '@lingui/react';
+import { type ReactNode } from 'react';
+import { Radio } from 'twenty-ui/input';
+import { Card, CardContent } from 'twenty-ui/layout';
 
 type SettingsAccountsRadioSettingsCardProps<Option extends { value: string }> =
   {
@@ -12,14 +14,17 @@ type SettingsAccountsRadioSettingsCardProps<Option extends { value: string }> =
   };
 
 const StyledCardContent = styled(CardContent)`
-  align-items: center;
-  display: flex;
-  gap: ${({ theme }) => theme.spacing(4)};
   cursor: pointer;
 
   &:hover {
     background: ${({ theme }) => theme.background.transparent.lighter};
   }
+`;
+
+const StyledOptionHeader = styled.div`
+  align-items: center;
+  display: flex;
+  gap: ${({ theme }) => theme.spacing(4)};
 `;
 
 const StyledTitle = styled.div`
@@ -37,12 +42,17 @@ const StyledRadio = styled(Radio)`
   margin-left: auto;
 `;
 
+const StyledExpandedContent = styled.div`
+  margin-top: ${({ theme }) => theme.spacing(4)};
+`;
+
 export const SettingsAccountsRadioSettingsCard = <
   Option extends {
     cardMedia: ReactNode;
-    description: string;
-    title: string;
+    description: MessageDescriptor;
+    title: MessageDescriptor;
     value: string;
+    cardContentExpanded?: ReactNode;
   },
 >({
   onChange,
@@ -57,17 +67,28 @@ export const SettingsAccountsRadioSettingsCard = <
         divider={index < options.length - 1}
         onClick={() => onChange(option.value)}
       >
-        {option.cardMedia}
-        <div>
-          <StyledTitle>{option.title}</StyledTitle>
-          <StyledDescription>{option.description}</StyledDescription>
-        </div>
-        <StyledRadio
-          name={name}
-          value={option.value}
-          onCheckedChange={() => onChange(option.value)}
-          checked={value === option.value}
-        />
+        <StyledOptionHeader>
+          {option.cardMedia}
+          <div>
+            <StyledTitle>
+              <Trans id={option.title.id} />
+            </StyledTitle>
+            <StyledDescription>
+              <Trans id={option.description.id} />
+            </StyledDescription>
+          </div>
+          <StyledRadio
+            name={name}
+            value={option.value}
+            onCheckedChange={() => onChange(option.value)}
+            checked={value === option.value}
+          />
+        </StyledOptionHeader>
+        {option.cardContentExpanded && value === option.value && (
+          <StyledExpandedContent>
+            {option.cardContentExpanded}
+          </StyledExpandedContent>
+        )}
       </StyledCardContent>
     ))}
   </Card>

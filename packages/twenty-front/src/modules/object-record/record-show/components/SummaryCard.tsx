@@ -1,22 +1,23 @@
-import { useGetStandardObjectIcon } from '@/object-metadata/hooks/useGetStandardObjectIcon';
+import { useLabelIdentifierFieldMetadataItem } from '@/object-metadata/hooks/useLabelIdentifierFieldMetadataItem';
+import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
-import { isFieldValueReadOnly } from '@/object-record/record-field/utils/isFieldValueReadOnly';
-import { RecordInlineCell } from '@/object-record/record-inline-cell/components/RecordInlineCell';
-import { InlineCellHotkeyScope } from '@/object-record/record-inline-cell/types/InlineCellHotkeyScope';
-import { RightDrawerTitleRecordInlineCell } from '@/object-record/record-right-drawer/components/RightDrawerTitleRecordInlineCell';
+import { useIsRecordFieldReadOnly } from '@/object-record/read-only/hooks/useIsRecordFieldReadOnly';
+import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
 import { useRecordShowContainerActions } from '@/object-record/record-show/hooks/useRecordShowContainerActions';
 import { useRecordShowContainerData } from '@/object-record/record-show/hooks/useRecordShowContainerData';
+import { recordStoreFamilySelector } from '@/object-record/record-store/states/selectors/recordStoreFamilySelector';
+import { recordStoreIdentifierFamilySelector } from '@/object-record/record-store/states/selectors/recordStoreIdentifierSelector';
+import { RecordTitleCell } from '@/object-record/record-title-cell/components/RecordTitleCell';
+import { RecordTitleCellContainerType } from '@/object-record/record-title-cell/types/RecordTitleCellContainerType';
 import { ShowPageSummaryCard } from '@/ui/layout/show-page/components/ShowPageSummaryCard';
-import { ShowPageSummaryCardSkeletonLoader } from '@/ui/layout/show-page/components/ShowPageSummaryCardSkeletonLoader';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
-import { FieldMetadataType } from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
+import { useRecoilValue } from 'recoil';
+import { isDefined } from 'twenty-shared/utils';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 type SummaryCardProps = {
   objectNameSingular: string;
   objectRecordId: string;
-  isNewRightDrawerItemLoading: boolean;
   isInRightDrawer: boolean;
 };
 
@@ -24,60 +25,67 @@ type SummaryCardProps = {
 export const SummaryCard = ({
   objectNameSingular,
   objectRecordId,
-  isNewRightDrawerItemLoading,
   isInRightDrawer,
 }: SummaryCardProps) => {
-  const {
-    recordFromStore,
-    recordLoading,
-    labelIdentifierFieldMetadataItem,
-    isPrefetchLoading,
-    recordIdentifier,
-  } = useRecordShowContainerData({
-    objectNameSingular,
+  const { recordLoading, isPrefetchLoading } = useRecordShowContainerData({
     objectRecordId,
   });
+
+  const recordCreatedAt = useRecoilValue<string | null>(
+    recordStoreFamilySelector({
+      recordId: objectRecordId,
+      fieldName: 'createdAt',
+    }),
+  );
 
   const { onUploadPicture, useUpdateOneObjectRecordMutation } =
     useRecordShowContainerActions({
       objectNameSingular,
       objectRecordId,
-      recordFromStore,
     });
 
-  const { Icon, IconColor } = useGetStandardObjectIcon(objectNameSingular);
   const isMobile = useIsMobile() || isInRightDrawer;
 
-  const isReadOnly = isFieldValueReadOnly({
+  const recordIdentifier = useRecoilValue(
+    recordStoreIdentifierFamilySelector({
+      recordId: objectRecordId,
+    }),
+  );
+
+  const { objectMetadataItem } = useObjectMetadataItem({
     objectNameSingular,
-    isRecordDeleted: recordFromStore?.isDeleted,
   });
 
-  if (isNewRightDrawerItemLoading || !isDefined(recordFromStore)) {
-    return <ShowPageSummaryCardSkeletonLoader />;
-  }
+  const { labelIdentifierFieldMetadataItem } =
+    useLabelIdentifierFieldMetadataItem({
+      objectNameSingular,
+    });
+
+  const isTitleReadOnly = useIsRecordFieldReadOnly({
+    recordId: objectRecordId,
+    fieldMetadataId: labelIdentifierFieldMetadataItem?.id ?? '',
+    objectMetadataId: objectMetadataItem.id,
+  });
 
   return (
     <ShowPageSummaryCard
       isMobile={isMobile}
       id={objectRecordId}
       logoOrAvatar={recordIdentifier?.avatarUrl ?? ''}
-      icon={Icon}
-      iconColor={IconColor}
       avatarPlaceholder={recordIdentifier?.name ?? ''}
-      date={recordFromStore.createdAt ?? ''}
-      loading={isPrefetchLoading || recordLoading}
+      date={recordCreatedAt ?? ''}
+      loading={
+        isPrefetchLoading || recordLoading || !isDefined(recordCreatedAt)
+      }
       title={
         <FieldContext.Provider
           value={{
             recordId: objectRecordId,
-            recoilScopeId:
-              objectRecordId + labelIdentifierFieldMetadataItem?.id,
             isLabelIdentifier: false,
             fieldDefinition: {
               type:
                 labelIdentifierFieldMetadataItem?.type ||
-                FieldMetadataType.Text,
+                FieldMetadataType.TEXT,
               iconName: '',
               fieldMetadataId: labelIdentifierFieldMetadataItem?.id ?? '',
               label: labelIdentifierFieldMetadataItem?.label || '',
@@ -88,15 +96,15 @@ export const SummaryCard = ({
               defaultValue: labelIdentifierFieldMetadataItem?.defaultValue,
             },
             useUpdateRecord: useUpdateOneObjectRecordMutation,
-            hotkeyScope: InlineCellHotkeyScope.InlineCell,
             isCentered: !isMobile,
+            isDisplayModeFixHeight: true,
+            isRecordFieldReadOnly: isTitleReadOnly,
           }}
         >
-          {isInRightDrawer ? (
-            <RightDrawerTitleRecordInlineCell />
-          ) : (
-            <RecordInlineCell readonly={isReadOnly} />
-          )}
+          <RecordTitleCell
+            sizeVariant="md"
+            containerType={RecordTitleCellContainerType.ShowPage}
+          />
         </FieldContext.Provider>
       }
       avatarType={recordIdentifier?.avatarType ?? 'rounded'}

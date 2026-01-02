@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
-import { GraphQLScalarType, GraphQLSchema, isScalarType } from 'graphql';
+import {
+  type GraphQLScalarType,
+  type GraphQLSchema,
+  isScalarType,
+} from 'graphql';
 
 import { scalars } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 
@@ -10,6 +14,7 @@ export class ScalarsExplorerService {
 
   constructor() {
     this.scalarImplementations = scalars.reduce((acc, scalar) => {
+      // @ts-expect-error legacy noImplicitAny
       acc[scalar.name] = scalar;
 
       return acc;

@@ -1,18 +1,18 @@
 import {
-  ChipGeneratorPerObjectNameSingularPerFieldName,
-  IdentifierChipGeneratorPerObject,
+  type ChipGeneratorPerObjectNameSingularPerFieldName,
+  type IdentifierChipGeneratorPerObject,
 } from '@/object-metadata/contexts/PreComputedChipGeneratorsContext';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { getAvatarType } from '@/object-metadata/utils/getAvatarType';
 import { getAvatarUrl } from '@/object-metadata/utils/getAvatarUrl';
 import { getLabelIdentifierFieldMetadataItem } from '@/object-metadata/utils/getLabelIdentifierFieldMetadataItem';
 import { getLabelIdentifierFieldValue } from '@/object-metadata/utils/getLabelIdentifierFieldValue';
 import { isLabelIdentifierField } from '@/object-metadata/utils/isLabelIdentifierField';
-import { isFieldIdentifierDisplay } from '@/object-record/record-field/meta-types/display/utils/isFieldIdentifierDisplay';
-import { RecordChipData } from '@/object-record/record-field/types/RecordChipData';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { isFieldIdentifierDisplay } from '@/object-record/record-field/ui/meta-types/display/utils/isFieldIdentifierDisplay';
+import { type RecordChipData } from '@/object-record/record-field/ui/types/RecordChipData';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { isDefined } from 'twenty-shared/utils';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
-import { isDefined } from '~/utils/isDefined';
 
 export const getRecordChipGenerators = (
   objectMetadataItems: ObjectMetadataItem[],
@@ -33,7 +33,7 @@ export const getRecordChipGenerators = (
         .filter(
           (fieldMetadataItem) =>
             labelIdentifierFieldMetadataItem?.id === fieldMetadataItem.id ||
-            fieldMetadataItem.type === FieldMetadataType.Relation ||
+            fieldMetadataItem.type === FieldMetadataType.RELATION ||
             isFieldIdentifierDisplay(
               fieldMetadataItem,
               isLabelIdentifierField({
@@ -47,13 +47,13 @@ export const getRecordChipGenerators = (
             labelIdentifierFieldMetadataItem?.id === fieldMetadataItem.id;
 
           const currentObjectNameSingular = objectMetadataItem.nameSingular;
-          const fieldRelationObjectNameSingular =
-            fieldMetadataItem.relationDefinition?.targetObjectMetadata
-              .nameSingular ?? undefined;
+          const fieldObjectNameSingular =
+            fieldMetadataItem.relation?.targetObjectMetadata.nameSingular ??
+            undefined;
 
           const objectNameSingularToFind = isLabelIdentifier
             ? currentObjectNameSingular
-            : fieldRelationObjectNameSingular;
+            : fieldObjectNameSingular;
 
           const objectMetadataItemToUse = objectMetadataItems.find(
             (objectMetadataItem) =>
@@ -87,7 +87,6 @@ export const getRecordChipGenerators = (
                 name: getLabelIdentifierFieldValue(
                   record,
                   labelIdentifierFieldMetadataItemToUse,
-                  objectMetadataItemToUse.nameSingular,
                 ),
                 avatarUrl: getAvatarUrl(
                   objectMetadataItemToUse.nameSingular,

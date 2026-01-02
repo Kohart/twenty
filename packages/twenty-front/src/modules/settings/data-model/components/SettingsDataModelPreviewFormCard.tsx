@@ -1,13 +1,15 @@
 import styled from '@emotion/styled';
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import { StyledFormCardTitle } from '@/settings/data-model/fields/components/StyledFormCardTitle';
-import { Card, CardContent } from 'twenty-ui';
+import { Trans } from '@lingui/react/macro';
+import { Card, CardContent } from 'twenty-ui/layout';
 
 type SettingsDataModelPreviewFormCardProps = {
   className?: string;
   preview: ReactNode;
   form?: ReactNode;
+  disabled?: boolean;
 };
 
 const StyledPreviewContainer = styled(CardContent)`
@@ -23,9 +25,11 @@ export const SettingsDataModelPreviewFormCard = ({
   preview,
   form,
 }: SettingsDataModelPreviewFormCardProps) => (
-  <Card className={className} fullWidth>
+  <Card className={className} fullWidth rounded>
     <StyledPreviewContainer divider={!!form}>
-      <StyledFormCardTitle>Preview</StyledFormCardTitle>
+      <StyledFormCardTitle>
+        <Trans>Preview</Trans>
+      </StyledFormCardTitle>
       {preview}
     </StyledPreviewContainer>
     {!!form && <StyledFormContainer>{form}</StyledFormContainer>}

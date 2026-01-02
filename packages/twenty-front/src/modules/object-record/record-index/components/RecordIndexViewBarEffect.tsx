@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { useColumnDefinitionsFromFieldMetadata } from '@/object-metadata/hooks/useColumnDefinitionsFromFieldMetadata';
+import { useColumnDefinitionsFromObjectMetadata } from '@/object-metadata/hooks/useColumnDefinitionsFromObjectMetadata';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useObjectNameSingularFromPlural } from '@/object-metadata/hooks/useObjectNameSingularFromPlural';
 import { useInitViewBar } from '@/views/hooks/useInitViewBar';
@@ -23,31 +23,21 @@ export const RecordIndexViewBarEffect = ({
     objectNameSingular,
   });
 
-  const { columnDefinitions, filterDefinitions, sortDefinitions } =
-    useColumnDefinitionsFromFieldMetadata(objectMetadataItem);
+  const { columnDefinitions } =
+    useColumnDefinitionsFromObjectMetadata(objectMetadataItem);
 
-  const {
-    setViewObjectMetadataId,
-    setAvailableSortDefinitions,
-    setAvailableFilterDefinitions,
-    setAvailableFieldDefinitions,
-  } = useInitViewBar(viewBarId);
+  const { setViewObjectMetadataId, setAvailableFieldDefinitions } =
+    useInitViewBar(viewBarId);
 
   useEffect(() => {
     if (isUndefinedOrNull(objectMetadataItem)) {
       return;
     }
     setViewObjectMetadataId?.(objectMetadataItem.id);
-    setAvailableSortDefinitions?.(sortDefinitions);
-    setAvailableFilterDefinitions?.(filterDefinitions);
     setAvailableFieldDefinitions?.(columnDefinitions);
   }, [
     setViewObjectMetadataId,
     objectMetadataItem,
-    setAvailableSortDefinitions,
-    sortDefinitions,
-    setAvailableFilterDefinitions,
-    filterDefinitions,
     setAvailableFieldDefinitions,
     columnDefinitions,
   ]);

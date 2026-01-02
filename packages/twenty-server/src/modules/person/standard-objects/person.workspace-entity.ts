@@ -1,36 +1,38 @@
-import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
-
-import { SEARCH_VECTOR_FIELD } from 'src/engine/metadata-modules/constants/search-vector-field.constants';
+import { msg } from '@lingui/core/macro';
+import { STANDARD_OBJECT_IDS } from 'twenty-shared/metadata';
 import {
   ActorMetadata,
-  FieldActorSource,
-} from 'src/engine/metadata-modules/field-metadata/composite-types/actor.composite-type';
-import { EmailsMetadata } from 'src/engine/metadata-modules/field-metadata/composite-types/emails.composite-type';
-import { FullNameMetadata } from 'src/engine/metadata-modules/field-metadata/composite-types/full-name.composite-type';
-import { LinksMetadata } from 'src/engine/metadata-modules/field-metadata/composite-types/links.composite-type';
-import { PhonesMetadata } from 'src/engine/metadata-modules/field-metadata/composite-types/phones.composite-type';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { IndexType } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
-import {
-  RelationMetadataType,
+  EmailsMetadata,
+  FieldMetadataType,
+  PhonesMetadata,
   RelationOnDeleteAction,
-} from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
+  type FullNameMetadata,
+  type LinksMetadata,
+} from 'twenty-shared/types';
+
+import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
+import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
+
+import { IndexType } from 'src/engine/metadata-modules/index-metadata/types/indexType.types';
+import { SEARCH_VECTOR_FIELD } from 'src/engine/metadata-modules/search-field-metadata/constants/search-vector-field.constants';
 import { BaseWorkspaceEntity } from 'src/engine/twenty-orm/base.workspace-entity';
+import { WorkspaceDuplicateCriteria } from 'src/engine/twenty-orm/decorators/workspace-duplicate-criteria.decorator';
 import { WorkspaceEntity } from 'src/engine/twenty-orm/decorators/workspace-entity.decorator';
 import { WorkspaceFieldIndex } from 'src/engine/twenty-orm/decorators/workspace-field-index.decorator';
 import { WorkspaceField } from 'src/engine/twenty-orm/decorators/workspace-field.decorator';
 import { WorkspaceIsDeprecated } from 'src/engine/twenty-orm/decorators/workspace-is-deprecated.decorator';
+import { WorkspaceIsFieldUIReadOnly } from 'src/engine/twenty-orm/decorators/workspace-is-field-ui-readonly.decorator';
 import { WorkspaceIsNullable } from 'src/engine/twenty-orm/decorators/workspace-is-nullable.decorator';
+import { WorkspaceIsSearchable } from 'src/engine/twenty-orm/decorators/workspace-is-searchable.decorator';
 import { WorkspaceIsSystem } from 'src/engine/twenty-orm/decorators/workspace-is-system.decorator';
 import { WorkspaceIsUnique } from 'src/engine/twenty-orm/decorators/workspace-is-unique.decorator';
 import { WorkspaceJoinColumn } from 'src/engine/twenty-orm/decorators/workspace-join-column.decorator';
 import { WorkspaceRelation } from 'src/engine/twenty-orm/decorators/workspace-relation.decorator';
 import { PERSON_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { STANDARD_OBJECT_ICONS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-icons';
-import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 import {
-  FieldTypeAndNameMetadata,
   getTsVectorColumnExpressionFromFields,
+  type FieldTypeAndNameMetadata,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/utils/get-ts-vector-column-expression.util';
 import { AttachmentWorkspaceEntity } from 'src/modules/attachment/standard-objects/attachment.workspace-entity';
 import { CalendarEventParticipantWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-event-participant.workspace-entity';
@@ -44,51 +46,64 @@ import { TimelineActivityWorkspaceEntity } from 'src/modules/timeline/standard-o
 
 const NAME_FIELD_NAME = 'name';
 const EMAILS_FIELD_NAME = 'emails';
+const PHONES_FIELD_NAME = 'phones';
 const JOB_TITLE_FIELD_NAME = 'jobTitle';
 
 export const SEARCH_FIELDS_FOR_PERSON: FieldTypeAndNameMetadata[] = [
   { name: NAME_FIELD_NAME, type: FieldMetadataType.FULL_NAME },
   { name: EMAILS_FIELD_NAME, type: FieldMetadataType.EMAILS },
+  { name: PHONES_FIELD_NAME, type: FieldMetadataType.PHONES },
   { name: JOB_TITLE_FIELD_NAME, type: FieldMetadataType.TEXT },
 ];
 
 @WorkspaceEntity({
   standardId: STANDARD_OBJECT_IDS.person,
+
   namePlural: 'people',
-  labelSingular: 'Person',
-  labelPlural: 'People',
-  description: 'A person',
+  labelSingular: msg`Person`,
+  labelPlural: msg`People`,
+  description: msg`A person`,
   icon: STANDARD_OBJECT_ICONS.person,
   shortcut: 'P',
   labelIdentifierStandardId: PERSON_STANDARD_FIELD_IDS.name,
   imageIdentifierStandardId: PERSON_STANDARD_FIELD_IDS.avatarUrl,
 })
+@WorkspaceDuplicateCriteria([
+  ['nameFirstName', 'nameLastName'],
+  ['linkedinLinkPrimaryLinkUrl'],
+  ['emailsPrimaryEmail'],
+])
+@WorkspaceIsSearchable()
 export class PersonWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.name,
     type: FieldMetadataType.FULL_NAME,
-    label: 'Name',
-    description: 'Contact’s name',
+    label: msg`Name`,
+    description: msg`Contact’s name`,
     icon: 'IconUser',
   })
   @WorkspaceIsNullable()
-  [NAME_FIELD_NAME]: FullNameMetadata | null;
+  name: FullNameMetadata | null;
 
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.emails,
     type: FieldMetadataType.EMAILS,
-    label: 'Emails',
-    description: 'Contact’s Emails',
+    label: msg`Emails`,
+    description: msg`Contact’s Emails`,
     icon: 'IconMail',
+    settings: {
+      maxNumberOfValues: 1,
+    },
   })
   @WorkspaceIsUnique()
-  [EMAILS_FIELD_NAME]: EmailsMetadata;
+  @WorkspaceIsNullable()
+  emails: EmailsMetadata;
 
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.linkedinLink,
     type: FieldMetadataType.LINKS,
-    label: 'Linkedin',
-    description: 'Contact’s Linkedin account',
+    label: msg`Linkedin`,
+    description: msg`Contact’s Linkedin account`,
     icon: 'IconBrandLinkedin',
   })
   @WorkspaceIsNullable()
@@ -97,8 +112,8 @@ export class PersonWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.xLink,
     type: FieldMetadataType.LINKS,
-    label: 'X',
-    description: 'Contact’s X/Twitter account',
+    label: msg`X`,
+    description: msg`Contact’s X/Twitter account`,
     icon: 'IconBrandX',
   })
   @WorkspaceIsNullable()
@@ -107,83 +122,99 @@ export class PersonWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.jobTitle,
     type: FieldMetadataType.TEXT,
-    label: 'Job Title',
-    description: 'Contact’s job title',
+    label: msg`Job Title`,
+    description: msg`Contact’s job title`,
     icon: 'IconBriefcase',
   })
-  [JOB_TITLE_FIELD_NAME]: string;
+  @WorkspaceIsNullable()
+  jobTitle: string | null;
 
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.phone,
     type: FieldMetadataType.TEXT,
-    label: 'Phone',
-    description: 'Contact’s phone number',
+    label: msg`Phone`,
+    description: msg`Contact’s phone number`,
     icon: 'IconPhone',
   })
   @WorkspaceIsDeprecated()
-  phone: string;
+  @WorkspaceIsNullable()
+  phone: string | null;
 
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.phones,
     type: FieldMetadataType.PHONES,
-    label: 'Phones',
-    description: 'Contact’s phone numbers',
+    label: msg`Phones`,
+    description: msg`Contact’s phone numbers`,
     icon: 'IconPhone',
+    settings: {
+      maxNumberOfValues: 1,
+    },
   })
+  @WorkspaceIsNullable()
   phones: PhonesMetadata;
 
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.city,
     type: FieldMetadataType.TEXT,
-    label: 'City',
-    description: 'Contact’s city',
+    label: msg`City`,
+    description: msg`Contact’s city`,
     icon: 'IconMap',
   })
-  city: string;
+  @WorkspaceIsNullable()
+  city: string | null;
 
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.avatarUrl,
     type: FieldMetadataType.TEXT,
-    label: 'Avatar',
-    description: 'Contact’s avatar',
+    label: msg`Avatar`,
+    description: msg`Contact’s avatar`,
     icon: 'IconFileUpload',
   })
   @WorkspaceIsSystem()
-  avatarUrl: string;
+  @WorkspaceIsNullable()
+  avatarUrl: string | null;
 
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.position,
     type: FieldMetadataType.POSITION,
-    label: 'Position',
-    description: 'Person record Position',
+    label: msg`Position`,
+    description: msg`Person record Position`,
     icon: 'IconHierarchy2',
+    defaultValue: 0,
   })
   @WorkspaceIsSystem()
-  @WorkspaceIsNullable()
   position: number;
 
   @WorkspaceField({
     standardId: PERSON_STANDARD_FIELD_IDS.createdBy,
     type: FieldMetadataType.ACTOR,
-    label: 'Created by',
+    label: msg`Created by`,
     icon: 'IconCreativeCommonsSa',
-    description: 'The creator of the record',
-    defaultValue: {
-      source: `'${FieldActorSource.MANUAL}'`,
-      name: "''",
-    },
+    description: msg`The creator of the record`,
   })
+  @WorkspaceIsFieldUIReadOnly()
   createdBy: ActorMetadata;
+
+  @WorkspaceField({
+    standardId: PERSON_STANDARD_FIELD_IDS.updatedBy,
+    type: FieldMetadataType.ACTOR,
+    label: msg`Updated by`,
+    icon: 'IconUserCircle',
+    description: msg`The workspace member who last updated the record`,
+  })
+  @WorkspaceIsFieldUIReadOnly()
+  updatedBy: ActorMetadata;
 
   // Relations
   @WorkspaceRelation({
     standardId: PERSON_STANDARD_FIELD_IDS.company,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Company',
-    description: 'Contact’s company',
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Company`,
+    description: msg`Contact’s company`,
     icon: 'IconBuildingSkyscraper',
     inverseSideTarget: () => CompanyWorkspaceEntity,
     inverseSideFieldKey: 'people',
+    onDelete: RelationOnDeleteAction.SET_NULL,
   })
   @WorkspaceIsNullable()
   company: Relation<CompanyWorkspaceEntity> | null;
@@ -193,10 +224,9 @@ export class PersonWorkspaceEntity extends BaseWorkspaceEntity {
 
   @WorkspaceRelation({
     standardId: PERSON_STANDARD_FIELD_IDS.pointOfContactForOpportunities,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Linked Opportunities',
-    description:
-      'List of opportunities for which that person is the point of contact',
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Opportunities`,
+    description: msg`List of opportunities for which that person is the point of contact`,
     icon: 'IconTargetArrow',
     inverseSideTarget: () => OpportunityWorkspaceEntity,
     inverseSideFieldKey: 'pointOfContact',
@@ -206,31 +236,33 @@ export class PersonWorkspaceEntity extends BaseWorkspaceEntity {
 
   @WorkspaceRelation({
     standardId: PERSON_STANDARD_FIELD_IDS.taskTargets,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Tasks',
-    description: 'Tasks tied to the contact',
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Tasks`,
+    description: msg`Tasks tied to the contact`,
     icon: 'IconCheckbox',
     inverseSideTarget: () => TaskTargetWorkspaceEntity,
     onDelete: RelationOnDeleteAction.CASCADE,
   })
+  @WorkspaceIsFieldUIReadOnly()
   taskTargets: Relation<TaskTargetWorkspaceEntity[]>;
 
   @WorkspaceRelation({
     standardId: PERSON_STANDARD_FIELD_IDS.noteTargets,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Notes',
-    description: 'Notes tied to the contact',
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Notes`,
+    description: msg`Notes tied to the contact`,
     icon: 'IconNotes',
     inverseSideTarget: () => NoteTargetWorkspaceEntity,
     onDelete: RelationOnDeleteAction.CASCADE,
   })
+  @WorkspaceIsFieldUIReadOnly()
   noteTargets: Relation<NoteTargetWorkspaceEntity[]>;
 
   @WorkspaceRelation({
     standardId: PERSON_STANDARD_FIELD_IDS.favorites,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Favorites',
-    description: 'Favorites linked to the contact',
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Favorites`,
+    description: msg`Favorites linked to the contact`,
     icon: 'IconHeart',
     inverseSideTarget: () => FavoriteWorkspaceEntity,
     onDelete: RelationOnDeleteAction.CASCADE,
@@ -240,20 +272,21 @@ export class PersonWorkspaceEntity extends BaseWorkspaceEntity {
 
   @WorkspaceRelation({
     standardId: PERSON_STANDARD_FIELD_IDS.attachments,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Attachments',
-    description: 'Attachments linked to the contact.',
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Attachments`,
+    description: msg`Attachments linked to the contact.`,
     icon: 'IconFileImport',
     inverseSideTarget: () => AttachmentWorkspaceEntity,
     onDelete: RelationOnDeleteAction.CASCADE,
   })
+  @WorkspaceIsSystem()
   attachments: Relation<AttachmentWorkspaceEntity[]>;
 
   @WorkspaceRelation({
     standardId: PERSON_STANDARD_FIELD_IDS.messageParticipants,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Message Participants',
-    description: 'Message Participants',
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Message Participants`,
+    description: msg`Message Participants`,
     icon: 'IconUserCircle',
     inverseSideTarget: () => MessageParticipantWorkspaceEntity,
     inverseSideFieldKey: 'person',
@@ -264,9 +297,9 @@ export class PersonWorkspaceEntity extends BaseWorkspaceEntity {
 
   @WorkspaceRelation({
     standardId: PERSON_STANDARD_FIELD_IDS.calendarEventParticipants,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Calendar Event Participants',
-    description: 'Calendar Event Participants',
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Calendar Event Participants`,
+    description: msg`Calendar Event Participants`,
     icon: 'IconCalendar',
     inverseSideTarget: () => CalendarEventParticipantWorkspaceEntity,
     onDelete: RelationOnDeleteAction.SET_NULL,
@@ -278,11 +311,12 @@ export class PersonWorkspaceEntity extends BaseWorkspaceEntity {
 
   @WorkspaceRelation({
     standardId: PERSON_STANDARD_FIELD_IDS.timelineActivities,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Events',
-    description: 'Events linked to the person',
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Events`,
+    description: msg`Events linked to the person`,
     icon: 'IconTimelineEvent',
     inverseSideTarget: () => TimelineActivityWorkspaceEntity,
+    inverseSideFieldKey: 'targetPerson',
     onDelete: RelationOnDeleteAction.CASCADE,
   })
   @WorkspaceIsNullable()
@@ -303,5 +337,5 @@ export class PersonWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceIsNullable()
   @WorkspaceIsSystem()
   @WorkspaceFieldIndex({ indexType: IndexType.GIN })
-  [SEARCH_VECTOR_FIELD.name]: any;
+  searchVector: string;
 }

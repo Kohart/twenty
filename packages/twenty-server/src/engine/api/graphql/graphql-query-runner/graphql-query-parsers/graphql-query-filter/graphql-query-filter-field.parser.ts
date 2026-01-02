@@ -1,37 +1,58 @@
-import { WhereExpressionBuilder } from 'typeorm';
-
-import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
+import { msg } from '@lingui/core/macro';
+import { compositeTypeDefinitions } from 'twenty-shared/types';
+import { capitalize, isDefined } from 'twenty-shared/utils';
+import { type WhereExpressionBuilder } from 'typeorm';
 
 import {
   GraphqlQueryRunnerException,
   GraphqlQueryRunnerExceptionCode,
 } from 'src/engine/api/graphql/graphql-query-runner/errors/graphql-query-runner.exception';
 import { computeWhereConditionParts } from 'src/engine/api/graphql/graphql-query-runner/utils/compute-where-condition-parts';
-import { compositeTypeDefinitions } from 'src/engine/metadata-modules/field-metadata/composite-types';
 import { isCompositeFieldMetadataType } from 'src/engine/metadata-modules/field-metadata/utils/is-composite-field-metadata-type.util';
-import { FieldMetadataMap } from 'src/engine/metadata-modules/types/field-metadata-map';
-import { CompositeFieldMetadataType } from 'src/engine/metadata-modules/workspace-migration/factories/composite-column-action.factory';
-import { capitalize } from 'src/utils/capitalize';
+import { type FlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-maps.type';
+import { type FlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/types/flat-field-metadata.type';
+import { buildFieldMapsFromFlatObjectMetadata } from 'src/engine/metadata-modules/flat-field-metadata/utils/build-field-maps-from-flat-object-metadata.util';
+import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object-metadata/types/flat-object-metadata.type';
+import { type CompositeFieldMetadataType } from 'src/engine/metadata-modules/workspace-migration/factories/composite-column-action.factory';
 
 const ARRAY_OPERATORS = ['in', 'contains', 'notContains'];
 
 export class GraphqlQueryFilterFieldParser {
-  private fieldMetadataMapByName: FieldMetadataMap;
+  private flatObjectMetadata: FlatObjectMetadata;
+  private flatFieldMetadataMaps: FlatEntityMaps<FlatFieldMetadata>;
+  private fieldIdByName: Record<string, string>;
+  private fieldIdByJoinColumnName: Record<string, string>;
 
-  constructor(fieldMetadataMapByName: FieldMetadataMap) {
-    this.fieldMetadataMapByName = fieldMetadataMapByName;
+  constructor(
+    flatObjectMetadata: FlatObjectMetadata,
+    flatFieldMetadataMaps: FlatEntityMaps<FlatFieldMetadata>,
+  ) {
+    this.flatObjectMetadata = flatObjectMetadata;
+    this.flatFieldMetadataMaps = flatFieldMetadataMaps;
+
+    const fieldMaps = buildFieldMapsFromFlatObjectMetadata(
+      flatFieldMetadataMaps,
+      flatObjectMetadata,
+    );
+
+    this.fieldIdByName = fieldMaps.fieldIdByName;
+    this.fieldIdByJoinColumnName = fieldMaps.fieldIdByJoinColumnName;
   }
 
   public parse(
     queryBuilder: WhereExpressionBuilder,
     objectNameSingular: string,
     key: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     filterValue: any,
     isFirst = false,
   ): void {
-    const fieldMetadata = this.fieldMetadataMapByName[`${key}`];
+    const fieldMetadataId =
+      this.fieldIdByName[`${key}`] || this.fieldIdByJoinColumnName[`${key}`];
 
-    if (!fieldMetadata) {
+    const fieldMetadata = this.flatFieldMetadataMaps.byId[fieldMetadataId];
+
+    if (!isDefined(fieldMetadata)) {
       throw new Error(`Field metadata not found for field: ${key}`);
     }
 
@@ -53,15 +74,16 @@ export class GraphqlQueryFilterFieldParser {
       throw new GraphqlQueryRunnerException(
         `Invalid filter value for field ${key}. Expected non-empty array`,
         GraphqlQueryRunnerExceptionCode.INVALID_QUERY_INPUT,
+        { userFriendlyMessage: msg`Invalid filter value: "${value}"` },
       );
     }
-
-    const { sql, params } = computeWhereConditionParts(
+    const { sql, params } = computeWhereConditionParts({
       operator,
       objectNameSingular,
       key,
       value,
-    );
+      fieldMetadataType: fieldMetadata.type,
+    });
 
     if (isFirst) {
       queryBuilder.where(sql, params);
@@ -72,8 +94,9 @@ export class GraphqlQueryFilterFieldParser {
 
   private parseCompositeFieldForFilter(
     queryBuilder: WhereExpressionBuilder,
-    fieldMetadata: FieldMetadataInterface,
+    fieldMetadata: FlatFieldMetadata,
     objectNameSingular: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     fieldValue: any,
     isFirst = false,
   ): void {
@@ -101,15 +124,29 @@ export class GraphqlQueryFilterFieldParser {
       const fullFieldName = `${fieldMetadata.name}${capitalize(subFieldKey)}`;
 
       const [[operator, value]] = Object.entries(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         subFieldFilter as Record<string, any>,
       );
 
-      const { sql, params } = computeWhereConditionParts(
+      if (
+        ARRAY_OPERATORS.includes(operator) &&
+        (!Array.isArray(value) || value.length === 0)
+      ) {
+        throw new GraphqlQueryRunnerException(
+          `Invalid filter value for field ${subFieldKey}. Expected non-empty array`,
+          GraphqlQueryRunnerExceptionCode.INVALID_QUERY_INPUT,
+          { userFriendlyMessage: msg`Invalid filter value: "${value}"` },
+        );
+      }
+
+      const { sql, params } = computeWhereConditionParts({
         operator,
         objectNameSingular,
-        fullFieldName,
+        key: fullFieldName,
+        subFieldKey,
         value,
-      );
+        fieldMetadataType: fieldMetadata.type,
+      });
 
       if (isFirst && index === 0) {
         queryBuilder.where(sql, params);

@@ -1,7 +1,7 @@
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
-import { getSelectFieldPreviewValue } from '../getSelectFieldPreviewValue';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
+import { getSelectFieldPreviewValue } from '@/settings/data-model/fields/preview/utils/getSelectFieldPreviewValue';
 
 const mockedCompanyObjectMetadataItem = generatedMockObjectMetadataItems.find(
   (item) => item.nameSingular === 'company',
@@ -16,7 +16,7 @@ describe('getSelectFieldPreviewValue', () => {
   it('returns null if the field is not a Select field', () => {
     // Given
     const fieldMetadataItem = mockedCompanyObjectMetadataItem?.fields.find(
-      ({ type }) => type !== FieldMetadataType.Select,
+      ({ type }) => type !== FieldMetadataType.SELECT,
     );
 
     if (!fieldMetadataItem) {

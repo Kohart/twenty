@@ -1,52 +1,61 @@
 import { Injectable } from '@nestjs/common';
 
-import { EntityManager } from 'typeorm';
-
-import { WorkspaceDataSourceService } from 'src/engine/workspace-datasource/workspace-datasource.service';
+import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
+import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { BlocklistWorkspaceEntity } from 'src/modules/blocklist/standard-objects/blocklist.workspace-entity';
 
 @Injectable()
 export class BlocklistRepository {
   constructor(
-    private readonly workspaceDataSourceService: WorkspaceDataSourceService,
+    private readonly globalWorkspaceOrmManager: GlobalWorkspaceOrmManager,
   ) {}
 
   public async getById(
     id: string,
     workspaceId: string,
-    transactionManager?: EntityManager,
   ): Promise<BlocklistWorkspaceEntity | null> {
-    const dataSourceSchema =
-      this.workspaceDataSourceService.getSchemaName(workspaceId);
+    const authContext = buildSystemAuthContext(workspaceId);
 
-    const blocklistItems =
-      await this.workspaceDataSourceService.executeRawQuery(
-        `SELECT * FROM ${dataSourceSchema}."blocklist" WHERE "id" = $1`,
-        [id],
-        workspaceId,
-        transactionManager,
-      );
+    return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      authContext,
+      async () => {
+        const blockListRepository =
+          await this.globalWorkspaceOrmManager.getRepository(
+            workspaceId,
+            BlocklistWorkspaceEntity,
+            {
+              shouldBypassPermissionChecks: true,
+            },
+          );
 
-    if (!blocklistItems || blocklistItems.length === 0) {
-      return null;
-    }
-
-    return blocklistItems[0];
+        return blockListRepository.findOneBy({
+          id,
+        });
+      },
+    );
   }
 
   public async getByWorkspaceMemberId(
     workspaceMemberId: string,
     workspaceId: string,
-    transactionManager?: EntityManager,
   ): Promise<BlocklistWorkspaceEntity[]> {
-    const dataSourceSchema =
-      this.workspaceDataSourceService.getSchemaName(workspaceId);
+    const authContext = buildSystemAuthContext(workspaceId);
 
-    return await this.workspaceDataSourceService.executeRawQuery(
-      `SELECT * FROM ${dataSourceSchema}."blocklist" WHERE "workspaceMemberId" = $1`,
-      [workspaceMemberId],
-      workspaceId,
-      transactionManager,
+    return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      authContext,
+      async () => {
+        const blockListRepository =
+          await this.globalWorkspaceOrmManager.getRepository(
+            workspaceId,
+            BlocklistWorkspaceEntity,
+          );
+
+        return blockListRepository.find({
+          where: {
+            workspaceMemberId,
+          },
+        });
+      },
     );
   }
 }

@@ -1,3 +1,5 @@
+import { contextStoreAnyFieldFilterValueComponentState } from '@/context-store/states/contextStoreAnyFieldFilterValueComponentState';
+import { contextStoreFilterGroupsComponentState } from '@/context-store/states/contextStoreFilterGroupsComponentState';
 import { contextStoreFiltersComponentState } from '@/context-store/states/contextStoreFiltersComponentState';
 import { contextStoreNumberOfSelectedRecordsComponentState } from '@/context-store/states/contextStoreNumberOfSelectedRecordsComponentState';
 import { contextStoreTargetedRecordsRuleComponentState } from '@/context-store/states/contextStoreTargetedRecordsRuleComponentState';
@@ -5,23 +7,24 @@ import { computeContextStoreFilters } from '@/context-store/utils/computeContext
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useObjectNameSingularFromPlural } from '@/object-metadata/hooks/useObjectNameSingularFromPlural';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
-import { RecordIndexRootPropsContext } from '@/object-record/record-index/contexts/RecordIndexRootPropsContext';
-import { useFindManyParams } from '@/object-record/record-index/hooks/useLoadRecordIndexTable';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
-import { useContext, useEffect } from 'react';
+import { useFilterValueDependencies } from '@/object-record/record-filter/hooks/useFilterValueDependencies';
+import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
+import { useFindManyRecordIndexTableParams } from '@/object-record/record-index/hooks/useFindManyRecordIndexTableParams';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { useSetRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentState';
+import { useEffect } from 'react';
 
 export const RecordIndexContainerContextStoreNumberOfSelectedRecordsEffect =
   () => {
-    const setContextStoreNumberOfSelectedRecords = useSetRecoilComponentStateV2(
+    const setContextStoreNumberOfSelectedRecords = useSetRecoilComponentState(
       contextStoreNumberOfSelectedRecordsComponentState,
     );
 
-    const contextStoreTargetedRecordsRule = useRecoilComponentValueV2(
+    const contextStoreTargetedRecordsRule = useRecoilComponentValue(
       contextStoreTargetedRecordsRuleComponentState,
     );
 
-    const { objectNamePlural } = useContext(RecordIndexRootPropsContext);
+    const { objectNamePlural } = useRecordIndexContextOrThrow();
 
     const { objectNameSingular } = useObjectNameSingularFromPlural({
       objectNamePlural,
@@ -31,25 +34,39 @@ export const RecordIndexContainerContextStoreNumberOfSelectedRecordsEffect =
       objectNameSingular,
     });
 
-    const findManyRecordsParams = useFindManyParams(
+    const findManyRecordsParams = useFindManyRecordIndexTableParams(
       objectMetadataItem?.nameSingular ?? '',
-      objectMetadataItem?.namePlural ?? '',
     );
 
-    const contextStoreFilters = useRecoilComponentValueV2(
+    const contextStoreFilters = useRecoilComponentValue(
       contextStoreFiltersComponentState,
     );
+
+    const contextStoreFilterGroups = useRecoilComponentValue(
+      contextStoreFilterGroupsComponentState,
+    );
+
+    const contextStoreAnyFieldFilterValue = useRecoilComponentValue(
+      contextStoreAnyFieldFilterValueComponentState,
+    );
+
+    const { filterValueDependencies } = useFilterValueDependencies();
+
+    const computedFilter = computeContextStoreFilters({
+      contextStoreTargetedRecordsRule,
+      contextStoreFilters,
+      contextStoreFilterGroups,
+      objectMetadataItem,
+      filterValueDependencies,
+      contextStoreAnyFieldFilterValue,
+    });
 
     const { totalCount } = useFindManyRecords({
       ...findManyRecordsParams,
       recordGqlFields: {
         id: true,
       },
-      filter: computeContextStoreFilters(
-        contextStoreTargetedRecordsRule,
-        contextStoreFilters,
-        objectMetadataItem,
-      ),
+      filter: computedFilter,
       limit: 1,
       skip: contextStoreTargetedRecordsRule.mode === 'selection',
     });

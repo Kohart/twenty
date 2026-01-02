@@ -2,16 +2,10 @@ import { useRecoilCallback, useSetRecoilState } from 'recoil';
 
 import { captchaTokenState } from '@/captcha/states/captchaTokenState';
 import { isRequestingCaptchaTokenState } from '@/captcha/states/isRequestingCaptchaTokenState';
-import { captchaProviderState } from '@/client-config/states/captchaProviderState';
+import { isCaptchaRequiredForPath } from '@/captcha/utils/isCaptchaRequiredForPath';
+import { captchaState } from '@/client-config/states/captchaState';
+import { assertIsDefinedOrThrow, isDefined } from 'twenty-shared/utils';
 import { CaptchaDriverType } from '~/generated-metadata/graphql';
-import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
-
-declare global {
-  interface Window {
-    grecaptcha?: any;
-    turnstile?: any;
-  }
-}
 
 export const useRequestFreshCaptchaToken = () => {
   const setCaptchaToken = useSetRecoilState(captchaTokenState);
@@ -22,22 +16,25 @@ export const useRequestFreshCaptchaToken = () => {
   const requestFreshCaptchaToken = useRecoilCallback(
     ({ snapshot }) =>
       async () => {
-        const captchaProvider = snapshot
-          .getLoadable(captchaProviderState)
-          .getValue();
-
-        if (isUndefinedOrNull(captchaProvider)) {
+        if (!isCaptchaRequiredForPath(window.location.pathname)) {
           return;
         }
+
+        const captcha = snapshot.getLoadable(captchaState).getValue();
+
+        if (!isDefined(captcha)) {
+          return;
+        }
+
+        assertIsDefinedOrThrow(captcha);
 
         setIsRequestingCaptchaToken(true);
 
         let captchaWidget: any;
-
-        switch (captchaProvider.provider) {
-          case CaptchaDriverType.GoogleRecaptcha:
+        switch (captcha.provider) {
+          case CaptchaDriverType.GOOGLE_RECAPTCHA:
             window.grecaptcha
-              .execute(captchaProvider.siteKey, {
+              .execute(captcha.siteKey, {
                 action: 'submit',
               })
               .then((token: string) => {
@@ -45,11 +42,9 @@ export const useRequestFreshCaptchaToken = () => {
                 setIsRequestingCaptchaToken(false);
               });
             break;
-          case CaptchaDriverType.Turnstile:
-            // TODO: fix workspace-no-hardcoded-colors rule
-            // eslint-disable-next-line @nx/workspace-no-hardcoded-colors
+          case CaptchaDriverType.TURNSTILE:
             captchaWidget = window.turnstile.render('#captcha-widget', {
-              sitekey: captchaProvider.siteKey,
+              sitekey: captcha.siteKey,
             });
             window.turnstile.execute(captchaWidget, {
               callback: (token: string) => {

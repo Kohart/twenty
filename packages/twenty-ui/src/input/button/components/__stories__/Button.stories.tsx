@@ -1,17 +1,17 @@
-import { Meta, StoryObj } from '@storybook/react';
-import { IconSearch } from '@ui/display';
+import { type Meta, type StoryObj } from '@storybook/react';
+import { IconReload, IconSearch } from '@ui/display';
 import {
   CatalogDecorator,
-  CatalogStory,
+  type CatalogStory,
   ComponentDecorator,
 } from '@ui/testing';
 import {
   Button,
-  ButtonAccent,
-  ButtonPosition,
-  ButtonSize,
-  ButtonVariant,
-} from '../Button';
+  type ButtonAccent,
+  type ButtonPosition,
+  type ButtonSize,
+  type ButtonVariant,
+} from '../Button/Button';
 
 const meta: Meta<typeof Button> = {
   title: 'UI/Input/Button/Button',
@@ -23,7 +23,7 @@ type Story = StoryObj<typeof Button>;
 
 export const Default: Story = {
   argTypes: {
-    shortcut: { control: false },
+    hotkeys: { control: false },
     Icon: { control: false },
   },
   args: {
@@ -39,12 +39,13 @@ export const Default: Story = {
     position: 'standalone',
     Icon: IconSearch,
     className: '',
+    isLoading: false,
   },
   decorators: [ComponentDecorator],
 };
 
 export const Catalog: CatalogStory<Story, typeof Button> = {
-  args: { title: 'Filter', Icon: IconSearch },
+  args: { title: 'Filter', Icon: IconSearch, hotkeys: ['⌘', 'O'] },
   argTypes: {
     size: { control: false },
     variant: { control: false },
@@ -55,7 +56,7 @@ export const Catalog: CatalogStory<Story, typeof Button> = {
     soon: { control: false },
     position: { control: false },
     className: { control: false },
-    shortcut: { control: false },
+    isLoading: { control: false },
   },
   parameters: {
     pseudo: { hover: ['.hover'], active: ['.pressed'], focus: ['.focus'] },
@@ -128,7 +129,7 @@ export const SoonCatalog: CatalogStory<Story, typeof Button> = {
     soon: { control: false },
     position: { control: false },
     className: { control: false },
-    shortcut: { control: false },
+    hotkeys: { control: false },
   },
   parameters: {
     pseudo: { hover: ['.hover'], active: ['.pressed'], focus: ['.focus'] },
@@ -200,7 +201,7 @@ export const PositionCatalog: CatalogStory<Story, typeof Button> = {
     fullWidth: { control: false },
     soon: { control: false },
     position: { control: false },
-    shortcut: { control: false },
+    hotkeys: { control: false },
   },
   parameters: {
     pseudo: { hover: ['.hover'], active: ['.pressed'], focus: ['.focus'] },
@@ -267,7 +268,7 @@ export const PositionCatalog: CatalogStory<Story, typeof Button> = {
 };
 
 export const ShortcutCatalog: CatalogStory<Story, typeof Button> = {
-  args: { title: 'Actions', shortcut: '⌘O' },
+  args: { title: 'Actions', hotkeys: ['⌘', 'O'] },
   argTypes: {
     size: { control: false },
     variant: { control: false },
@@ -277,7 +278,6 @@ export const ShortcutCatalog: CatalogStory<Story, typeof Button> = {
     fullWidth: { control: false },
     soon: { control: false },
     position: { control: false },
-    shortcut: { control: false },
   },
   parameters: {
     pseudo: { hover: ['.hover'], active: ['.pressed'], focus: ['.focus'] },
@@ -287,6 +287,20 @@ export const ShortcutCatalog: CatalogStory<Story, typeof Button> = {
           name: 'sizes',
           values: ['small', 'medium'] satisfies ButtonSize[],
           props: (size: ButtonSize) => ({ size }),
+        },
+        {
+          name: 'accents',
+          values: ['default', 'blue', 'danger'] satisfies ButtonAccent[],
+          props: (accent: ButtonAccent) => ({ accent }),
+        },
+        {
+          name: 'variants',
+          values: [
+            'primary',
+            'secondary',
+            'tertiary',
+          ] satisfies ButtonVariant[],
+          props: (variant: ButtonVariant) => ({ variant }),
         },
       ],
     },
@@ -307,6 +321,38 @@ export const FullWidth: Story = {
     position: { control: false },
     className: { control: false },
     Icon: { control: false },
+  },
+  decorators: [ComponentDecorator],
+};
+
+export const LoadingButton: Story = {
+  args: {
+    title: 'Reload',
+    Icon: IconReload,
+    isLoading: true,
+  },
+  argTypes: {
+    size: { control: false },
+    variant: { control: false },
+    accent: { control: false },
+    focus: { control: false },
+    disabled: { control: false },
+    fullWidth: { control: false },
+    soon: { control: false },
+    position: { control: false },
+    className: { control: false },
+    isLoading: { control: 'boolean' },
+  },
+  parameters: {
+    catalog: {
+      isLoading: [
+        {
+          name: 'isLoading',
+          values: [true, false] satisfies boolean[],
+          props: (value: boolean) => ({ isLoading: value }),
+        },
+      ],
+    },
   },
   decorators: [ComponentDecorator],
 };

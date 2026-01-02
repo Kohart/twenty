@@ -3,18 +3,17 @@ import { useParams } from 'react-router-dom';
 import { RecordShowActionMenu } from '@/action-menu/components/RecordShowActionMenu';
 import { ActionMenuComponentInstanceContext } from '@/action-menu/states/contexts/ActionMenuComponentInstanceContext';
 import { TimelineActivityContext } from '@/activities/timeline-activities/contexts/TimelineActivityContext';
+import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainContextStoreInstanceId';
 import { ContextStoreComponentInstanceContext } from '@/context-store/states/contexts/ContextStoreComponentInstanceContext';
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { RecordShowContainer } from '@/object-record/record-show/components/RecordShowContainer';
+import { MainContainerLayoutWithCommandMenu } from '@/object-record/components/MainContainerLayoutWithCommandMenu';
+import { RecordComponentInstanceContextsWrapper } from '@/object-record/components/RecordComponentInstanceContextsWrapper';
+import { PageLayoutDispatcher } from '@/object-record/record-show/components/PageLayoutDispatcher';
 import { useRecordShowPage } from '@/object-record/record-show/hooks/useRecordShowPage';
-import { RecordValueSetterEffect } from '@/object-record/record-store/components/RecordValueSetterEffect';
-import { RecordFieldValueSelectorContextProvider } from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
-import { PageBody } from '@/ui/layout/page/components/PageBody';
+import { computeRecordShowComponentInstanceId } from '@/object-record/record-show/utils/computeRecordShowComponentInstanceId';
+import { PageHeaderToggleCommandMenuButton } from '@/ui/layout/page-header/components/PageHeaderToggleCommandMenuButton';
 import { PageContainer } from '@/ui/layout/page/components/PageContainer';
-import { PageTitle } from '@/ui/utilities/page-title/components/PageTitle';
-import { RecordShowPageWorkflowHeader } from '@/workflow/components/RecordShowPageWorkflowHeader';
-import { RecordShowPageWorkflowVersionHeader } from '@/workflow/components/RecordShowPageWorkflowVersionHeader';
 import { RecordShowPageHeader } from '~/pages/object-record/RecordShowPageHeader';
+import { RecordShowPageTitle } from '~/pages/object-record/RecordShowPageTitle';
 
 export const RecordShowPage = () => {
   const parameters = useParams<{
@@ -22,79 +21,53 @@ export const RecordShowPage = () => {
     objectRecordId: string;
   }>();
 
-  const {
-    objectNameSingular,
-    objectRecordId,
-    headerIcon,
-    loading,
-    pageTitle,
-    pageName,
-    isFavorite,
-    record,
-    objectMetadataItem,
-    handleFavoriteButtonClick,
-  } = useRecordShowPage(
+  const { objectNameSingular, objectRecordId } = useRecordShowPage(
     parameters.objectNameSingular ?? '',
     parameters.objectRecordId ?? '',
   );
 
+  const recordShowComponentInstanceId =
+    computeRecordShowComponentInstanceId(objectRecordId);
+
   return (
-    <RecordFieldValueSelectorContextProvider>
+    <RecordComponentInstanceContextsWrapper
+      componentInstanceId={recordShowComponentInstanceId}
+    >
       <ContextStoreComponentInstanceContext.Provider
-        value={{
-          instanceId: `record-show-${objectRecordId}`,
-        }}
+        value={{ instanceId: MAIN_CONTEXT_STORE_INSTANCE_ID }}
       >
         <ActionMenuComponentInstanceContext.Provider
-          value={{ instanceId: `record-show-${objectRecordId}` }}
+          value={{ instanceId: recordShowComponentInstanceId }}
         >
-          <RecordValueSetterEffect recordId={objectRecordId} />
           <PageContainer>
-            <PageTitle title={pageTitle} />
+            <RecordShowPageTitle
+              objectNameSingular={objectNameSingular}
+              objectRecordId={objectRecordId}
+            />
             <RecordShowPageHeader
               objectNameSingular={objectNameSingular}
               objectRecordId={objectRecordId}
-              headerIcon={headerIcon}
             >
-              <>
-                {objectNameSingular === CoreObjectNameSingular.Workflow ? (
-                  <RecordShowPageWorkflowHeader workflowId={objectRecordId} />
-                ) : objectNameSingular ===
-                  CoreObjectNameSingular.WorkflowVersion ? (
-                  <RecordShowPageWorkflowVersionHeader
-                    workflowVersionId={objectRecordId}
-                  />
-                ) : (
-                  <>
-                    <RecordShowActionMenu
-                      {...{
-                        isFavorite,
-                        record,
-                        handleFavoriteButtonClick,
-                        objectMetadataItem,
-                        objectNameSingular,
-                      }}
-                    />
-                  </>
-                )}
-              </>
+              <RecordShowActionMenu />
+              <PageHeaderToggleCommandMenuButton />
             </RecordShowPageHeader>
-            <PageBody>
+            <MainContainerLayoutWithCommandMenu>
               <TimelineActivityContext.Provider
                 value={{
-                  labelIdentifierValue: pageName,
+                  recordId: objectRecordId,
                 }}
               >
-                <RecordShowContainer
-                  objectNameSingular={objectNameSingular}
-                  objectRecordId={objectRecordId}
-                  loading={loading}
+                <PageLayoutDispatcher
+                  targetRecordIdentifier={{
+                    id: objectRecordId,
+                    targetObjectNameSingular: objectNameSingular,
+                  }}
                 />
               </TimelineActivityContext.Provider>
-            </PageBody>
+            </MainContainerLayoutWithCommandMenu>
           </PageContainer>
         </ActionMenuComponentInstanceContext.Provider>
       </ContextStoreComponentInstanceContext.Provider>
-    </RecordFieldValueSelectorContextProvider>
+    </RecordComponentInstanceContextsWrapper>
   );
 };

@@ -1,34 +1,57 @@
-import {
-  Column,
-  ColumnType,
-} from '@/spreadsheet-import/steps/components/MatchColumnsStep/MatchColumnsStep';
-import { Field } from '@/spreadsheet-import/types';
+import { type SpreadsheetImportField } from '@/spreadsheet-import/types';
+import { type SpreadsheetColumn } from '@/spreadsheet-import/types/SpreadsheetColumn';
+import { type SpreadsheetColumns } from '@/spreadsheet-import/types/SpreadsheetColumns';
+import { SpreadsheetColumnType } from '@/spreadsheet-import/types/SpreadsheetColumnType';
 import { normalizeTableData } from '@/spreadsheet-import/utils/normalizeTableData';
+import { FieldMetadataType } from 'twenty-shared/types';
 
 describe('normalizeTableData', () => {
-  const columns: Column<string>[] = [
-    { index: 0, header: 'Name', type: ColumnType.matched, value: 'name' },
-    { index: 1, header: 'Age', type: ColumnType.matched, value: 'age' },
+  const columns: SpreadsheetColumn[] = [
+    {
+      index: 0,
+      header: 'Name',
+      type: SpreadsheetColumnType.matched,
+      value: 'name',
+    },
+    {
+      index: 1,
+      header: 'Age',
+      type: SpreadsheetColumnType.matched,
+      value: 'age',
+    },
     {
       index: 2,
       header: 'Active',
-      type: ColumnType.matchedCheckbox,
+      type: SpreadsheetColumnType.matchedCheckbox,
       value: 'active',
     },
   ];
 
-  const fields: Field<string>[] = [
-    { key: 'name', label: 'Name', fieldType: { type: 'input' }, icon: null },
-    { key: 'age', label: 'Age', fieldType: { type: 'input' }, icon: null },
+  const fields = [
+    {
+      key: 'name',
+      label: 'Name',
+      fieldType: { type: 'input' },
+      fieldMetadataType: FieldMetadataType.TEXT,
+      Icon: null,
+    },
+    {
+      key: 'age',
+      label: 'Age',
+      fieldType: { type: 'input' },
+      fieldMetadataType: FieldMetadataType.NUMBER,
+      Icon: null,
+    },
     {
       key: 'active',
       label: 'Active',
       fieldType: {
         type: 'checkbox',
       },
-      icon: null,
+      fieldMetadataType: FieldMetadataType.BOOLEAN,
+      Icon: null,
     },
-  ];
+  ] as SpreadsheetImportField[];
 
   const rawData = [
     ['John', '30', 'Yes'],
@@ -47,16 +70,16 @@ describe('normalizeTableData', () => {
   });
 
   it('should normalize matchedCheckbox values and handle booleanMatches', () => {
-    const columns: Column<string>[] = [
+    const columns: SpreadsheetColumn[] = [
       {
         index: 0,
         header: 'Active',
-        type: ColumnType.matchedCheckbox,
+        type: SpreadsheetColumnType.matchedCheckbox,
         value: 'active',
       },
     ];
 
-    const fields: Field<string>[] = [
+    const fields = [
       {
         key: 'active',
         label: 'Active',
@@ -64,9 +87,12 @@ describe('normalizeTableData', () => {
           type: 'checkbox',
           booleanMatches: { yes: true, no: false },
         },
-        icon: null,
+        fieldMetadataType: FieldMetadataType.BOOLEAN,
+        Icon: null,
+        fieldMetadataItemId: '1',
+        isNestedField: false,
       },
-    ];
+    ] as SpreadsheetImportField[];
 
     const rawData = [['Yes'], ['No'], ['OtherValue']];
 
@@ -76,11 +102,11 @@ describe('normalizeTableData', () => {
   });
 
   it('should map matchedSelect and matchedSelectOptions values correctly', () => {
-    const columns: Column<string>[] = [
+    const columns: SpreadsheetColumn[] = [
       {
         index: 0,
         header: 'Number',
-        type: ColumnType.matchedSelect,
+        type: SpreadsheetColumnType.matchedSelect,
         value: 'number',
         matchedOptions: [
           { entry: 'One', value: '1' },
@@ -89,7 +115,7 @@ describe('normalizeTableData', () => {
       },
     ];
 
-    const fields: Field<string>[] = [
+    const fields = [
       {
         key: 'number',
         label: 'Number',
@@ -100,9 +126,10 @@ describe('normalizeTableData', () => {
             { label: 'Two', value: '2' },
           ],
         },
-        icon: null,
+        fieldMetadataType: FieldMetadataType.SELECT,
+        Icon: null,
       },
-    ];
+    ] as SpreadsheetImportField[];
 
     const rawData = [['One'], ['Two'], ['OtherValue']];
 
@@ -116,9 +143,9 @@ describe('normalizeTableData', () => {
   });
 
   it('should handle empty and ignored columns', () => {
-    const columns: Column<string>[] = [
-      { index: 0, header: 'Empty', type: ColumnType.empty },
-      { index: 1, header: 'Ignored', type: ColumnType.ignored },
+    const columns: SpreadsheetColumn[] = [
+      { index: 0, header: 'Empty', type: SpreadsheetColumnType.empty },
+      { index: 1, header: 'Ignored', type: SpreadsheetColumnType.ignored },
     ];
 
     const rawData = [['Value1', 'Value2']];
@@ -129,11 +156,11 @@ describe('normalizeTableData', () => {
   });
 
   it('should handle unrecognized column types and return empty object', () => {
-    const columns: Column<string>[] = [
+    const columns: SpreadsheetColumns = [
       {
         index: 0,
         header: 'Unrecognized',
-        type: 'Unknown' as unknown as ColumnType.matched,
+        type: 'Unknown' as unknown as SpreadsheetColumnType.matched,
         value: '',
       },
     ];

@@ -1,11 +1,13 @@
-import { createState } from 'twenty-ui';
-
+import { createState } from 'twenty-ui/utilities';
 export enum SignInUpStep {
   Init = 'init',
   Email = 'email',
   Password = 'password',
-  SSOEmail = 'SSOEmail',
-  SSOWorkspaceSelection = 'SSOWorkspaceSelection',
+  EmailVerification = 'emailVerification',
+  WorkspaceSelection = 'workspaceSelection',
+  SSOIdentityProviderSelection = 'SSOIdentityProviderSelection',
+  TwoFactorAuthenticationVerification = 'TwoFactorAuthenticationVerification',
+  TwoFactorAuthenticationProvision = 'TwoFactorAuthenticationProvision',
 }
 
 export const signInUpStepState = createState<SignInUpStep>({

@@ -1,10 +1,15 @@
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
-import { forwardRef, InputHTMLAttributes, ReactNode, useRef } from 'react';
+import {
+  forwardRef,
+  useRef,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from 'react';
 import 'react-phone-number-input/style.css';
-import { TEXT_INPUT_STYLE } from 'twenty-ui';
 
-import { useRegisterInputEvents } from '@/object-record/record-field/meta-types/input/hooks/useRegisterInputEvents';
+import { useRegisterInputEvents } from '@/object-record/record-field/ui/meta-types/input/hooks/useRegisterInputEvents';
+import { TEXT_INPUT_STYLE } from 'twenty-ui/theme';
 import { useCombinedRefs } from '~/hooks/useCombinedRefs';
 
 const StyledInput = styled.input<{
@@ -13,11 +18,6 @@ const StyledInput = styled.input<{
 }>`
   ${TEXT_INPUT_STYLE}
 
-  border: 1px solid ${({ theme, hasError }) =>
-    hasError ? theme.border.color.danger : theme.border.color.medium};
-  background-color: ${({ theme }) => theme.background.transparent.secondary};
-  backdrop-filter: ${({ theme }) => theme.blur.medium};
-  border-radius: ${({ theme }) => theme.border.radius.sm};
   box-sizing: border-box;
   font-weight: ${({ theme }) => theme.font.weight.medium};
   height: 32px;
@@ -44,7 +44,7 @@ const StyledInputContainer = styled.div`
 
 const StyledRightContainer = styled.div`
   position: absolute;
-  right: ${({ theme }) => theme.spacing(1)};
+  right: ${({ theme }) => theme.spacing(2)};
   top: 50%;
   transform: translateY(-50%);
 `;
@@ -57,7 +57,7 @@ const StyledErrorDiv = styled.div`
 type HTMLInputProps = InputHTMLAttributes<HTMLInputElement>;
 
 export type DropdownMenuInputProps = HTMLInputProps & {
-  hotkeyScope?: string;
+  instanceId: string;
   onClickOutside?: () => void;
   onEnter?: () => void;
   onEscape?: () => void;
@@ -84,7 +84,7 @@ export const DropdownMenuInput = forwardRef<
       className,
       value,
       placeholder,
-      hotkeyScope = 'dropdown-menu-input',
+      instanceId,
       onChange,
       onClickOutside,
       onEnter = () => {},
@@ -102,6 +102,7 @@ export const DropdownMenuInput = forwardRef<
     const combinedRef = useCombinedRefs(ref, inputRef);
 
     useRegisterInputEvents({
+      focusId: instanceId,
       inputRef,
       inputValue: value,
       onEnter,
@@ -109,7 +110,6 @@ export const DropdownMenuInput = forwardRef<
       onClickOutside,
       onTab,
       onShiftTab,
-      hotkeyScope,
     });
 
     return (

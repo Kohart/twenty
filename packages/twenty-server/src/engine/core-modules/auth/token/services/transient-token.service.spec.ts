@@ -1,15 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
-import { AuthException } from 'src/engine/core-modules/auth/auth.exception';
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { JwtTokenTypeEnum } from 'src/engine/core-modules/auth/types/auth-context.type';
 
 import { TransientTokenService } from './transient-token.service';
 
 describe('TransientTokenService', () => {
   let service: TransientTokenService;
   let jwtWrapperService: JwtWrapperService;
-  let environmentService: EnvironmentService;
+  let twentyConfigService: TwentyConfigService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -19,13 +19,13 @@ describe('TransientTokenService', () => {
           provide: JwtWrapperService,
           useValue: {
             sign: jest.fn(),
-            verifyWorkspaceToken: jest.fn(),
+            verifyJwtToken: jest.fn(),
             decode: jest.fn(),
             generateAppSecret: jest.fn().mockReturnValue('mocked-secret'),
           },
         },
         {
-          provide: EnvironmentService,
+          provide: TwentyConfigService,
           useValue: {
             get: jest.fn(),
           },
@@ -35,7 +35,7 @@ describe('TransientTokenService', () => {
 
     service = module.get<TransientTokenService>(TransientTokenService);
     jwtWrapperService = module.get<JwtWrapperService>(JwtWrapperService);
-    environmentService = module.get<EnvironmentService>(EnvironmentService);
+    twentyConfigService = module.get<TwentyConfigService>(TwentyConfigService);
   });
 
   it('should be defined', () => {
@@ -50,45 +50,39 @@ describe('TransientTokenService', () => {
       const mockExpiresIn = '15m';
       const mockToken = 'mock-token';
 
-      jest.spyOn(environmentService, 'get').mockImplementation((key) => {
+      jest.spyOn(twentyConfigService, 'get').mockImplementation((key) => {
         if (key === 'SHORT_TERM_TOKEN_EXPIRES_IN') return mockExpiresIn;
 
         return undefined;
       });
       jest.spyOn(jwtWrapperService, 'sign').mockReturnValue(mockToken);
 
-      const result = await service.generateTransientToken(
+      const result = await service.generateTransientToken({
         workspaceMemberId,
         userId,
         workspaceId,
-      );
+      });
 
       expect(result).toEqual({
         token: mockToken,
         expiresAt: expect.any(Date),
       });
-      expect(environmentService.get).toHaveBeenCalledWith(
+      expect(twentyConfigService.get).toHaveBeenCalledWith(
         'SHORT_TERM_TOKEN_EXPIRES_IN',
       );
       expect(jwtWrapperService.sign).toHaveBeenCalledWith(
         {
           sub: workspaceMemberId,
+          type: JwtTokenTypeEnum.LOGIN,
           userId,
           workspaceId,
+          workspaceMemberId,
         },
         expect.objectContaining({
           secret: 'mocked-secret',
           expiresIn: mockExpiresIn,
         }),
       );
-    });
-
-    it('should throw an error if SHORT_TERM_TOKEN_EXPIRES_IN is not set', async () => {
-      jest.spyOn(environmentService, 'get').mockReturnValue(undefined);
-
-      await expect(
-        service.generateTransientToken('member-id', 'user-id', 'workspace-id'),
-      ).rejects.toThrow(AuthException);
     });
   });
 
@@ -99,24 +93,23 @@ describe('TransientTokenService', () => {
         sub: 'workspace-member-id',
         userId: 'user-id',
         workspaceId: 'workspace-id',
+        workspaceMemberId: 'workspace-member-id',
       };
 
       jest
-        .spyOn(jwtWrapperService, 'verifyWorkspaceToken')
+        .spyOn(jwtWrapperService, 'verifyJwtToken')
         .mockResolvedValue(undefined);
       jest.spyOn(jwtWrapperService, 'decode').mockReturnValue(mockPayload);
 
       const result = await service.verifyTransientToken(mockToken);
 
       expect(result).toEqual({
-        workspaceMemberId: mockPayload.sub,
+        workspaceMemberId: mockPayload.workspaceMemberId,
+        sub: mockPayload.sub,
         userId: mockPayload.userId,
         workspaceId: mockPayload.workspaceId,
       });
-      expect(jwtWrapperService.verifyWorkspaceToken).toHaveBeenCalledWith(
-        mockToken,
-        'LOGIN',
-      );
+      expect(jwtWrapperService.verifyJwtToken).toHaveBeenCalledWith(mockToken);
       expect(jwtWrapperService.decode).toHaveBeenCalledWith(mockToken);
     });
 
@@ -124,7 +117,7 @@ describe('TransientTokenService', () => {
       const mockToken = 'invalid-token';
 
       jest
-        .spyOn(jwtWrapperService, 'verifyWorkspaceToken')
+        .spyOn(jwtWrapperService, 'verifyJwtToken')
         .mockRejectedValue(new Error('Invalid token'));
 
       await expect(service.verifyTransientToken(mockToken)).rejects.toThrow();

@@ -1,6 +1,13 @@
-import { Controller, Get, Param, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Req,
+  Res,
+  UseFilters,
+  UseGuards,
+} from '@nestjs/common';
 
-import { Response } from 'express';
+import { Request, Response } from 'express';
 
 import {
   FileStorageException,
@@ -8,44 +15,40 @@ import {
 } from 'src/engine/core-modules/file-storage/interfaces/file-storage-exception';
 
 import {
-  checkFilePath,
-  checkFilename,
-} from 'src/engine/core-modules/file/file.utils';
+  FileException,
+  FileExceptionCode,
+} from 'src/engine/core-modules/file/file.exception';
+import { FileApiExceptionFilter } from 'src/engine/core-modules/file/filters/file-api-exception.filter';
 import { FilePathGuard } from 'src/engine/core-modules/file/guards/file-path-guard';
 import { FileService } from 'src/engine/core-modules/file/services/file.service';
+import { extractFileInfoFromRequest } from 'src/engine/core-modules/file/utils/extract-file-info-from-request.utils';
+import { NoPermissionGuard } from 'src/engine/guards/no-permission.guard';
 
-// TODO: Add cookie authentication
 @Controller('files')
-@UseGuards(FilePathGuard)
+@UseFilters(FileApiExceptionFilter)
 export class FileController {
   constructor(private readonly fileService: FileService) {}
 
-  @Get('*/:filename')
-  async getFile(
-    @Param() params: string[],
-    @Res() res: Response,
-    @Req() req: Request,
-  ) {
-    const folderPath = checkFilePath(params[0]);
-    const filename = checkFilename(params['filename']);
-
+  @Get('*path')
+  @UseGuards(FilePathGuard, NoPermissionGuard)
+  async getFile(@Res() res: Response, @Req() req: Request) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const workspaceId = (req as any)?.workspaceId;
 
-    if (!workspaceId) {
-      return res
-        .status(401)
-        .send({ error: 'Unauthorized, missing workspaceId' });
-    }
+    const { rawFolder, filename } = extractFileInfoFromRequest(req);
 
     try {
       const fileStream = await this.fileService.getFileStream(
-        folderPath,
+        rawFolder,
         filename,
         workspaceId,
       );
 
       fileStream.on('error', () => {
-        res.status(500).send({ error: 'Internal server error' });
+        throw new FileException(
+          'Error streaming file from storage',
+          FileExceptionCode.INTERNAL_SERVER_ERROR,
+        );
       });
 
       fileStream.pipe(res);
@@ -54,10 +57,16 @@ export class FileController {
         error instanceof FileStorageException &&
         error.code === FileStorageExceptionCode.FILE_NOT_FOUND
       ) {
-        return res.status(404).send({ error: 'File not found' });
+        throw new FileException(
+          'File not found',
+          FileExceptionCode.FILE_NOT_FOUND,
+        );
       }
 
-      return res.status(500).send({ error: 'Internal server error' });
+      throw new FileException(
+        `Error retrieving file: ${error.message}`,
+        FileExceptionCode.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

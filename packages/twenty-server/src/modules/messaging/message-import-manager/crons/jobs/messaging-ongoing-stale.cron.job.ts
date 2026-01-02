@@ -1,6 +1,7 @@
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
+import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
 
 import { SentryCronMonitor } from 'src/engine/core-modules/cron/sentry-cron-monitor.decorator';
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
@@ -9,13 +10,10 @@ import { Process } from 'src/engine/core-modules/message-queue/decorators/proces
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
-import {
-  Workspace,
-  WorkspaceActivationStatus,
-} from 'src/engine/core-modules/workspace/workspace.entity';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import {
   MessagingOngoingStaleJob,
-  MessagingOngoingStaleJobData,
+  type MessagingOngoingStaleJobData,
 } from 'src/modules/messaging/message-import-manager/jobs/messaging-ongoing-stale.job';
 
 export const MESSAGING_ONGOING_STALE_CRON_PATTERN = '0 * * * *';
@@ -23,8 +21,8 @@ export const MESSAGING_ONGOING_STALE_CRON_PATTERN = '0 * * * *';
 @Processor(MessageQueue.cronQueue)
 export class MessagingOngoingStaleCronJob {
   constructor(
-    @InjectRepository(Workspace, 'core')
-    private readonly workspaceRepository: Repository<Workspace>,
+    @InjectRepository(WorkspaceEntity)
+    private readonly workspaceRepository: Repository<WorkspaceEntity>,
     @InjectMessageQueue(MessageQueue.messagingQueue)
     private readonly messageQueueService: MessageQueueService,
     private readonly exceptionHandlerService: ExceptionHandlerService,
@@ -52,8 +50,8 @@ export class MessagingOngoingStaleCronJob {
         );
       } catch (error) {
         this.exceptionHandlerService.captureExceptions([error], {
-          user: {
-            workspaceId: activeWorkspace.id,
+          workspace: {
+            id: activeWorkspace.id,
           },
         });
       }

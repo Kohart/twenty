@@ -1,10 +1,10 @@
 import { css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { Link } from 'react-router-dom';
-import { IconComponent, IconTwentyStar } from 'twenty-ui';
 
-import { SettingsFieldType } from '@/settings/data-model/types/SettingsFieldType';
+import { type SettingsFieldType } from '@/settings/data-model/types/SettingsFieldType';
 import { getSettingsFieldTypeConfig } from '@/settings/data-model/utils/getSettingsFieldTypeConfig';
+import { type IconComponent, IconTwentyStar } from 'twenty-ui/display';
 
 type SettingsObjectFieldDataTypeProps = {
   to?: string;
@@ -28,6 +28,9 @@ const StyledDataType = styled.div<{
   height: 20px;
   overflow: hidden;
   text-decoration: none;
+
+  user-select: none;
+
   ${({ to, theme }) =>
     to
       ? css`

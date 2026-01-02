@@ -1,18 +1,29 @@
 import { Injectable } from '@nestjs/common';
 
-import { ColumnType, EntitySchemaColumnOptions } from 'typeorm';
+import {
+  FieldMetadataType,
+  compositeTypeDefinitions,
+} from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
+import { type ColumnType, type EntitySchemaColumnOptions } from 'typeorm';
 
-import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
+import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
 
-import { compositeTypeDefinitions } from 'src/engine/metadata-modules/field-metadata/composite-types';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { computeCompositeColumnName } from 'src/engine/metadata-modules/field-metadata/utils/compute-column-name.util';
 import { isCompositeFieldMetadataType } from 'src/engine/metadata-modules/field-metadata/utils/is-composite-field-metadata-type.util';
 import { isEnumFieldMetadataType } from 'src/engine/metadata-modules/field-metadata/utils/is-enum-field-metadata-type.util';
 import { serializeDefaultValue } from 'src/engine/metadata-modules/field-metadata/utils/serialize-default-value';
-import { FieldMetadataMap } from 'src/engine/metadata-modules/types/field-metadata-map';
 import { fieldMetadataTypeToColumnType } from 'src/engine/metadata-modules/workspace-migration/utils/field-metadata-type-to-column-type.util';
-import { isRelationFieldMetadataType } from 'src/engine/utils/is-relation-field-metadata-type.util';
+import {
+  TwentyORMException,
+  TwentyORMExceptionCode,
+} from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
+import {
+  type EntitySchemaFieldMetadata,
+  type EntitySchemaFieldMetadataMaps,
+  type EntitySchemaObjectMetadata,
+} from 'src/engine/twenty-orm/global-workspace-datasource/types/entity-schema-metadata.type';
+import { isFieldMetadataEntityOfType } from 'src/engine/utils/is-field-metadata-of-type.util';
 
 type EntitySchemaColumnMap = {
   [key: string]: EntitySchemaColumnOptions;
@@ -20,39 +31,50 @@ type EntitySchemaColumnMap = {
 
 @Injectable()
 export class EntitySchemaColumnFactory {
-  create(fieldMetadataMapByName: FieldMetadataMap): EntitySchemaColumnMap {
+  create(
+    objectMetadata: EntitySchemaObjectMetadata,
+    fieldMetadataMaps: EntitySchemaFieldMetadataMaps,
+  ): EntitySchemaColumnMap {
     let entitySchemaColumnMap: EntitySchemaColumnMap = {};
 
-    const fieldMetadataCollection = Object.values(fieldMetadataMapByName);
+    const fieldMetadataCollection = objectMetadata.fieldMetadataIds
+      .map((fieldId) => fieldMetadataMaps.byId[fieldId])
+      .filter(isDefined);
 
     for (const fieldMetadata of fieldMetadataCollection) {
       const key = fieldMetadata.name;
 
-      if (isRelationFieldMetadataType(fieldMetadata.type)) {
-        const relationMetadata =
-          fieldMetadata.fromRelationMetadata ??
-          fieldMetadata.toRelationMetadata;
+      const isRelation =
+        isFieldMetadataEntityOfType(
+          fieldMetadata,
+          FieldMetadataType.RELATION,
+        ) ||
+        isFieldMetadataEntityOfType(
+          fieldMetadata,
+          FieldMetadataType.MORPH_RELATION,
+        );
 
-        if (!relationMetadata) {
-          throw new Error(
-            `Relation metadata is missing for field ${fieldMetadata.name}`,
+      if (isRelation) {
+        const isManyToOneRelation =
+          fieldMetadata.settings?.relationType === RelationType.MANY_TO_ONE;
+        const joinColumnName = fieldMetadata.settings?.joinColumnName;
+
+        if (!isManyToOneRelation) {
+          continue;
+        }
+
+        if (!isDefined(joinColumnName)) {
+          throw new TwentyORMException(
+            `Field ${fieldMetadata.id} of type ${fieldMetadata.type}  is a many to one relation but does not have a join column name`,
+            TwentyORMExceptionCode.MALFORMED_METADATA,
           );
         }
 
-        const joinColumnKey = fieldMetadata.name + 'Id';
-        const joinColumn = fieldMetadataCollection.find(
-          (field) => field.name === joinColumnKey,
-        )
-          ? joinColumnKey
-          : null;
-
-        if (joinColumn) {
-          entitySchemaColumnMap[joinColumn] = {
-            name: joinColumn,
-            type: 'uuid',
-            nullable: fieldMetadata.isNullable,
-          };
-        }
+        entitySchemaColumnMap[joinColumnName] = {
+          name: joinColumnName,
+          type: 'uuid',
+          nullable: fieldMetadata.isNullable ?? false,
+        };
 
         continue;
       }
@@ -74,9 +96,11 @@ export class EntitySchemaColumnFactory {
       entitySchemaColumnMap[key] = {
         name: key,
         type: columnType as ColumnType,
+        precision:
+          fieldMetadata.type === FieldMetadataType.DATE_TIME ? 3 : undefined,
         // TODO: We should double check that
         primary: key === 'id',
-        nullable: fieldMetadata.isNullable,
+        nullable: fieldMetadata.isNullable ?? false,
         createDate: key === 'createdAt',
         updateDate: key === 'updatedAt',
         deleteDate: key === 'deletedAt',
@@ -97,7 +121,7 @@ export class EntitySchemaColumnFactory {
   }
 
   private createCompositeColumns(
-    fieldMetadata: FieldMetadataInterface,
+    fieldMetadata: EntitySchemaFieldMetadata,
   ): EntitySchemaColumnMap {
     const entitySchemaColumnMap: EntitySchemaColumnMap = {};
     const compositeType = compositeTypeDefinitions.get(fieldMetadata.type);
@@ -115,6 +139,7 @@ export class EntitySchemaColumnFactory {
       );
       const columnType = fieldMetadataTypeToColumnType(compositeProperty.type);
       const defaultValue = serializeDefaultValue(
+        // @ts-expect-error legacy noImplicitAny
         fieldMetadata.defaultValue?.[compositeProperty.name],
       );
 

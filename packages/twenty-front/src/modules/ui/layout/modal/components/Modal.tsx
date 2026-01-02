@@ -1,16 +1,21 @@
-import { ModalHotkeyScope } from '@/ui/layout/modal/components/types/ModalHotkeyScope';
-import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
-import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
-import {
-  ClickOutsideMode,
-  useListenClickOutsideV2,
-} from '@/ui/utilities/pointer-event/hooks/useListenClickOutsideV2';
-import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
-import styled from '@emotion/styled';
-import { motion } from 'framer-motion';
-import React, { useEffect, useRef } from 'react';
-import { Key } from 'ts-key-enum';
+import { RootStackingContextZIndices } from '@/ui/layout/constants/RootStackingContextZIndices';
+import { ModalHotkeysAndClickOutsideEffect } from '@/ui/layout/modal/components/ModalHotkeysAndClickOutsideEffect';
+import { ModalComponentInstanceContext } from '@/ui/layout/modal/contexts/ModalComponentInstanceContext';
+import { useModalContainer } from '@/ui/layout/modal/contexts/ModalContainerContext';
+import { isModalOpenedComponentState } from '@/ui/layout/modal/states/isModalOpenedComponentState';
 
+import { MODAL_BACKDROP_CLICK_OUTSIDE_ID } from '@/ui/layout/modal/constants/ModalBackdropClickOutsideId';
+import { MODAL_CLICK_OUTSIDE_LISTENER_EXCLUDED_ID } from '@/ui/layout/modal/constants/ModalClickOutsideListenerExcludedClassName';
+import { useModal } from '@/ui/layout/modal/hooks/useModal';
+import { ClickOutsideListenerContext } from '@/ui/utilities/pointer-event/contexts/ClickOutsideListenerContext';
+import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { css, useTheme } from '@emotion/react';
+import styled from '@emotion/styled';
+import { AnimatePresence, motion } from 'framer-motion';
+import React, { useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { isDefined } from 'twenty-shared/utils';
 const StyledModalDiv = styled(motion.div)<{
   size?: ModalSize;
   padding?: ModalPadding;
@@ -22,25 +27,31 @@ const StyledModalDiv = styled(motion.div)<{
   box-shadow: ${({ theme, modalVariant }) =>
     modalVariant === 'primary'
       ? theme.boxShadow.superHeavy
-      : theme.boxShadow.strong};
-  background: ${({ theme }) => theme.background.primary};
+      : modalVariant === 'transparent'
+        ? 'none'
+        : theme.boxShadow.strong};
+  background: ${({ theme, modalVariant }) =>
+    modalVariant === 'transparent' ? 'transparent' : theme.background.primary};
   color: ${({ theme }) => theme.font.color.primary};
-  border-radius: ${({ theme, isMobile }) => {
-    if (isMobile) return `0`;
+  border-radius: ${({ theme, isMobile, modalVariant }) => {
+    if (isMobile || modalVariant === 'transparent') return `0`;
     return theme.border.radius.md;
   }};
-  overflow: hidden;
-  z-index: 10000; // should be higher than Backdrop's z-index
+  overflow-x: hidden;
+  overflow-y: auto;
+  z-index: ${RootStackingContextZIndices.RootModal}; // should be higher than Backdrop's z-index
 
   width: ${({ isMobile, size, theme }) => {
-    if (isMobile) return theme.modal.size.fullscreen;
+    if (isMobile) return theme.modal.size.fullscreen.width;
     switch (size) {
       case 'small':
-        return theme.modal.size.sm;
+        return theme.modal.size.sm.width;
       case 'medium':
-        return theme.modal.size.md;
+        return theme.modal.size.md.width;
       case 'large':
-        return theme.modal.size.lg;
+        return theme.modal.size.lg.width;
+      case 'extraLarge':
+        return theme.modal.size.xl.width;
       default:
         return 'auto';
     }
@@ -60,8 +71,16 @@ const StyledModalDiv = styled(motion.div)<{
         return 'auto';
     }
   }};
-  height: ${({ isMobile, theme }) =>
-    isMobile ? theme.modal.size.fullscreen : 'auto'};
+  height: ${({ isMobile, theme, size }) => {
+    if (isMobile) return theme.modal.size.fullscreen.height;
+
+    switch (size) {
+      case 'extraLarge':
+        return theme.modal.size.xl.height;
+      default:
+        return 'auto';
+    }
+  }};
   max-height: ${({ isMobile }) => (isMobile ? 'none' : '90dvh')};
 `;
 
@@ -74,13 +93,25 @@ const StyledHeader = styled.div`
   padding: ${({ theme }) => theme.spacing(5)};
 `;
 
-const StyledContent = styled.div`
+const StyledContent = styled.div<{
+  isVerticalCentered?: boolean;
+  isHorizontalCentered?: boolean;
+}>`
   display: flex;
   flex: 1;
   flex: 1 1 0%;
   flex-direction: column;
-  overflow-y: auto;
   padding: ${({ theme }) => theme.spacing(10)};
+  ${({ isVerticalCentered }) =>
+    isVerticalCentered &&
+    css`
+      align-items: center;
+    `}
+  ${({ isHorizontalCentered }) =>
+    isHorizontalCentered &&
+    css`
+      justify-content: center;
+    `}
 `;
 
 const StyledFooter = styled.div`
@@ -94,22 +125,26 @@ const StyledFooter = styled.div`
 
 const StyledBackDrop = styled(motion.div)<{
   modalVariant: ModalVariants;
+  isInContainer?: boolean;
 }>`
   align-items: center;
-  background: ${({ theme, modalVariant }) =>
-    modalVariant === 'primary'
-      ? theme.background.overlayPrimary
-      : modalVariant === 'secondary'
-        ? theme.background.overlaySecondary
-        : theme.background.overlayTertiary};
+  background: ${({ theme, modalVariant, isInContainer }) =>
+    isInContainer
+      ? theme.background.overlayTertiary
+      : modalVariant === 'primary' || modalVariant === 'transparent'
+        ? theme.background.overlayPrimary
+        : modalVariant === 'secondary'
+          ? theme.background.overlaySecondary
+          : theme.background.overlayTertiary};
   display: flex;
   height: 100%;
   justify-content: center;
   left: 0;
-  position: fixed;
+  pointer-events: auto;
+  position: ${({ isInContainer }) => (isInContainer ? 'absolute' : 'fixed')};
   top: 0;
   width: 100%;
-  z-index: 9999;
+  z-index: ${RootStackingContextZIndices.RootModalBackDrop};
   user-select: none;
 `;
 
@@ -123,12 +158,24 @@ const ModalHeader = ({ children, className }: ModalHeaderProps) => (
 
 type ModalContentProps = React.PropsWithChildren & {
   className?: string;
+  isVerticalCentered?: boolean;
+  isHorizontalCentered?: boolean;
 };
 
-const ModalContent = ({ children, className }: ModalContentProps) => (
-  <StyledContent className={className}>{children}</StyledContent>
+const ModalContent = ({
+  children,
+  className,
+  isVerticalCentered,
+  isHorizontalCentered,
+}: ModalContentProps) => (
+  <StyledContent
+    className={className}
+    isVerticalCentered={isVerticalCentered}
+    isHorizontalCentered={isHorizontalCentered}
+  >
+    {children}
+  </StyledContent>
 );
-
 type ModalFooterProps = React.PropsWithChildren & {
   className?: string;
 };
@@ -137,19 +184,26 @@ const ModalFooter = ({ children, className }: ModalFooterProps) => (
   <StyledFooter className={className}>{children}</StyledFooter>
 );
 
-export type ModalSize = 'small' | 'medium' | 'large';
+export type ModalSize = 'small' | 'medium' | 'large' | 'extraLarge';
 export type ModalPadding = 'none' | 'small' | 'medium' | 'large';
-export type ModalVariants = 'primary' | 'secondary' | 'tertiary';
+export type ModalVariants =
+  | 'primary'
+  | 'secondary'
+  | 'tertiary'
+  | 'transparent';
 
 export type ModalProps = React.PropsWithChildren & {
+  modalId: string;
   size?: ModalSize;
   padding?: ModalPadding;
   className?: string;
-  hotkeyScope?: ModalHotkeyScope;
   onEnter?: () => void;
   modalVariant?: ModalVariants;
+  dataGloballyPreventClickOutside?: boolean;
+  shouldCloseModalOnClickOutsideOrEscape?: boolean;
+  ignoreContainer?: boolean;
 } & (
-    | { isClosable: true; onClose: () => void }
+    | { isClosable: true; onClose?: () => void }
     | { isClosable?: false; onClose?: never }
   );
 
@@ -160,93 +214,108 @@ const modalAnimation = {
 };
 
 export const Modal = ({
+  modalId,
   children,
   size = 'medium',
   padding = 'medium',
   className,
-  hotkeyScope = ModalHotkeyScope.Default,
   onEnter,
   isClosable = false,
   onClose,
   modalVariant = 'primary',
+  dataGloballyPreventClickOutside = false,
+  shouldCloseModalOnClickOutsideOrEscape = true,
+  ignoreContainer = false,
 }: ModalProps) => {
   const isMobile = useIsMobile();
   const modalRef = useRef<HTMLDivElement>(null);
+  const { container } = useModalContainer();
+  const effectiveContainer = ignoreContainer
+    ? isDefined(document)
+      ? document.body
+      : null
+    : container;
+  const isInContainer = isDefined(container) && !ignoreContainer;
 
-  const {
-    goBackToPreviousHotkeyScope,
-    setHotkeyScopeAndMemorizePreviousScope,
-  } = usePreviousHotkeyScope();
-
-  useEffect(() => {
-    setHotkeyScopeAndMemorizePreviousScope(hotkeyScope);
-    return () => {
-      goBackToPreviousHotkeyScope();
-    };
-  }, [
-    hotkeyScope,
-    setHotkeyScopeAndMemorizePreviousScope,
-    goBackToPreviousHotkeyScope,
-  ]);
-
-  useScopedHotkeys(
-    [Key.Enter],
-    () => {
-      onEnter?.();
-    },
-    hotkeyScope,
-  );
-
-  useScopedHotkeys(
-    [Key.Escape],
-    () => {
-      if (isClosable && onClose !== undefined) {
-        onClose();
-      }
-    },
-    hotkeyScope,
-  );
-
-  useListenClickOutsideV2({
-    refs: [modalRef],
-    listenerId: 'MODAL_CLICK_OUTSIDE_LISTENER_ID',
-    callback: () => {
-      if (isClosable && onClose !== undefined) {
-        onClose();
-      }
-    },
-    mode: ClickOutsideMode.comparePixels,
-  });
+  const theme = useTheme();
 
   const stopEventPropagation = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
 
-  return (
-    <StyledBackDrop
-      className="modal-backdrop"
-      onMouseDown={stopEventPropagation}
-      modalVariant={modalVariant}
-    >
-      <StyledModalDiv
-        ref={modalRef}
-        size={size}
-        padding={padding}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        layout
-        modalVariant={modalVariant}
-        variants={modalAnimation}
-        className={className}
-        isMobile={isMobile}
-      >
-        {children}
-      </StyledModalDiv>
-    </StyledBackDrop>
+  const isModalOpened = useRecoilComponentValue(
+    isModalOpenedComponentState,
+    modalId,
   );
+
+  const { closeModal } = useModal();
+
+  const handleClose = () => {
+    onClose?.();
+    if (shouldCloseModalOnClickOutsideOrEscape) closeModal(modalId);
+  };
+
+  const modalContent = (
+    <AnimatePresence mode="wait">
+      {isModalOpened && (
+        <ModalComponentInstanceContext.Provider
+          value={{
+            instanceId: modalId,
+          }}
+        >
+          <ClickOutsideListenerContext.Provider
+            value={{
+              excludedClickOutsideId: MODAL_CLICK_OUTSIDE_LISTENER_EXCLUDED_ID,
+            }}
+          >
+            <ModalHotkeysAndClickOutsideEffect
+              modalId={modalId}
+              modalRef={modalRef}
+              onEnter={onEnter}
+              isClosable={isClosable}
+              onClose={handleClose}
+            />
+            <StyledBackDrop
+              data-testid="modal-backdrop"
+              data-click-outside-id={MODAL_BACKDROP_CLICK_OUTSIDE_ID}
+              onMouseDown={stopEventPropagation}
+              modalVariant={modalVariant}
+              isInContainer={isInContainer}
+            >
+              <StyledModalDiv
+                ref={modalRef}
+                size={size}
+                padding={padding}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                layout
+                modalVariant={modalVariant}
+                variants={modalAnimation}
+                transition={{ duration: theme.animation.duration.normal }}
+                className={className}
+                isMobile={isMobile}
+                data-globally-prevent-click-outside={
+                  dataGloballyPreventClickOutside
+                }
+              >
+                {children}
+              </StyledModalDiv>
+            </StyledBackDrop>
+          </ClickOutsideListenerContext.Provider>
+        </ModalComponentInstanceContext.Provider>
+      )}
+    </AnimatePresence>
+  );
+
+  if (isDefined(effectiveContainer)) {
+    return createPortal(modalContent, effectiveContainer);
+  }
+
+  return modalContent;
 };
 
 Modal.Header = ModalHeader;
 Modal.Content = ModalContent;
 Modal.Footer = ModalFooter;
+Modal.Backdrop = StyledBackDrop;

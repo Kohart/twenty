@@ -1,20 +1,32 @@
-import { ApolloCache } from '@apollo/client';
+import { type ApolloCache } from '@apollo/client';
 
 import { triggerDestroyRecordsOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerDestroyRecordsOptimisticEffect';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { getObjectTypename } from '@/object-record/cache/utils/getObjectTypename';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type ObjectPermissions } from 'twenty-shared/types';
 
 export const deleteRecordFromCache = ({
   objectMetadataItem,
   objectMetadataItems,
   recordToDestroy,
   cache,
+  upsertRecordsInStore,
+  objectPermissionsByObjectMetadataId,
 }: {
   objectMetadataItem: ObjectMetadataItem;
   objectMetadataItems: ObjectMetadataItem[];
   recordToDestroy: ObjectRecord;
   cache: ApolloCache<object>;
+  objectPermissionsByObjectMetadataId: Record<
+    string,
+    ObjectPermissions & { objectMetadataId: string }
+  >;
+  upsertRecordsInStore: ({
+    partialRecords,
+  }: {
+    partialRecords: ObjectRecord[];
+  }) => void;
 }) => {
   triggerDestroyRecordsOptimisticEffect({
     cache,
@@ -26,5 +38,7 @@ export const deleteRecordFromCache = ({
         __typename: getObjectTypename(objectMetadataItem.nameSingular),
       },
     ],
+    upsertRecordsInStore,
+    objectPermissionsByObjectMetadataId,
   });
 };

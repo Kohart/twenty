@@ -1,15 +1,16 @@
-import { AppPath } from '@/types/AppPath';
 import { getOperationName } from '@apollo/client/utilities';
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
 import { HttpResponse, graphql } from 'msw';
+import { AppPath } from 'twenty-shared/types';
 
 import { OnboardingStatus } from '~/generated/graphql';
 import { GET_CURRENT_USER } from '~/modules/users/graphql/queries/getCurrentUser';
 import { SyncEmails } from '~/pages/onboarding/SyncEmails';
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 import { mockedOnboardingUserData } from '~/testing/mock-data/users';
@@ -17,7 +18,7 @@ import { mockedOnboardingUserData } from '~/testing/mock-data/users';
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/Onboarding/SyncEmails',
   component: SyncEmails,
-  decorators: [PageDecorator],
+  decorators: [I18nFrontDecorator, PageDecorator],
   args: { routePath: AppPath.SyncEmails },
   parameters: {
     msw: {
@@ -25,7 +26,9 @@ const meta: Meta<PageDecoratorArgs> = {
         graphql.query(getOperationName(GET_CURRENT_USER) ?? '', () => {
           return HttpResponse.json({
             data: {
-              currentUser: mockedOnboardingUserData(OnboardingStatus.SyncEmail),
+              currentUser: mockedOnboardingUserData(
+                OnboardingStatus.SYNC_EMAIL,
+              ),
             },
           });
         }),

@@ -1,28 +1,32 @@
 import styled from '@emotion/styled';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCallback, useState } from 'react';
-import { Controller, SubmitHandler, useForm } from 'react-hook-form';
-import { useRecoilState } from 'recoil';
+import { Controller, type SubmitHandler, useForm } from 'react-hook-form';
+import { useRecoilState, useSetRecoilState } from 'recoil';
 import { Key } from 'ts-key-enum';
-import { H2Title, MainButton } from 'twenty-ui';
 import { z } from 'zod';
 
 import { SubTitle } from '@/auth/components/SubTitle';
 import { Title } from '@/auth/components/Title';
+import { currentUserState } from '@/auth/states/currentUserState';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
-import { useOnboardingStatus } from '@/onboarding/hooks/useOnboardingStatus';
 import { useSetNextOnboardingStatus } from '@/onboarding/hooks/useSetNextOnboardingStatus';
-import { ProfilePictureUploader } from '@/settings/profile/components/ProfilePictureUploader';
-import { PageHotkeyScope } from '@/types/PageHotkeyScope';
-import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
+import { WorkspaceMemberPictureUploader } from '@/settings/workspace-member/components/WorkspaceMemberPictureUploader';
+import { PageFocusId } from '@/types/PageFocusId';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import { TextInputV2 } from '@/ui/input/components/TextInputV2';
-import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
-import { WorkspaceMember } from '@/workspace-member/types/WorkspaceMember';
-import { OnboardingStatus } from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
+import { TextInput } from '@/ui/input/components/TextInput';
+import { Modal } from '@/ui/layout/modal/components/Modal';
+import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
+import { type WorkspaceMember } from '@/workspace-member/types/WorkspaceMember';
+import { ApolloError } from '@apollo/client';
+import { i18n } from '@lingui/core';
+import { msg } from '@lingui/core/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { isDefined } from 'twenty-shared/utils';
+import { H2Title } from 'twenty-ui/display';
+import { MainButton } from 'twenty-ui/input';
 
 const StyledContentContainer = styled.div`
   width: 100%;
@@ -45,22 +49,30 @@ const StyledComboInputContainer = styled.div`
   }
 `;
 
+const firstNameErrorMessage = msg`First name can not be empty`;
+const lastNameErrorMessage = msg`Last name can not be empty`;
+
 const validationSchema = z
   .object({
-    firstName: z.string().min(1, { message: 'First name can not be empty' }),
-    lastName: z.string().min(1, { message: 'Last name can not be empty' }),
+    firstName: z.string().min(1, {
+      error: i18n._(firstNameErrorMessage),
+    }),
+    lastName: z.string().min(1, {
+      error: i18n._(lastNameErrorMessage),
+    }),
   })
   .required();
 
 type Form = z.infer<typeof validationSchema>;
 
 export const CreateProfile = () => {
-  const onboardingStatus = useOnboardingStatus();
+  const { t } = useLingui();
   const setNextOnboardingStatus = useSetNextOnboardingStatus();
-  const { enqueueSnackBar } = useSnackBar();
+  const { enqueueErrorSnackBar } = useSnackBar();
   const [currentWorkspaceMember, setCurrentWorkspaceMember] = useRecoilState(
     currentWorkspaceMemberState,
   );
+  const setCurrentUser = useSetRecoilState(currentUserState);
   const { updateOneRecord } = useUpdateOneRecord<WorkspaceMember>({
     objectNameSingular: CoreObjectNameSingular.WorkspaceMember,
   });
@@ -109,56 +121,77 @@ export const CreateProfile = () => {
                 firstName: data.firstName,
                 lastName: data.lastName,
               },
+
               colorScheme: 'System',
             };
           }
           return current;
         });
+
+        setCurrentUser((current) => {
+          if (isDefined(current)) {
+            return {
+              ...current,
+              firstName: data.firstName,
+              lastName: data.lastName,
+            };
+          }
+          return current;
+        });
+
         setNextOnboardingStatus();
       } catch (error: any) {
-        enqueueSnackBar(error?.message, {
-          variant: SnackBarVariant.Error,
+        enqueueErrorSnackBar({
+          apolloError: error instanceof ApolloError ? error : undefined,
         });
       }
     },
     [
       currentWorkspaceMember?.id,
       setNextOnboardingStatus,
-      enqueueSnackBar,
+      enqueueErrorSnackBar,
       setCurrentWorkspaceMember,
+      setCurrentUser,
       updateOneRecord,
     ],
   );
 
   const [isEditingMode, setIsEditingMode] = useState(false);
 
-  useScopedHotkeys(
-    Key.Enter,
-    () => {
-      if (isEditingMode) {
-        onSubmit(getValues());
-      }
-    },
-    PageHotkeyScope.CreateProfile,
-  );
+  const handleEnter = () => {
+    if (isEditingMode) {
+      onSubmit(getValues());
+    }
+  };
 
-  if (onboardingStatus !== OnboardingStatus.ProfileCreation) {
-    return null;
-  }
+  useHotkeysOnFocusedElement({
+    keys: Key.Enter,
+    callback: handleEnter,
+    focusId: PageFocusId.CreateProfile,
+    dependencies: [handleEnter],
+  });
 
   return (
-    <>
-      <Title noMarginTop>Create profile</Title>
-      <SubTitle>How you'll be identified on the app.</SubTitle>
+    <Modal.Content isVerticalCentered isHorizontalCentered>
+      <Title noMarginTop>
+        <Trans>Create profile</Trans>
+      </Title>
+      <SubTitle>
+        <Trans>How you'll be identified on the app.</Trans>
+      </SubTitle>
       <StyledContentContainer>
         <StyledSectionContainer>
-          <H2Title title="Picture" />
-          <ProfilePictureUploader />
+          <H2Title title={t`Picture`} />
+          {currentWorkspaceMember?.id && (
+            <WorkspaceMemberPictureUploader
+              workspaceMemberId={currentWorkspaceMember.id}
+            />
+          )}
         </StyledSectionContainer>
         <StyledSectionContainer>
           <H2Title
-            title="Name"
-            description="Your name as it will be displayed on the app"
+            title={t`Name`}
+            description={t`Your name as it will be displayed on the app`}
           />
           {/* TODO: When react-web-hook-form is added to edit page we should create a dedicated component with context */}
           <StyledComboInputContainer>
@@ -169,9 +202,9 @@ export const CreateProfile = () => {
                 field: { onChange, onBlur, value },
                 fieldState: { error },
               }) => (
-                <TextInputV2
+                <TextInput
                   autoFocus
-                  label="First Name"
+                  label={t`First Name`}
                   value={value}
                   onFocus={() => setIsEditingMode(true)}
                   onBlur={() => {
@@ -179,7 +212,7 @@ export const CreateProfile = () => {
                     setIsEditingMode(false);
                   }}
                   onChange={onChange}
-                  placeholder="Tim"
+                  placeholder={t`Tim`}
                   error={error?.message}
                   fullWidth
                 />
@@ -192,8 +225,8 @@ export const CreateProfile = () => {
                 field: { onChange, onBlur, value },
                 fieldState: { error },
               }) => (
-                <TextInputV2
-                  label="Last Name"
+                <TextInput
+                  label={t`Last Name`}
                   value={value}
                   onFocus={() => setIsEditingMode(true)}
                   onBlur={() => {
@@ -201,7 +234,7 @@ export const CreateProfile = () => {
                     setIsEditingMode(false);
                   }}
                   onChange={onChange}
-                  placeholder="Cook"
+                  placeholder={t`Cook`}
                   error={error?.message}
                   fullWidth
                 />
@@ -212,12 +245,12 @@ export const CreateProfile = () => {
       </StyledContentContainer>
       <StyledButtonContainer>
         <MainButton
-          title="Continue"
+          title={t`Continue`}
           onClick={handleSubmit(onSubmit)}
           disabled={!isValid || isSubmitting}
           fullWidth
         />
       </StyledButtonContainer>
-    </>
+    </Modal.Content>
   );
 };

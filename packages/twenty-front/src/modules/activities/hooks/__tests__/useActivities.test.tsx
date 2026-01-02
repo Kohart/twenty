@@ -1,8 +1,9 @@
 import { renderHook } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { RecoilRoot } from 'recoil';
 
 import { useActivities } from '@/activities/hooks/useActivities';
+import { type Task } from '@/activities/types/Task';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 
 jest.mock('@/activities/hooks/useActivityTargetsForTargetableObjects', () => ({
@@ -14,7 +15,7 @@ jest.mock('@/object-record/hooks/useFindManyRecords', () => ({
 }));
 
 const mockActivityTarget = {
-  __typename: 'ActivityTarget',
+  __typename: 'TaskTarget',
   updatedAt: '2021-08-03T19:20:06.000Z',
   createdAt: '2021-08-03T19:20:06.000Z',
   personId: '1',
@@ -24,17 +25,20 @@ const mockActivityTarget = {
 
 const mockActivity = {
   __typename: 'Task',
-  companyId: '123',
   updatedAt: '2021-08-03T19:20:06.000Z',
   createdAt: '2021-08-03T19:20:06.000Z',
   status: 'DONE',
-  reminderAt: '2021-08-03T19:20:06.000Z',
   title: 'title',
-  body: 'body',
   dueAt: '2021-08-03T19:20:06.000Z',
   assigneeId: '1',
   id: '234',
-};
+  bodyV2: {
+    blocknote: 'My Body',
+    markdown: 'My Body',
+  },
+  assignee: null,
+  taskTargets: [],
+} satisfies Task;
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
   <RecoilRoot>{children}</RecoilRoot>
@@ -51,17 +55,10 @@ describe('useActivities', () => {
     );
     useActivityTargetsForTargetableObjectsMock.useActivityTargetsForTargetableObjects.mockReturnValue(
       {
-        activityTargets: [mockActivityTarget],
+        activityTargets: [{ ...mockActivityTarget, task: mockActivity }],
         loadingActivityTargets: false,
       },
     );
-
-    const useFindManyRecordsMock = jest.requireMock(
-      '@/object-record/hooks/useFindManyRecords',
-    );
-    useFindManyRecordsMock.useFindManyRecords.mockReturnValue({
-      records: [mockActivity],
-    });
 
     const { result } = renderHook(
       () => {
@@ -70,9 +67,9 @@ describe('useActivities', () => {
           targetableObjects: [
             { targetObjectNameSingular: 'company', id: '123' },
           ],
-          activitiesFilters: {},
-          activitiesOrderByVariables: [{}],
           skip: false,
+          limit: 10,
+          activityTargetsOrderByVariables: [{}],
         });
         return activities;
       },

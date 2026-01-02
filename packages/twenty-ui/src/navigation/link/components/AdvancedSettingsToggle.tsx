@@ -1,68 +1,73 @@
+import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconTool } from '@ui/display';
+import { IconPoint } from '@ui/display';
 import { Toggle } from '@ui/input';
-import { MAIN_COLORS } from '@ui/theme';
 import { useId } from 'react';
 
 const StyledContainer = styled.div`
   align-items: center;
   display: flex;
-  width: 100%;
   gap: ${({ theme }) => theme.spacing(2)};
   position: relative;
-`;
-
-const StyledLabel = styled.label`
-  color: ${({ theme }) => theme.font.color.secondary};
-  font-size: ${({ theme }) => theme.font.size.sm};
-  font-weight: ${({ theme }) => theme.font.weight.medium};
+  height: ${({ theme }) => theme.spacing(5)};
   padding: ${({ theme }) => theme.spacing(1)};
 `;
 
-const StyledIconContainer = styled.div`
-  border-right: 1px solid ${MAIN_COLORS.yellow};
-  height: 16px;
-  position: absolute;
-  left: ${({ theme }) => theme.spacing(-5)};
+const StyledText = styled.div`
+  color: ${({ theme }) => theme.font.color.secondary};
+  font-size: ${({ theme }) => theme.font.size.sm};
+  font-weight: ${({ theme }) => theme.font.weight.medium};
 `;
 
-const StyledToggleContainer = styled.div`
-  display: flex;
+const StyledIconContainer = styled.div`
   align-items: center;
+  display: flex;
+  left: ${({ theme }) => theme.spacing(-5)};
+  position: absolute;
+`;
+
+const StyledToggleContainer = styled.label`
+  align-items: center;
+  cursor: pointer;
+  display: flex;
   justify-content: space-between;
   width: 100%;
-`;
-
-const StyledIconTool = styled(IconTool)`
-  margin-right: ${({ theme }) => theme.spacing(0.5)};
 `;
 
 type AdvancedSettingsToggleProps = {
   isAdvancedModeEnabled: boolean;
   setIsAdvancedModeEnabled: (enabled: boolean) => void;
+  label?: string;
 };
 
 export const AdvancedSettingsToggle = ({
   isAdvancedModeEnabled,
   setIsAdvancedModeEnabled,
+  label = 'Advanced:',
 }: AdvancedSettingsToggleProps) => {
   const onChange = (newValue: boolean) => {
     setIsAdvancedModeEnabled(newValue);
   };
-  const inputId = useId();
+  const instanceId = useId();
+
+  const theme = useTheme();
 
   return (
     <StyledContainer>
       <StyledIconContainer>
-        <StyledIconTool size={12} color={MAIN_COLORS.yellow} />
+        <IconPoint
+          size={12}
+          color={theme.color.yellow}
+          fill={theme.color.yellow}
+        />
       </StyledIconContainer>
-      <StyledToggleContainer>
-        <StyledLabel htmlFor={inputId}>Advanced:</StyledLabel>
+      <StyledToggleContainer htmlFor={instanceId}>
+        <StyledText>{label}</StyledText>
 
         <Toggle
-          id={inputId}
+          id={instanceId}
           onChange={onChange}
-          color={MAIN_COLORS.yellow}
+          color={theme.color.yellow}
           value={isAdvancedModeEnabled}
         />
       </StyledToggleContainer>

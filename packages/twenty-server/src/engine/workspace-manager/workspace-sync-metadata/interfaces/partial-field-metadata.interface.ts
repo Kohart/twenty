@@ -1,12 +1,34 @@
-import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
-import { WorkspaceDynamicRelationMetadataArgsFactory } from 'src/engine/twenty-orm/interfaces/workspace-dynamic-relation-metadata-args.interface';
+import {
+  type ExcludeFunctions,
+  type FieldMetadataType,
+} from 'twenty-shared/types';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { type WorkspaceDynamicRelationMetadataArgsFactory } from 'src/engine/twenty-orm/interfaces/workspace-dynamic-relation-metadata-args.interface';
 
-export type PartialFieldMetadata = Omit<
-  FieldMetadataInterface,
-  'id' | 'label' | 'description' | 'objectMetadataId'
+import { type FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+
+// Should get deprecated in favor of the FlatFieldMetadata
+export type PartialFieldMetadata<
+  T extends FieldMetadataType = FieldMetadataType,
+> = Pick<
+  FieldMetadataEntity<T>,
+  | 'type'
+  | 'name'
+  | 'defaultValue'
+  | 'standardOverrides'
+  | 'options'
+  | 'settings'
+  | 'isCustom'
+  | 'isUIReadOnly'
+  | 'isNullable'
+  | 'isUnique'
+  | 'isLabelSyncedWithName'
+  | 'relationTargetFieldMetadataId'
+  | 'relationTargetFieldMetadata'
+  | 'relationTargetObjectMetadataId'
+  | 'relationTargetObjectMetadata'
+  | 'morphId'
 > & {
   standardId: string;
   label: string | ((objectMetadata: ObjectMetadataEntity) => string);
@@ -16,8 +38,8 @@ export type PartialFieldMetadata = Omit<
   workspaceId: string;
   objectMetadataId?: string;
   isActive?: boolean;
-  asExpression?: string;
-  generatedType?: 'STORED' | 'VIRTUAL';
+  asExpression?: string; // not accurate
+  generatedType?: 'STORED' | 'VIRTUAL'; // not accurate
 };
 
 export type PartialComputedFieldMetadata = {
@@ -30,6 +52,10 @@ export type PartialComputedFieldMetadata = {
   objectMetadataId?: string;
 };
 
-export type ComputedPartialFieldMetadata = {
-  [K in keyof PartialFieldMetadata]: ExcludeFunctions<PartialFieldMetadata[K]>;
+export type ComputedPartialFieldMetadata<
+  T extends FieldMetadataType = FieldMetadataType,
+> = {
+  [K in keyof PartialFieldMetadata<T>]: ExcludeFunctions<
+    PartialFieldMetadata<T>[K]
+  >;
 };

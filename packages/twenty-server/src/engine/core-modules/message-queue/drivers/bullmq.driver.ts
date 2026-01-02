@@ -1,21 +1,34 @@
-import { OnModuleDestroy } from '@nestjs/common';
-
-import { JobsOptions, Queue, QueueOptions, Worker } from 'bullmq';
-import omitBy from 'lodash.omitby';
+import { Logger, type OnModuleDestroy } from '@nestjs/common';
 
 import {
-  QueueCronJobOptions,
-  QueueJobOptions,
-} from 'src/engine/core-modules/message-queue/drivers/interfaces/job-options.interface';
-import { MessageQueueDriver } from 'src/engine/core-modules/message-queue/drivers/interfaces/message-queue-driver.interface';
-import { MessageQueueJob } from 'src/engine/core-modules/message-queue/interfaces/message-queue-job.interface';
-import { MessageQueueWorkerOptions } from 'src/engine/core-modules/message-queue/interfaces/message-queue-worker-options.interface';
+  type JobsOptions,
+  MetricsTime,
+  Queue,
+  type QueueOptions,
+  Worker,
+} from 'bullmq';
+import { isDefined } from 'twenty-shared/utils';
+import { v4 } from 'uuid';
 
-import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import {
+  type QueueCronJobOptions,
+  type QueueJobOptions,
+} from 'src/engine/core-modules/message-queue/drivers/interfaces/job-options.interface';
+import { type MessageQueueDriver } from 'src/engine/core-modules/message-queue/drivers/interfaces/message-queue-driver.interface';
+import { type MessageQueueJob } from 'src/engine/core-modules/message-queue/interfaces/message-queue-job.interface';
+import { type MessageQueueWorkerOptions } from 'src/engine/core-modules/message-queue/interfaces/message-queue-worker-options.interface';
+
+import { QUEUE_RETENTION } from 'src/engine/core-modules/message-queue/constants/queue-retention.constants';
+import { type MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { getJobKey } from 'src/engine/core-modules/message-queue/utils/get-job-key.util';
+import { MESSAGE_QUEUE_PRIORITY } from 'src/engine/core-modules/message-queue/message-queue-priority.constant';
 
 export type BullMQDriverOptions = QueueOptions;
 
+const V4_LENGTH = 36;
+
 export class BullMQDriver implements MessageQueueDriver, OnModuleDestroy {
+  private logger = new Logger(BullMQDriver.name);
   private queueMap: Record<MessageQueue, Queue> = {} as Record<
     MessageQueue,
     Queue
@@ -46,54 +59,93 @@ export class BullMQDriver implements MessageQueueDriver, OnModuleDestroy {
     handler: (job: MessageQueueJob<T>) => Promise<void>,
     options?: MessageQueueWorkerOptions,
   ) {
-    const worker = new Worker(
+    const workerOptions = {
+      ...this.options,
+      ...(isDefined(options?.concurrency)
+        ? { concurrency: options.concurrency }
+        : {}),
+      metrics: {
+        maxDataPoints: MetricsTime.ONE_WEEK,
+        collectInterval: 60000,
+      },
+    };
+
+    this.workerMap[queueName] = new Worker(
       queueName,
       async (job) => {
         // TODO: Correctly support for job.id
-        await handler({ data: job.data, id: job.id ?? '', name: job.name });
-      },
-      omitBy(
-        {
-          ...this.options,
-          concurrency: options?.concurrency,
-        },
-        (value) => value === undefined,
-      ),
-    );
+        const timeStart = performance.now();
 
-    this.workerMap[queueName] = worker;
+        this.logger.log(
+          `Processing job ${job.id} with name ${job.name} on queue ${queueName}`,
+        );
+        await handler({ data: job.data, id: job.id ?? '', name: job.name });
+        const timeEnd = performance.now();
+        const executionTime = timeEnd - timeStart;
+
+        this.logger.log(
+          `Job ${job.id} with name ${job.name} processed on queue ${queueName} in ${executionTime.toFixed(2)}ms`,
+        );
+      },
+      workerOptions,
+    );
   }
 
-  async addCron<T>(
-    queueName: MessageQueue,
-    jobName: string,
-    data: T,
-    options?: QueueCronJobOptions,
-  ): Promise<void> {
+  async addCron<T>({
+    queueName,
+    jobName,
+    data,
+    options,
+    jobId,
+  }: {
+    queueName: MessageQueue;
+    jobName: string;
+    data: T;
+    options: QueueCronJobOptions;
+    jobId?: string;
+  }): Promise<void> {
     if (!this.queueMap[queueName]) {
       throw new Error(
         `Queue ${queueName} is not registered, make sure you have added it as a queue provider`,
       );
     }
+
     const queueOptions: JobsOptions = {
-      jobId: options?.id,
       priority: options?.priority,
       repeat: options?.repeat,
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: {
+        age: QUEUE_RETENTION.completedMaxAge,
+        count: QUEUE_RETENTION.completedMaxCount,
+      },
+      removeOnFail: {
+        age: QUEUE_RETENTION.failedMaxAge,
+        count: QUEUE_RETENTION.failedMaxCount,
+      },
     };
 
-    await this.queueMap[queueName].add(jobName, data, queueOptions);
+    await this.queueMap[queueName].upsertJobScheduler(
+      getJobKey({ jobName, jobId }),
+      options?.repeat,
+      {
+        name: jobName,
+        data,
+        opts: queueOptions,
+      },
+    );
   }
 
-  async removeCron(
-    queueName: MessageQueue,
-    jobName: string,
-    pattern: string,
-  ): Promise<void> {
-    await this.queueMap[queueName].removeRepeatable(jobName, {
-      pattern,
-    });
+  async removeCron({
+    queueName,
+    jobName,
+    jobId,
+  }: {
+    queueName: MessageQueue;
+    jobName: string;
+    jobId?: string;
+  }): Promise<void> {
+    await this.queueMap[queueName].removeJobScheduler(
+      getJobKey({ jobName, jobId }),
+    );
   }
 
   async add<T>(
@@ -107,12 +159,33 @@ export class BullMQDriver implements MessageQueueDriver, OnModuleDestroy {
         `Queue ${queueName} is not registered, make sure you have added it as a queue provider`,
       );
     }
+
+    // This ensures only one waiting job can be queued for a specific option.id
+    if (options?.id) {
+      const waitingJobs = await this.queueMap[queueName].getJobs(['waiting']);
+
+      const isJobAlreadyWaiting = waitingJobs.some(
+        (job) => job.id?.slice(0, -(V4_LENGTH + 1)) === options.id,
+      );
+
+      if (isJobAlreadyWaiting) {
+        return;
+      }
+    }
+
     const queueOptions: JobsOptions = {
-      jobId: options?.id,
-      priority: options?.priority,
+      jobId: options?.id ? `${options.id}-${v4()}` : undefined, // We add V4() to id to make sure ids are uniques so we can add a waiting job when a job related with the same option.id is running
+      priority: options?.priority ?? MESSAGE_QUEUE_PRIORITY[queueName],
       attempts: 1 + (options?.retryLimit || 0),
-      removeOnComplete: 100,
-      removeOnFail: 500,
+      removeOnComplete: {
+        age: QUEUE_RETENTION.completedMaxAge,
+        count: QUEUE_RETENTION.completedMaxCount,
+      },
+      removeOnFail: {
+        age: QUEUE_RETENTION.failedMaxAge,
+        count: QUEUE_RETENTION.failedMaxCount,
+      },
+      delay: options?.delay,
     };
 
     await this.queueMap[queueName].add(jobName, data, queueOptions);

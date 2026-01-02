@@ -1,6 +1,9 @@
-import { RecordGqlRefEdge } from '@/object-record/cache/types/RecordGqlRefEdge';
-import { RecordGqlConnection } from '@/object-record/graphql/types/RecordGqlConnection';
+import { type RecordGqlRefEdge } from '@/object-record/cache/types/RecordGqlRefEdge';
+import { type RecordGqlConnectionEdgesRequired } from '@/object-record/graphql/types/RecordGqlConnectionEdgesRequired';
 
-export type RecordGqlRefConnection = Omit<RecordGqlConnection, 'edges'> & {
+export type RecordGqlRefConnection = Omit<
+  RecordGqlConnectionEdgesRequired,
+  'edges'
+> & {
   edges: RecordGqlRefEdge[];
 };

@@ -1,60 +1,75 @@
-import { ObjectRecordBaseEvent } from 'src/engine/core-modules/event-emitter/types/object-record.base.event';
+import { isDefined } from 'twenty-shared/utils';
+import { In } from 'typeorm';
+import { type ObjectRecordNonDestructiveEvent } from 'twenty-shared/database-events';
+
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
-import { InjectObjectMetadataRepository } from 'src/engine/object-metadata-repository/object-metadata-repository.decorator';
-import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/types/workspace-event.type';
+import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
+import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
+import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/types/workspace-event-batch.type';
+import { SYSTEM_OBJECTS_WITH_TIMELINE_ACTIVITIES } from 'src/modules/timeline/constants/system-objects-with-timeline-activities.constant';
 import { TimelineActivityService } from 'src/modules/timeline/services/timeline-activity.service';
-import { WorkspaceMemberRepository } from 'src/modules/workspace-member/repositories/workspace-member.repository';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
-import { TimelineActivityWorkspaceEntity } from 'src/modules/timeline/standard-objects/timeline-activity.workspace-entity';
 
 @Processor(MessageQueue.entityEventsToDbQueue)
 export class UpsertTimelineActivityFromInternalEvent {
   constructor(
-    @InjectObjectMetadataRepository(WorkspaceMemberWorkspaceEntity)
-    private readonly workspaceMemberService: WorkspaceMemberRepository,
     private readonly timelineActivityService: TimelineActivityService,
+    private readonly globalWorkspaceOrmManager: GlobalWorkspaceOrmManager,
   ) {}
 
   @Process(UpsertTimelineActivityFromInternalEvent.name)
   async handle(
-    workspaceEventBatch: WorkspaceEventBatch<
-      ObjectRecordBaseEvent<TimelineActivityWorkspaceEntity>
-    >,
+    workspaceEventBatch: WorkspaceEventBatch<ObjectRecordNonDestructiveEvent>,
   ): Promise<void> {
-    for (const eventData of workspaceEventBatch.events) {
-      if (eventData.userId) {
-        const workspaceMember = await this.workspaceMemberService.getByIdOrFail(
-          eventData.userId,
-          workspaceEventBatch.workspaceId,
-        );
-
-        eventData.workspaceMemberId = workspaceMember.id;
-      }
-
-      if (eventData.properties.diff) {
-        // we remove "before" and "after" property for a cleaner/slimmer event payload
-        eventData.properties = {
-          diff: eventData.properties.diff,
-        };
-      }
-
-      // Temporary
-      // We ignore every that is not a LinkedObject or a Business Object
-      if (
-        eventData.objectMetadata.isSystem &&
-        eventData.objectMetadata.nameSingular !== 'noteTarget' &&
-        eventData.objectMetadata.nameSingular !== 'taskTarget'
-      ) {
-        continue;
-      }
-
-      await this.timelineActivityService.upsertEvent({
-        event: eventData,
-        eventName: workspaceEventBatch.name,
-        workspaceId: workspaceEventBatch.workspaceId,
-      });
+    if (workspaceEventBatch.events.length === 0) {
+      return;
     }
+
+    if (
+      workspaceEventBatch.objectMetadata.isSystem &&
+      !SYSTEM_OBJECTS_WITH_TIMELINE_ACTIVITIES.includes(
+        workspaceEventBatch.objectMetadata.nameSingular,
+      )
+    ) {
+      return;
+    }
+
+    const authContext = buildSystemAuthContext(workspaceEventBatch.workspaceId);
+
+    await this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      authContext,
+      async () => {
+        const workspaceMemberRepository =
+          await this.globalWorkspaceOrmManager.getRepository(
+            workspaceEventBatch.workspaceId,
+            WorkspaceMemberWorkspaceEntity,
+            {
+              shouldBypassPermissionChecks: true,
+            },
+          );
+
+        const userIds = workspaceEventBatch.events
+          .map((event) => event.userId)
+          .filter(isDefined);
+
+        const workspaceMembers = await workspaceMemberRepository.findBy({
+          userId: In(userIds),
+        });
+
+        for (const eventData of workspaceEventBatch.events) {
+          const workspaceMember = workspaceMembers.find(
+            (workspaceMember) => workspaceMember.userId === eventData.userId,
+          );
+
+          if (eventData.userId && workspaceMember) {
+            eventData.workspaceMemberId = workspaceMember.id;
+          }
+        }
+
+        await this.timelineActivityService.upsertEvents(workspaceEventBatch);
+      },
+    );
   }
 }

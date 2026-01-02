@@ -1,11 +1,11 @@
 import { singular } from 'pluralize';
-import { DataSource } from 'typeorm';
+import { type DataSource } from 'typeorm';
 
-import { camelCase } from 'src/utils/camel-case';
 import {
   RemoteTableException,
   RemoteTableExceptionCode,
 } from 'src/engine/metadata-modules/remote-server/remote-table/remote-table.exception';
+import { camelCase } from 'src/utils/camel-case';
 
 const MAX_SUFFIX = 10;
 
@@ -17,11 +17,12 @@ type RemoteTableLocalName = {
 const isNameAvailable = async (
   tableName: string,
   workspaceSchemaName: string,
-  workspaceDataSource: DataSource,
+  coreDataSource: DataSource,
 ) => {
   const numberOfTablesWithSameName = +(
-    await workspaceDataSource.query(
-      `SELECT count(table_name) FROM information_schema.tables WHERE table_name LIKE '${tableName}' AND table_schema IN ('core', 'metadata', '${workspaceSchemaName}')`,
+    await coreDataSource.query(
+      `SELECT count(table_name) FROM information_schema.tables WHERE table_name LIKE $1 AND table_schema IN ('core', $2)`,
+      [tableName, workspaceSchemaName],
     )
   )[0].count;
 
@@ -31,13 +32,13 @@ const isNameAvailable = async (
 export const getRemoteTableLocalName = async (
   distantTableName: string,
   workspaceSchemaName: string,
-  workspaceDataSource: DataSource,
+  coreDataSource: DataSource,
 ): Promise<RemoteTableLocalName> => {
   const baseName = singular(camelCase(distantTableName));
   const isBaseNameValid = await isNameAvailable(
     baseName,
     workspaceSchemaName,
-    workspaceDataSource,
+    coreDataSource,
   );
 
   if (isBaseNameValid) {
@@ -49,7 +50,7 @@ export const getRemoteTableLocalName = async (
     const isNameWithSuffixValid = await isNameAvailable(
       name,
       workspaceSchemaName,
-      workspaceDataSource,
+      coreDataSource,
     );
 
     if (isNameWithSuffixValid) {

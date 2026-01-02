@@ -1,5 +1,6 @@
+import { FieldMetadataType } from '../../types/FieldMetadataType';
 import { computeInputFields } from '../../utils/computeInputFields';
-import { FieldMetadataType, InputField } from '../../utils/data.types';
+import { type InputField } from '../../utils/data.types';
 
 describe('computeInputFields', () => {
   test('should create Person input fields properly', () => {
@@ -91,16 +92,6 @@ describe('computeInputFields', () => {
           },
           {
             node: {
-              type: FieldMetadataType.LINK,
-              name: 'xLink',
-              label: 'X',
-              description: 'Contact’s X/Twitter account',
-              isNullable: true,
-              defaultValue: null,
-            },
-          },
-          {
-            node: {
               type: FieldMetadataType.LINKS,
               name: 'whatsapp',
               label: 'Whatsapp',
@@ -111,24 +102,22 @@ describe('computeInputFields', () => {
           },
           {
             node: {
-              type: FieldMetadataType.EMAIL,
-              name: 'email',
-              label: 'Email',
-              description: 'Contact’s Email',
-              isNullable: false,
-              defaultValue: {
-                value: '',
-              },
-            },
-          },
-          {
-            node: {
               type: FieldMetadataType.UUID,
               name: 'companyId',
               label: 'Company id (foreign key)',
               description: 'Contact’s company id foreign key',
               isNullable: true,
               defaultValue: null,
+            },
+          },
+          {
+            node: {
+              type: FieldMetadataType.BOOLEAN,
+              name: 'ICP',
+              label: 'ICP',
+              description: 'ICP',
+              isNullable: false,
+              defaultValue: false,
             },
           },
         ],
@@ -201,24 +190,6 @@ describe('computeInputFields', () => {
         placeholder: undefined,
       },
       {
-        key: 'xLink__url',
-        label: 'X: Url',
-        type: 'string',
-        helpText: 'Contact’s X/Twitter account: Link Url',
-        required: false,
-        list: false,
-        placeholder: undefined,
-      },
-      {
-        key: 'xLink__label',
-        label: 'X: Label',
-        type: 'string',
-        helpText: 'Contact’s X/Twitter account: Link Label',
-        required: false,
-        list: false,
-        placeholder: undefined,
-      },
-      {
         key: 'whatsapp__primaryLinkLabel',
         label: 'Whatsapp: Primary Link Label',
         type: 'string',
@@ -246,19 +217,19 @@ describe('computeInputFields', () => {
         placeholder: '{ url: "", label: "" }',
       },
       {
-        key: 'email',
-        label: 'Email',
+        key: 'companyId',
+        label: 'Company id (foreign key)',
         type: 'string',
-        helpText: 'Contact’s Email',
+        helpText: 'Contact’s company id foreign key',
         required: false,
         list: false,
         placeholder: undefined,
       },
       {
-        key: 'companyId',
-        label: 'Company id (foreign key)',
-        type: 'string',
-        helpText: 'Contact’s company id foreign key',
+        key: 'ICP',
+        label: 'ICP',
+        type: 'boolean',
+        helpText: 'ICP',
         required: false,
         list: false,
         placeholder: undefined,

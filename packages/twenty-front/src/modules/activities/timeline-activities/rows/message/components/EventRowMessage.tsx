@@ -1,14 +1,16 @@
 import styled from '@emotion/styled';
+import { t } from '@lingui/core/macro';
 import { useState } from 'react';
 
 import { EventCard } from '@/activities/timeline-activities/rows/components/EventCard';
 import { EventCardToggleButton } from '@/activities/timeline-activities/rows/components/EventCardToggleButton';
 import {
-  EventRowDynamicComponentProps,
+  type EventRowDynamicComponentProps,
   StyledEventRowItemAction,
   StyledEventRowItemColumn,
 } from '@/activities/timeline-activities/rows/components/EventRowDynamicComponent';
 import { EventCardMessage } from '@/activities/timeline-activities/rows/message/components/EventCardMessage';
+import { isTimelineActivityWithLinkedRecord } from '@/activities/timeline-activities/types/TimelineActivity';
 
 type EventRowMessageProps = EventRowDynamicComponentProps;
 
@@ -41,7 +43,7 @@ export const EventRowMessage = ({
       <StyledRowContainer>
         <StyledEventRowItemColumn>{authorFullName}</StyledEventRowItemColumn>
         <StyledEventRowItemAction>
-          linked an email with
+          {t`linked an email with`}
         </StyledEventRowItemAction>
         <StyledEventRowItemColumn>
           {labelIdentifierValue}
@@ -49,10 +51,12 @@ export const EventRowMessage = ({
         <EventCardToggleButton isOpen={isOpen} setIsOpen={setIsOpen} />
       </StyledRowContainer>
       <EventCard isOpen={isOpen}>
-        <EventCardMessage
-          messageId={event.linkedRecordId}
-          authorFullName={authorFullName}
-        />
+        {isTimelineActivityWithLinkedRecord(event) && (
+          <EventCardMessage
+            messageId={event.linkedRecordId}
+            authorFullName={authorFullName}
+          />
+        )}
       </EventCard>
     </StyledEventRowMessageContainer>
   );

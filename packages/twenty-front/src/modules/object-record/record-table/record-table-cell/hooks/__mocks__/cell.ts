@@ -1,37 +1,30 @@
-import { RecordTableCellContextProps } from '@/object-record/record-table/contexts/RecordTableCellContext';
-import { RecordTableRowContextProps } from '@/object-record/record-table/contexts/RecordTableRowContext';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { RecordTableCellContextValue } from '@/object-record/record-table/contexts/RecordTableCellContext';
+import { RecordTableRowContextValue } from '@/object-record/record-table/contexts/RecordTableRowContext';
+import { RecordTableRowDraggableContextValue } from '@/object-record/record-table/contexts/RecordTableRowDraggableContext';
 
-export const recordTableRow: RecordTableRowContextProps = {
+export const recordTableRowContextValue: RecordTableRowContextValue = {
   rowIndex: 2,
   isSelected: false,
   recordId: 'recordId',
   pathToShowPage: '/',
   objectNameSingular: 'objectNameSingular',
-  dragHandleProps: {} as any,
-  isDragging: false,
-  inView: true,
-  isPendingRow: false,
 };
 
-export const recordTableCell: RecordTableCellContextProps = {
-  columnIndex: 3,
-  columnDefinition: {
+export const recordTableRowDraggableContextValue: RecordTableRowDraggableContextValue = {
+  dragHandleProps: {} as any,
+  isDragging: false,
+};
+
+export const recordTableCellContextValue: RecordTableCellContextValue = {
+  recordField: {
     size: 1,
     position: 1,
-    fieldMetadataId: 'fieldMetadataId',
-    label: 'label',
-    iconName: 'iconName',
-    type: FieldMetadataType.Text,
-    metadata: {
-      placeHolder: 'placeHolder',
-      fieldName: 'fieldName',
-    },
+    fieldMetadataItemId: 'fieldMetadataId',
+    id: 'id',
+    isVisible: true,
   },
   cellPosition: {
     row: 2,
     column: 3,
   },
-  hasSoftFocus: false,
-  isInEditMode: false,
 };

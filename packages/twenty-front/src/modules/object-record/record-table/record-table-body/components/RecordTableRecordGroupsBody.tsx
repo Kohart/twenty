@@ -1,48 +1,58 @@
-import { useRecordGroups } from '@/object-record/record-group/hooks/useRecordGroups';
 import { RecordGroupContext } from '@/object-record/record-group/states/context/RecordGroupContext';
+import { visibleRecordGroupIdsComponentFamilySelector } from '@/object-record/record-group/states/selectors/visibleRecordGroupIdsComponentFamilySelector';
+import { RecordIndexGroupAggregatesDataLoader } from '@/object-record/record-index/components/RecordIndexGroupAggregatesDataLoader';
+import { recordIndexAllRecordIdsComponentSelector } from '@/object-record/record-index/states/selectors/recordIndexAllRecordIdsComponentSelector';
+import { RecordTableRecordGroupBodyContextProvider } from '@/object-record/record-table/components/RecordTableRecordGroupBodyContextProvider';
 import { RecordTableRecordGroupRows } from '@/object-record/record-table/components/RecordTableRecordGroupRows';
-import { RecordTableBodyDragDropContext } from '@/object-record/record-table/record-table-body/components/RecordTableBodyDragDropContext';
-import { RecordTableBodyDroppable } from '@/object-record/record-table/record-table-body/components/RecordTableBodyDroppable';
 import { RecordTableBodyLoading } from '@/object-record/record-table/record-table-body/components/RecordTableBodyLoading';
-import { RecordTablePendingRow } from '@/object-record/record-table/record-table-row/components/RecordTablePendingRow';
+import { RecordTableBodyRecordGroupDragDropContextProvider } from '@/object-record/record-table/record-table-body/components/RecordTableBodyRecordGroupDragDropContextProvider';
+import { RecordTableBodyRecordGroupDroppable } from '@/object-record/record-table/record-table-body/components/RecordTableBodyRecordGroupDroppable';
+import { RecordTableCellPortals } from '@/object-record/record-table/record-table-cell/components/RecordTableCellPortals';
+import { RecordTableRecordGroupSection } from '@/object-record/record-table/record-table-section/components/RecordTableRecordGroupSection';
 import { isRecordTableInitialLoadingComponentState } from '@/object-record/record-table/states/isRecordTableInitialLoadingComponentState';
-import { tableAllRowIdsComponentState } from '@/object-record/record-table/states/tableAllRowIdsComponentState';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useRecoilComponentFamilyValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyValue';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { ViewType } from '@/views/types/ViewType';
 
-type RecordTableRecordGroupsBodyProps = {
-  objectNameSingular: string;
-};
-
-export const RecordTableRecordGroupsBody = ({
-  objectNameSingular,
-}: RecordTableRecordGroupsBodyProps) => {
-  const tableAllRowIds = useRecoilComponentValueV2(
-    tableAllRowIdsComponentState,
+export const RecordTableRecordGroupsBody = () => {
+  const allRecordIds = useRecoilComponentValue(
+    recordIndexAllRecordIdsComponentSelector,
   );
 
-  const isRecordTableInitialLoading = useRecoilComponentValueV2(
+  const isRecordTableInitialLoading = useRecoilComponentValue(
     isRecordTableInitialLoadingComponentState,
   );
 
-  const { visibleRecordGroups } = useRecordGroups({ objectNameSingular });
+  const visibleRecordGroupIds = useRecoilComponentFamilyValue(
+    visibleRecordGroupIdsComponentFamilySelector,
+    ViewType.Table,
+  );
 
-  if (isRecordTableInitialLoading && tableAllRowIds.length === 0) {
+  if (isRecordTableInitialLoading && allRecordIds.length === 0) {
     return <RecordTableBodyLoading />;
   }
 
   return (
-    <RecordTableBodyDragDropContext>
-      <RecordTableBodyDroppable>
-        <RecordTablePendingRow />
-        {visibleRecordGroups.map((recordGroupDefinition) => (
-          <RecordGroupContext.Provider
-            key={recordGroupDefinition.id}
-            value={{ recordGroupId: recordGroupDefinition.id }}
+    <>
+      <RecordTableBodyRecordGroupDragDropContextProvider>
+        {visibleRecordGroupIds.map((recordGroupId, index) => (
+          <RecordTableRecordGroupBodyContextProvider
+            key={recordGroupId}
+            recordGroupId={recordGroupId}
           >
-            <RecordTableRecordGroupRows />
-          </RecordGroupContext.Provider>
+            <RecordGroupContext.Provider value={{ recordGroupId }}>
+              <RecordTableBodyRecordGroupDroppable
+                recordGroupId={recordGroupId}
+              >
+                <RecordTableRecordGroupSection />
+                <RecordTableRecordGroupRows />
+                {index === 0 && <RecordTableCellPortals />}
+              </RecordTableBodyRecordGroupDroppable>
+            </RecordGroupContext.Provider>
+          </RecordTableRecordGroupBodyContextProvider>
         ))}
-      </RecordTableBodyDroppable>
-    </RecordTableBodyDragDropContext>
+        <RecordIndexGroupAggregatesDataLoader />
+      </RecordTableBodyRecordGroupDragDropContextProvider>
+    </>
   );
 };

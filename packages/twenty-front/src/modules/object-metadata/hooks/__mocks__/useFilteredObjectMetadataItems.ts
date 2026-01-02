@@ -7,7 +7,6 @@ export const query = gql`
   ) {
     updateOneObject(input: { id: $idToUpdate, update: $updatePayload }) {
       id
-      dataSourceId
       nameSingular
       namePlural
       labelSingular
@@ -39,7 +38,6 @@ export const variables = {
 
 export const responseData = {
   id: 'idToUpdate',
-  dataSourceId: 'dataSourceId',
   nameSingular: 'nameSingular',
   namePlural: 'namePlural',
   labelSingular: 'labelSingular',
@@ -50,6 +48,6 @@ export const responseData = {
   isActive: true,
   createdAt: '',
   updatedAt: '',
-  labelIdentifierFieldMetadataId: '',
+  labelIdentifierFieldMetadataId: '20202020-72ba-4e11-a36d-e17b544541e1',
   imageIdentifierFieldMetadataId: '',
 };

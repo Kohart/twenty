@@ -1,26 +1,26 @@
-import { CacheModuleOptions } from '@nestjs/common';
+import { type CacheModuleOptions } from '@nestjs/cache-manager';
 
 import { redisStore } from 'cache-manager-redis-yet';
 
 import { CacheStorageType } from 'src/engine/core-modules/cache-storage/types/cache-storage-type.enum';
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import { type TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 
 export const cacheStorageModuleFactory = (
-  environmentService: EnvironmentService,
+  twentyConfigService: TwentyConfigService,
 ): CacheModuleOptions => {
-  const cacheStorageType = environmentService.get('CACHE_STORAGE_TYPE');
-  const cacheStorageTtl = environmentService.get('CACHE_STORAGE_TTL');
+  const cacheStorageType = CacheStorageType.Redis;
+  const cacheStorageTtl = twentyConfigService.get('CACHE_STORAGE_TTL');
   const cacheModuleOptions: CacheModuleOptions = {
     isGlobal: true,
     ttl: cacheStorageTtl * 1000,
   };
 
   switch (cacheStorageType) {
-    case CacheStorageType.Memory: {
+    /* case CacheStorageType.Memory: {
       return cacheModuleOptions;
-    }
+    }*/
     case CacheStorageType.Redis: {
-      const redisUrl = environmentService.get('REDIS_URL');
+      const redisUrl = twentyConfigService.get('REDIS_URL');
 
       if (!redisUrl) {
         throw new Error(

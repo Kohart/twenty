@@ -1,23 +1,37 @@
-import { RecordTableBodyFetchMoreLoader } from '@/object-record/record-table/record-table-body/components/RecordTableBodyFetchMoreLoader';
-import { RecordTableRow } from '@/object-record/record-table/record-table-row/components/RecordTableRow';
-import { tableAllRowIdsComponentState } from '@/object-record/record-table/states/tableAllRowIdsComponentState';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { RecordTableNoRecordGroupAddNew } from '@/object-record/record-table/components/RecordTableNoRecordGroupAddNew';
+import { RecordTableRowVirtualizedContainer } from '@/object-record/record-table/virtualization/components/RecordTableRowVirtualizedContainer';
+import { RecordTableVirtualizedBodyPlaceholder } from '@/object-record/record-table/virtualization/components/RecordTableVirtualizedBodyPlaceholder';
+import { RecordTableVirtualizedDebugHelper } from '@/object-record/record-table/virtualization/components/RecordTableVirtualizedDebugHelper';
+import { NUMBER_OF_VIRTUALIZED_ROWS } from '@/object-record/record-table/virtualization/constants/NumberOfVirtualizedRows';
+import { totalNumberOfRecordsToVirtualizeComponentState } from '@/object-record/record-table/virtualization/states/totalNumberOfRecordsToVirtualizeComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { getContiguousIncrementalValues } from 'twenty-shared/utils';
 
 export const RecordTableNoRecordGroupRows = () => {
-  const rowIds = useRecoilComponentValueV2(tableAllRowIdsComponentState);
+  const totalNumberOfRecordsToVirtualize =
+    useRecoilComponentValue(totalNumberOfRecordsToVirtualizeComponentState) ??
+    0;
+
+  const numberOfRows = Math.min(
+    totalNumberOfRecordsToVirtualize,
+    NUMBER_OF_VIRTUALIZED_ROWS,
+  );
+
+  const virtualRowIndices = getContiguousIncrementalValues(numberOfRows);
 
   return (
     <>
-      {rowIds.map((recordId, rowIndex) => {
+      <RecordTableVirtualizedBodyPlaceholder />
+      {virtualRowIndices.map((virtualRowIndex) => {
         return (
-          <RecordTableRow
-            key={recordId}
-            recordId={recordId}
-            rowIndex={rowIndex}
+          <RecordTableRowVirtualizedContainer
+            key={virtualRowIndex}
+            virtualIndex={virtualRowIndex}
           />
         );
       })}
-      <RecordTableBodyFetchMoreLoader />
+      <RecordTableNoRecordGroupAddNew />
+      <RecordTableVirtualizedDebugHelper />
     </>
   );
 };

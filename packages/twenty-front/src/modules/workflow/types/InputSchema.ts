@@ -1,21 +1,17 @@
-import { FieldMetadataType } from '~/generated/graphql';
+import { type LeafType, type NodeType } from 'twenty-shared/workflow';
+import { type FieldMetadataType } from '~/generated-metadata/graphql';
 
-export type InputSchemaPropertyType =
-  | 'string'
-  | 'number'
-  | 'boolean'
-  | 'object'
-  | 'array'
-  | 'unknown'
-  | FieldMetadataType;
+export type InputSchemaPropertyType = LeafType | NodeType | FieldMetadataType;
 
-type InputSchemaProperty = {
+export type InputSchemaProperty = {
   type: InputSchemaPropertyType;
   enum?: string[];
   items?: InputSchemaProperty;
-  properties?: InputSchema;
+  properties?: Properties;
 };
 
-export type InputSchema = {
+type Properties = {
   [name: string]: InputSchemaProperty;
 };
+
+export type InputSchema = InputSchemaProperty[];

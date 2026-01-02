@@ -1,70 +1,65 @@
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
 import {
-  Workflow,
-  WorkflowVersion,
-  WorkflowWithCurrentVersion,
+  type Workflow,
+  type WorkflowVersion,
+  type WorkflowWithCurrentVersion,
 } from '@/workflow/types/Workflow';
-import { useMemo } from 'react';
-import { isDefined } from 'twenty-ui';
+import { isDefined } from 'twenty-shared/utils';
+
+type WorkflowWithAllVersions = Omit<Workflow, 'versions'> & {
+  versions: Array<
+    Pick<WorkflowVersion, 'id' | 'status' | 'name' | 'createdAt'>
+  >;
+};
 
 export const useWorkflowWithCurrentVersion = (
   workflowId: string | undefined,
 ): WorkflowWithCurrentVersion | undefined => {
-  const { record: workflow } = useFindOneRecord<Workflow>({
+  const { record: workflow } = useFindOneRecord<WorkflowWithAllVersions>({
     objectNameSingular: CoreObjectNameSingular.Workflow,
     objectRecordId: workflowId,
     recordGqlFields: {
       id: true,
       name: true,
       statuses: true,
+      lastPublishedVersionId: true,
       versions: {
-        totalCount: true,
+        id: true,
+        status: true,
+        name: true,
+        createdAt: true,
       },
     },
     skip: !isDefined(workflowId),
   });
 
-  const {
-    records: mostRecentWorkflowVersions,
-    loading: loadingMostRecentWorkflowVersions,
-  } = useFindManyRecords<WorkflowVersion>({
-    objectNameSingular: CoreObjectNameSingular.WorkflowVersion,
-    filter: {
-      workflowId: {
-        eq: workflowId,
-      },
+  const draftVersion = workflow?.versions.find(
+    (workflowVersion) => workflowVersion.status === 'DRAFT',
+  );
+
+  const workflowVersions = [...(workflow?.versions ?? [])];
+
+  workflowVersions.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1));
+
+  const latestVersion = workflowVersions[0];
+
+  const currentVersionWithoutSteps = draftVersion ?? latestVersion;
+
+  const { record: currentVersionWithSteps } = useFindOneRecord<WorkflowVersion>(
+    {
+      objectNameSingular: CoreObjectNameSingular.WorkflowVersion,
+      objectRecordId: currentVersionWithoutSteps?.id,
+      skip: !isDefined(currentVersionWithoutSteps?.id),
     },
-    orderBy: [
-      {
-        createdAt: 'DescNullsLast',
-      },
-    ],
-    skip: !isDefined(workflowId),
-  });
+  );
 
-  const workflowWithCurrentVersion = useMemo(() => {
-    if (!isDefined(workflow) || loadingMostRecentWorkflowVersions) {
-      return undefined;
-    }
+  if (!isDefined(workflow) || !isDefined(currentVersionWithSteps)) {
+    return undefined;
+  }
 
-    const draftVersion = mostRecentWorkflowVersions.find(
-      (workflowVersion) => workflowVersion.status === 'DRAFT',
-    );
-    const latestVersion = mostRecentWorkflowVersions[0];
-
-    const currentVersion = draftVersion ?? latestVersion;
-
-    if (!isDefined(currentVersion)) {
-      return undefined;
-    }
-
-    return {
-      ...workflow,
-      currentVersion,
-    };
-  }, [loadingMostRecentWorkflowVersions, mostRecentWorkflowVersions, workflow]);
-
-  return workflowWithCurrentVersion;
+  return {
+    ...workflow,
+    currentVersion: currentVersionWithSteps,
+  };
 };

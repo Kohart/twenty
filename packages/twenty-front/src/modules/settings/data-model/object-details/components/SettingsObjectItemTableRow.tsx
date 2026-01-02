@@ -1,13 +1,13 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { ReactNode } from 'react';
-import { useIcons } from 'twenty-ui';
+import { useLingui } from '@lingui/react/macro';
+import { type ReactNode } from 'react';
 
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { SettingsDataModelObjectTypeTag } from '@/settings/data-model/objects/components/SettingsDataModelObjectTypeTag';
-import { getObjectTypeLabel } from '@/settings/data-model/utils/getObjectTypeLabel';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { SettingsItemTypeTag } from '@/settings/components/SettingsItemTypeTag';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
+import { useIcons } from 'twenty-ui/display';
 
 export type SettingsObjectMetadataItemTableRowProps = {
   action: ReactNode;
@@ -25,10 +25,33 @@ const StyledNameTableCell = styled(TableCell)`
   gap: ${({ theme }) => theme.spacing(2)};
 `;
 
+const StyledNameContainer = styled.div`
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: ${({ theme }) => theme.spacing(1)};
+`;
+
 const StyledNameLabel = styled.div`
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
+`;
+
+const StyledInactiveLabel = styled.span`
+  color: ${({ theme }) => theme.font.color.extraLight};
+  font-size: ${({ theme }) => theme.font.size.sm};
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  flex: 0 999 auto;
+  min-width: 48px;
+
+  &::before {
+    content: '·';
+    margin-right: ${({ theme }) => theme.spacing(1)};
+  }
 `;
 
 const StyledActionTableCell = styled(TableCell)`
@@ -42,11 +65,11 @@ export const SettingsObjectMetadataItemTableRow = ({
   link,
   totalObjectCount,
 }: SettingsObjectMetadataItemTableRowProps) => {
+  const { t } = useLingui();
   const theme = useTheme();
 
   const { getIcon } = useIcons();
   const Icon = getIcon(objectMetadataItem.icon);
-  const objectTypeLabel = getObjectTypeLabel(objectMetadataItem);
 
   return (
     <StyledObjectTableRow key={objectMetadataItem.namePlural} to={link}>
@@ -58,12 +81,17 @@ export const SettingsObjectMetadataItemTableRow = ({
             stroke={theme.icon.stroke.sm}
           />
         )}
-        <StyledNameLabel title={objectMetadataItem.labelPlural}>
-          {objectMetadataItem.labelPlural}
-        </StyledNameLabel>
+        <StyledNameContainer>
+          <StyledNameLabel title={objectMetadataItem.labelPlural}>
+            {objectMetadataItem.labelPlural}
+          </StyledNameLabel>
+          {!objectMetadataItem.isActive && (
+            <StyledInactiveLabel>{t`Deactivated`}</StyledInactiveLabel>
+          )}
+        </StyledNameContainer>
       </StyledNameTableCell>
       <TableCell>
-        <SettingsDataModelObjectTypeTag objectTypeLabel={objectTypeLabel} />
+        <SettingsItemTypeTag item={objectMetadataItem} />
       </TableCell>
       <TableCell align="right">
         {objectMetadataItem.fields.filter((field) => !field.isSystem).length}

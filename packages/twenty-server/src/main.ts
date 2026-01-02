@@ -1,16 +1,19 @@
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
+import { type NestExpressApplication } from '@nestjs/platform-express';
 
-import session from 'express-session';
+import fs from 'fs';
+
 import bytes from 'bytes';
 import { useContainer } from 'class-validator';
-import { graphqlUploadExpress } from 'graphql-upload';
+import session from 'express-session';
+import graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.mjs';
+
+import { NodeEnvironment } from 'src/engine/core-modules/twenty-config/interfaces/node-environment.interface';
 
 import { LoggerService } from 'src/engine/core-modules/logger/logger.service';
-import { ApplyCorsToExceptions } from 'src/utils/apply-cors-to-exceptions';
 import { getSessionStorageOptions } from 'src/engine/core-modules/session-storage/session-storage.module-factory';
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { UnhandledExceptionFilter } from 'src/filters/unhandled-exception.filter';
 
 import { AppModule } from './app.module';
 import './instrument';
@@ -23,14 +26,20 @@ const bootstrap = async () => {
     cors: true,
     bufferLogs: process.env.LOGGER_IS_BUFFER_ENABLED === 'true',
     rawBody: true,
-    snapshot: process.env.DEBUG_MODE === 'true',
+    snapshot: process.env.NODE_ENV === NodeEnvironment.DEVELOPMENT,
+    ...(process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH
+      ? {
+          httpsOptions: {
+            key: fs.readFileSync(process.env.SSL_KEY_PATH),
+            cert: fs.readFileSync(process.env.SSL_CERT_PATH),
+          },
+        }
+      : {}),
   });
   const logger = app.get(LoggerService);
-  const environmentService = app.get(EnvironmentService);
+  const twentyConfigService = app.get(TwentyConfigService);
 
-  // TODO: Double check this as it's not working for now, it's going to be heplful for durable trees in twenty "orm"
-  // // Apply context id strategy for durable trees
-  // ContextIdFactory.apply(new AggregateByWorkspaceContextIdStrategy());
+  app.use(session(getSessionStorageOptions(twentyConfigService)));
 
   // Apply class-validator container so that we can use injection in validators
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
@@ -38,14 +47,8 @@ const bootstrap = async () => {
   // Use our logger
   app.useLogger(logger);
 
-  app.useGlobalFilters(new ApplyCorsToExceptions());
+  app.useGlobalFilters(new UnhandledExceptionFilter());
 
-  // Apply validation pipes globally
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-    }),
-  );
   app.useBodyParser('json', { limit: settings.storage.maxFileSize });
   app.useBodyParser('urlencoded', {
     limit: settings.storage.maxFileSize,
@@ -54,21 +57,25 @@ const bootstrap = async () => {
 
   // Graphql file upload
   app.use(
+    '/graphql',
     graphqlUploadExpress({
       maxFieldSize: bytes(settings.storage.maxFileSize),
       maxFiles: 10,
     }),
   );
 
-  // Create the env-config.js of the front at runtime
+  app.use(
+    '/metadata',
+    graphqlUploadExpress({
+      maxFieldSize: bytes(settings.storage.maxFileSize),
+      maxFiles: 10,
+    }),
+  );
+
+  // Inject the server url in the frontend page
   generateFrontConfig();
 
-  // Enable session - Today it's used only for SSO
-  if (environmentService.get('AUTH_SSO_ENABLED')) {
-    app.use(session(getSessionStorageOptions(environmentService)));
-  }
-
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(twentyConfigService.get('NODE_PORT'));
 };
 
 bootstrap();

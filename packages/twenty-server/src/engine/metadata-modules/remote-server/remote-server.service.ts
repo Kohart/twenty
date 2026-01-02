@@ -2,18 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import isEmpty from 'lodash.isempty';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, type EntityManager, Repository } from 'typeorm';
+import { type DeepPartial } from 'typeorm/common/DeepPartial';
 import { v4 } from 'uuid';
 
 import { ForeignDataWrapperServerQueryFactory } from 'src/engine/api/graphql/workspace-query-builder/factories/foreign-data-wrapper-server-query.factory';
 import { encryptText } from 'src/engine/core-modules/auth/auth.util';
+import { JwtTokenTypeEnum } from 'src/engine/core-modules/auth/types/auth-context.type';
 import { FeatureFlagEntity } from 'src/engine/core-modules/feature-flag/feature-flag.entity';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
-import { CreateRemoteServerInput } from 'src/engine/metadata-modules/remote-server/dtos/create-remote-server.input';
-import { UpdateRemoteServerInput } from 'src/engine/metadata-modules/remote-server/dtos/update-remote-server.input';
+import { type CreateRemoteServerInput } from 'src/engine/metadata-modules/remote-server/dtos/create-remote-server.input';
+import { type UpdateRemoteServerInput } from 'src/engine/metadata-modules/remote-server/dtos/update-remote-server.input';
 import {
   RemoteServerEntity,
-  RemoteServerType,
+  type RemoteServerType,
 } from 'src/engine/metadata-modules/remote-server/remote-server.entity';
 import {
   RemoteServerException,
@@ -26,22 +28,23 @@ import {
   validateStringAgainstInjections,
 } from 'src/engine/metadata-modules/remote-server/utils/validate-remote-server-input.utils';
 import { validateRemoteServerType } from 'src/engine/metadata-modules/remote-server/utils/validate-remote-server-type.util';
+import { type WorkspaceEntityManager } from 'src/engine/twenty-orm/entity-manager/workspace-entity-manager';
 import { WorkspaceDataSourceService } from 'src/engine/workspace-datasource/workspace-datasource.service';
 
 @Injectable()
 export class RemoteServerService<T extends RemoteServerType> {
   constructor(
-    @InjectRepository(RemoteServerEntity, 'metadata')
+    @InjectRepository(RemoteServerEntity)
     private readonly remoteServerRepository: Repository<
       RemoteServerEntity<RemoteServerType>
     >,
-    @InjectDataSource('metadata')
-    private readonly metadataDataSource: DataSource,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
     private readonly jwtWrapperService: JwtWrapperService,
     private readonly foreignDataWrapperServerQueryFactory: ForeignDataWrapperServerQueryFactory,
     private readonly remoteTableService: RemoteTableService,
     private readonly workspaceDataSourceService: WorkspaceDataSourceService,
-    @InjectRepository(FeatureFlagEntity, 'core')
+    @InjectRepository(FeatureFlagEntity)
     private readonly featureFlagRepository: Repository<FeatureFlagEntity>,
   ) {}
 
@@ -78,12 +81,12 @@ export class RemoteServerService<T extends RemoteServerType> {
       };
     }
 
-    return this.metadataDataSource.transaction(
-      async (entityManager: EntityManager) => {
+    return this.coreDataSource.transaction(
+      async (entityManager: WorkspaceEntityManager) => {
         const createdRemoteServer = entityManager.create(
           RemoteServerEntity,
           remoteServerToCreate,
-        );
+        ) as RemoteServerEntity<RemoteServerType>;
 
         const foreignDataWrapperQuery =
           this.foreignDataWrapperServerQueryFactory.createForeignDataWrapperServer(
@@ -163,7 +166,7 @@ export class RemoteServerService<T extends RemoteServerType> {
       };
     }
 
-    return this.metadataDataSource.transaction(
+    return this.coreDataSource.transaction(
       async (entityManager: EntityManager) => {
         const updatedRemoteServer = await this.updateRemoteServer(
           partialRemoteServerWithUpdates,
@@ -221,7 +224,7 @@ export class RemoteServerService<T extends RemoteServerType> {
 
     await this.remoteTableService.unsyncAll(workspaceId, remoteServer);
 
-    return this.metadataDataSource.transaction(
+    return this.coreDataSource.transaction(
       async (entityManager: EntityManager) => {
         await entityManager.query(
           `DROP SERVER "${remoteServer.foreignDataWrapperId}" CASCADE`,
@@ -256,7 +259,7 @@ export class RemoteServerService<T extends RemoteServerType> {
 
   private encryptPassword(password: string, workspaceId: string) {
     const key = this.jwtWrapperService.generateAppSecret(
-      'REMOTE_SERVER',
+      JwtTokenTypeEnum.REMOTE_SERVER,
       workspaceId,
     );
 
@@ -270,6 +273,7 @@ export class RemoteServerService<T extends RemoteServerType> {
     const [parameters, rawQuery] =
       buildUpdateRemoteServerRawQuery(remoteServerToUpdate);
 
+    // TO DO: executeRawQuery is deprecated and will throw
     const updateResult = await this.workspaceDataSourceService.executeRawQuery(
       rawQuery,
       parameters,

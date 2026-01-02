@@ -1,14 +1,14 @@
-import { FieldMetadataItemOption } from '@/object-metadata/types/FieldMetadataItem';
+import { type FieldMetadataItemOption } from '@/object-metadata/types/FieldMetadataItem';
 import { AdvancedSettingsWrapper } from '@/settings/components/AdvancedSettingsWrapper';
 import { OPTION_VALUE_MAXIMUM_LENGTH } from '@/settings/data-model/constants/OptionValueMaximumLength';
-import { TextInput } from '@/ui/input/components/TextInput';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
-import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
+import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
-import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
+import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { useMemo } from 'react';
+import { t } from '@lingui/core/macro';
 import {
   ColorSample,
   IconCheck,
@@ -16,13 +16,43 @@ import {
   IconGripVertical,
   IconTrash,
   IconX,
-  LightIconButton,
-  MAIN_COLOR_NAMES,
+} from 'twenty-ui/display';
+import { LightIconButton } from 'twenty-ui/input';
+import {
+  type ColorLabels,
   MenuItem,
   MenuItemSelectColor,
-} from 'twenty-ui';
-import { v4 } from 'uuid';
-import { computeOptionValueFromLabel } from '~/pages/settings/data-model/utils/compute-option-value-from-label.utils';
+} from 'twenty-ui/navigation';
+import { MAIN_COLOR_NAMES } from 'twenty-ui/theme';
+import { computeOptionValueFromLabel } from '~/pages/settings/data-model/utils/computeOptionValueFromLabel';
+
+const useColorLabels = (): ColorLabels => ({
+  gray: t`Gray`,
+  tomato: t`Tomato`,
+  red: t`Red`,
+  ruby: t`Ruby`,
+  crimson: t`Crimson`,
+  pink: t`Pink`,
+  plum: t`Plum`,
+  purple: t`Purple`,
+  violet: t`Violet`,
+  iris: t`Iris`,
+  cyan: t`Cyan`,
+  turquoise: t`Turquoise`,
+  sky: t`Sky`,
+  blue: t`Blue`,
+  jade: t`Jade`,
+  green: t`Green`,
+  grass: t`Grass`,
+  mint: t`Mint`,
+  lime: t`Lime`,
+  bronze: t`Bronze`,
+  gold: t`Gold`,
+  brown: t`Brown`,
+  orange: t`Orange`,
+  amber: t`Amber`,
+  yellow: t`Yellow`,
+});
 
 type SettingsDataModelFieldSelectFormOptionRowProps = {
   className?: string;
@@ -34,6 +64,7 @@ type SettingsDataModelFieldSelectFormOptionRowProps = {
   onInputEnter?: () => void;
   option: FieldMetadataItemOption;
   isNewRow?: boolean;
+  fieldIsNullable?: boolean;
 };
 
 const StyledRow = styled.div`
@@ -52,7 +83,7 @@ const StyledColorSample = styled(ColorSample)`
   margin-left: ${({ theme }) => theme.spacing(3.5)};
 `;
 
-const StyledOptionInput = styled(TextInput)`
+const StyledOptionInput = styled(SettingsTextInput)`Chip
   flex-grow: 1;
   width: 100%;
   & input {
@@ -78,21 +109,17 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
   onInputEnter,
   option,
   isNewRow,
+  fieldIsNullable,
 }: SettingsDataModelFieldSelectFormOptionRowProps) => {
   const theme = useTheme();
+  const colorLabels = useColorLabels();
+  const SELECT_COLOR_DROPDOWN_ID = `select-color-dropdown-${option.id}`;
+  const SELECT_ACTIONS_DROPDOWN_ID = `select-actions-dropdown-${option.id}`;
 
-  const dropdownIds = useMemo(() => {
-    const baseScopeId = `select-field-option-row-${v4()}`;
-    return {
-      color: `${baseScopeId}-color`,
-      actions: `${baseScopeId}-actions`,
-    };
-  }, []);
+  const { closeDropdown: closeColorDropdown } = useCloseDropdown();
+  const { closeDropdown: closeActionsDropdown } = useCloseDropdown();
 
-  const { closeDropdown: closeColorDropdown } = useDropdown(dropdownIds.color);
-  const { closeDropdown: closeActionsDropdown } = useDropdown(
-    dropdownIds.actions,
-  );
+  const shouldForbidRemoveAsDefault = isDefault && !fieldIsNullable;
 
   const handleInputEnter = () => {
     onInputEnter?.();
@@ -106,8 +133,9 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
         stroke={theme.icon.stroke.sm}
         color={theme.font.color.extraLight}
       />
-      <AdvancedSettingsWrapper dimension="width" hideIcon={true}>
+      <AdvancedSettingsWrapper animationDimension="width" hideDot>
         <StyledOptionInput
+          instanceId={`select-option-value-${option.id}`}
           value={option.value}
           onChange={(input) =>
             onChange({
@@ -120,31 +148,30 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
         />
       </AdvancedSettingsWrapper>
       <Dropdown
-        dropdownId={dropdownIds.color}
+        dropdownId={SELECT_COLOR_DROPDOWN_ID}
         dropdownPlacement="bottom-start"
-        dropdownHotkeyScope={{
-          scope: dropdownIds.color,
-        }}
         clickableComponent={<StyledColorSample colorName={option.color} />}
         dropdownComponents={
-          <DropdownMenu>
+          <DropdownContent>
             <DropdownMenuItemsContainer>
               {MAIN_COLOR_NAMES.map((colorName) => (
                 <MenuItemSelectColor
                   key={colorName}
                   onClick={() => {
                     onChange({ ...option, color: colorName });
-                    closeColorDropdown();
+                    closeColorDropdown(SELECT_COLOR_DROPDOWN_ID);
                   }}
                   color={colorName}
                   selected={colorName === option.color}
+                  colorLabels={colorLabels}
                 />
               ))}
             </DropdownMenuItemsContainer>
-          </DropdownMenu>
+          </DropdownContent>
         }
       />
       <StyledOptionInput
+        instanceId={`select-option-label-${option.id}`}
         value={option.label}
         onChange={(label) => {
           const optionNameHasBeenEdited = !(
@@ -165,49 +192,52 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
         autoSelectOnMount={isNewRow}
       />
       <Dropdown
-        dropdownId={dropdownIds.actions}
+        dropdownId={SELECT_ACTIONS_DROPDOWN_ID}
         dropdownPlacement="right-start"
-        dropdownHotkeyScope={{
-          scope: dropdownIds.actions,
-        }}
         clickableComponent={
-          <StyledLightIconButton accent="tertiary" Icon={IconDotsVertical} />
+          <StyledLightIconButton
+            accent="tertiary"
+            Icon={IconDotsVertical}
+            disabled={shouldForbidRemoveAsDefault}
+          />
         }
         dropdownComponents={
-          <DropdownMenu>
-            <DropdownMenuItemsContainer>
-              {isDefault ? (
-                <MenuItem
-                  LeftIcon={IconX}
-                  text="Remove as default"
-                  onClick={() => {
-                    onRemoveAsDefault?.();
-                    closeActionsDropdown();
-                  }}
-                />
-              ) : (
-                <MenuItem
-                  LeftIcon={IconCheck}
-                  text="Set as default"
-                  onClick={() => {
-                    onSetAsDefault?.();
-                    closeActionsDropdown();
-                  }}
-                />
-              )}
-              {!!onRemove && !isDefault && (
-                <MenuItem
-                  accent="danger"
-                  LeftIcon={IconTrash}
-                  text="Remove option"
-                  onClick={() => {
-                    onRemove();
-                    closeActionsDropdown();
-                  }}
-                />
-              )}
-            </DropdownMenuItemsContainer>
-          </DropdownMenu>
+          shouldForbidRemoveAsDefault ? null : (
+            <DropdownContent>
+              <DropdownMenuItemsContainer>
+                {isDefault ? (
+                  <MenuItem
+                    LeftIcon={IconX}
+                    text={t`Remove as default`}
+                    onClick={() => {
+                      onRemoveAsDefault?.();
+                      closeActionsDropdown(SELECT_ACTIONS_DROPDOWN_ID);
+                    }}
+                  />
+                ) : (
+                  <MenuItem
+                    LeftIcon={IconCheck}
+                    text={t`Set as default`}
+                    onClick={() => {
+                      onSetAsDefault?.();
+                      closeActionsDropdown(SELECT_ACTIONS_DROPDOWN_ID);
+                    }}
+                  />
+                )}
+                {!!onRemove && !isDefault && (
+                  <MenuItem
+                    accent="danger"
+                    LeftIcon={IconTrash}
+                    text={t`Remove option`}
+                    onClick={() => {
+                      onRemove();
+                      closeActionsDropdown(SELECT_ACTIONS_DROPDOWN_ID);
+                    }}
+                  />
+                )}
+              </DropdownMenuItemsContainer>
+            </DropdownContent>
+          )
         }
       />
     </StyledRow>

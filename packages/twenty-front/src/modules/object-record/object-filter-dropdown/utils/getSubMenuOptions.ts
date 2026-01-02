@@ -1,4 +1,4 @@
-import { FilterableFieldType } from '@/object-record/object-filter-dropdown/types/FilterableFieldType';
+import { type FilterableFieldType } from 'twenty-shared/types';
 
 export const getSubMenuOptions = (subMenu: FilterableFieldType | null) => {
   switch (subMenu) {

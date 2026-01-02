@@ -3,9 +3,9 @@ import styled from '@emotion/styled';
 import { EventFieldDiffLabel } from '@/activities/timeline-activities/rows/main-object/components/EventFieldDiffLabel';
 import { EventFieldDiffValue } from '@/activities/timeline-activities/rows/main-object/components/EventFieldDiffValue';
 import { EventFieldDiffValueEffect } from '@/activities/timeline-activities/rows/main-object/components/EventFieldDiffValueEffect';
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { RecordFieldValueSelectorContextProvider } from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { Trans } from '@lingui/react/macro';
 
 type EventFieldDiffProps = {
   diffRecord: Record<string, any>;
@@ -53,27 +53,27 @@ export const EventFieldDiff = ({
       isObjectEmpty(diffRecord));
 
   return (
-    <RecordFieldValueSelectorContextProvider>
-      <StyledEventFieldDiffContainer>
-        <EventFieldDiffLabel fieldMetadataItem={fieldMetadataItem} />→
-        {isUpdatedToEmpty ? (
-          <StyledEmptyValue>Empty</StyledEmptyValue>
-        ) : (
-          <>
-            <EventFieldDiffValueEffect
-              diffArtificialRecordStoreId={diffArtificialRecordStoreId}
-              mainObjectMetadataItem={mainObjectMetadataItem}
-              fieldMetadataItem={fieldMetadataItem}
-              diffRecord={diffRecord}
-            />
-            <EventFieldDiffValue
-              diffArtificialRecordStoreId={diffArtificialRecordStoreId}
-              mainObjectMetadataItem={mainObjectMetadataItem}
-              fieldMetadataItem={fieldMetadataItem}
-            />
-          </>
-        )}
-      </StyledEventFieldDiffContainer>
-    </RecordFieldValueSelectorContextProvider>
+    <StyledEventFieldDiffContainer>
+      <EventFieldDiffLabel fieldMetadataItem={fieldMetadataItem} />→
+      {isUpdatedToEmpty ? (
+        <StyledEmptyValue>
+          <Trans>Empty</Trans>
+        </StyledEmptyValue>
+      ) : (
+        <>
+          <EventFieldDiffValueEffect
+            diffArtificialRecordStoreId={diffArtificialRecordStoreId}
+            mainObjectMetadataItem={mainObjectMetadataItem}
+            fieldMetadataItem={fieldMetadataItem}
+            diffRecord={diffRecord}
+          />
+          <EventFieldDiffValue
+            diffArtificialRecordStoreId={diffArtificialRecordStoreId}
+            mainObjectMetadataItem={mainObjectMetadataItem}
+            fieldMetadataItem={fieldMetadataItem}
+          />
+        </>
+      )}
+    </StyledEventFieldDiffContainer>
   );
 };

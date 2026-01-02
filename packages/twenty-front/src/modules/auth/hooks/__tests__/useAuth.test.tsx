@@ -1,23 +1,90 @@
+import { useAuth } from '@/auth/hooks/useAuth';
+import { billingState } from '@/client-config/states/billingState';
+import { isDeveloperDefaultSignInPrefilledState } from '@/client-config/states/isDeveloperDefaultSignInPrefilledState';
+import { supportChatState } from '@/client-config/states/supportChatState';
+
+import { workspaceAuthProvidersState } from '@/workspace/states/workspaceAuthProvidersState';
 import { useApolloClient } from '@apollo/client';
 import { MockedProvider } from '@apollo/client/testing';
 import { expect } from '@storybook/test';
-import { act, renderHook } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { type ReactNode, act } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { RecoilRoot, useRecoilValue } from 'recoil';
-import { iconsState } from 'twenty-ui';
 
-import { useAuth } from '@/auth/hooks/useAuth';
-import { authProvidersState } from '@/client-config/states/authProvidersState';
-import { billingState } from '@/client-config/states/billingState';
-import { isDebugModeState } from '@/client-config/states/isDebugModeState';
-import { isSignInPrefilledState } from '@/client-config/states/isSignInPrefilledState';
-import { supportChatState } from '@/client-config/states/supportChatState';
+import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
+import { SnackBarComponentInstanceContext } from '@/ui/feedback/snack-bar-manager/contexts/SnackBarComponentInstanceContext';
+import { renderHook } from '@testing-library/react';
+import { iconsState } from 'twenty-ui/display';
+import { SupportDriver } from '~/generated/graphql';
+import {
+  email,
+  mocks,
+  password,
+  results,
+  token,
+} from '@/auth/hooks/__mocks__/useAuth';
 
-import { email, mocks, password, results, token } from '../__mocks__/useAuth';
+const redirectSpy = jest.fn();
+
+jest.mock('@/domain-manager/hooks/useRedirect', () => ({
+  useRedirect: jest.fn().mockImplementation(() => ({
+    redirect: redirectSpy,
+  })),
+}));
+
+jest.mock('@/object-metadata/hooks/useRefreshObjectMetadataItems', () => ({
+  useRefreshObjectMetadataItems: jest.fn().mockImplementation(() => ({
+    refreshObjectMetadataItems: jest.fn(),
+  })),
+}));
+
+jest.mock('@/domain-manager/hooks/useOrigin', () => ({
+  useOrigin: jest.fn().mockImplementation(() => ({
+    origin: 'http://localhost',
+  })),
+}));
+
+jest.mock('@/captcha/hooks/useRequestFreshCaptchaToken', () => ({
+  useRequestFreshCaptchaToken: jest.fn().mockImplementation(() => ({
+    requestFreshCaptchaToken: jest.fn(),
+  })),
+}));
+
+jest.mock('@/auth/sign-in-up/hooks/useSignUpInNewWorkspace', () => ({
+  useSignUpInNewWorkspace: jest.fn().mockImplementation(() => ({
+    createWorkspace: jest.fn(),
+  })),
+}));
+
+jest.mock('@/domain-manager/hooks/useRedirectToWorkspaceDomain', () => ({
+  useRedirectToWorkspaceDomain: jest.fn().mockImplementation(() => ({
+    redirectToWorkspaceDomain: jest.fn(),
+  })),
+}));
+
+jest.mock('@/domain-manager/hooks/useIsCurrentLocationOnAWorkspace', () => ({
+  useIsCurrentLocationOnAWorkspace: jest.fn().mockImplementation(() => ({
+    isOnAWorkspace: true,
+  })),
+}));
+
+jest.mock('@/domain-manager/hooks/useLastAuthenticatedWorkspaceDomain', () => ({
+  useLastAuthenticatedWorkspaceDomain: jest.fn().mockImplementation(() => ({
+    setLastAuthenticateWorkspaceDomain: jest.fn(),
+  })),
+}));
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
-  <MockedProvider mocks={mocks} addTypename={false}>
-    <RecoilRoot>{children}</RecoilRoot>
+  <MockedProvider mocks={Object.values(mocks)} addTypename={false}>
+    <RecoilRoot>
+      <MemoryRouter>
+        <SnackBarComponentInstanceContext.Provider
+          value={{ instanceId: 'test-instance-id' }}
+        >
+          {children}
+        </SnackBarComponentInstanceContext.Provider>
+      </MemoryRouter>
+    </RecoilRoot>
   </MockedProvider>
 );
 
@@ -38,37 +105,55 @@ describe('useAuth', () => {
     jest.clearAllMocks();
   });
 
-  it('should return challenge object', async () => {
+  it('should return login token object', async () => {
     const { result } = renderHooks();
 
     await act(async () => {
-      expect(await result.current.challenge(email, password)).toStrictEqual(
-        results.challenge,
-      );
+      expect(
+        await result.current.getLoginTokenFromCredentials(email, password),
+      ).toStrictEqual(results.getLoginTokenFromCredentials);
     });
 
-    expect(mocks[0].result).toHaveBeenCalled();
+    expect(mocks.getLoginTokenFromCredentials.result).toHaveBeenCalled();
   });
 
   it('should verify user', async () => {
     const { result } = renderHooks();
 
     await act(async () => {
-      await result.current.verify(token);
+      await result.current.getAuthTokensFromLoginToken(token);
     });
 
-    expect(mocks[1].result).toHaveBeenCalled();
+    expect(mocks.getAuthTokensFromLoginToken.result).toHaveBeenCalled();
+    expect(mocks.getCurrentUser.result).toHaveBeenCalled();
   });
 
   it('should handle credential sign-in', async () => {
     const { result } = renderHooks();
 
     await act(async () => {
-      await result.current.signInWithCredentials(email, password);
+      await result.current.signInWithCredentialsInWorkspace(email, password);
     });
 
-    expect(mocks[0].result).toHaveBeenCalled();
-    expect(mocks[1].result).toHaveBeenCalled();
+    expect(mocks.getLoginTokenFromCredentials.result).toHaveBeenCalled();
+    expect(mocks.getAuthTokensFromLoginToken.result).toHaveBeenCalled();
+  });
+
+  it('should handle google sign-in', async () => {
+    const { result } = renderHooks();
+
+    await act(async () => {
+      await result.current.signInWithGoogle({
+        workspaceInviteHash: 'workspaceInviteHash',
+        action: 'join-workspace',
+      });
+    });
+
+    expect(redirectSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '/auth/google?workspaceInviteHash=workspaceInviteHash',
+      ),
+    );
   });
 
   it('should handle sign-out', async () => {
@@ -76,21 +161,27 @@ describe('useAuth', () => {
       () => {
         const client = useApolloClient();
         const icons = useRecoilValue(iconsState);
-        const authProviders = useRecoilValue(authProvidersState);
+        const workspaceAuthProviders = useRecoilValue(
+          workspaceAuthProvidersState,
+        );
         const billing = useRecoilValue(billingState);
-        const isSignInPrefilled = useRecoilValue(isSignInPrefilledState);
+        const isDeveloperDefaultSignInPrefilled = useRecoilValue(
+          isDeveloperDefaultSignInPrefilledState,
+        );
         const supportChat = useRecoilValue(supportChatState);
-        const isDebugMode = useRecoilValue(isDebugModeState);
+        const isMultiWorkspaceEnabled = useRecoilValue(
+          isMultiWorkspaceEnabledState,
+        );
         return {
           ...useAuth(),
           client,
           state: {
             icons,
-            authProviders,
+            workspaceAuthProviders,
             billing,
-            isSignInPrefilled,
+            isDeveloperDefaultSignInPrefilled,
             supportChat,
-            isDebugMode,
+            isMultiWorkspaceEnabled,
           },
         };
       },
@@ -111,32 +202,25 @@ describe('useAuth', () => {
     const { state } = result.current;
 
     expect(state.icons).toEqual({});
-    expect(state.authProviders).toEqual({
-      google: false,
-      microsoft: false,
-      magicLink: false,
-      password: false,
-      sso: false,
-    });
+    expect(state.workspaceAuthProviders).toEqual(null);
     expect(state.billing).toBeNull();
-    expect(state.isSignInPrefilled).toBe(false);
+    expect(state.isDeveloperDefaultSignInPrefilled).toBe(false);
     expect(state.supportChat).toEqual({
-      supportDriver: 'none',
+      supportDriver: SupportDriver.NONE,
       supportFrontChatId: null,
     });
-    expect(state.isDebugMode).toBe(false);
   });
 
   it('should handle credential sign-up', async () => {
     const { result } = renderHooks();
 
     await act(async () => {
-      const res = await result.current.signUpWithCredentials(email, password);
-      expect(res).toHaveProperty('user');
-      expect(res).toHaveProperty('workspaceMember');
-      expect(res).toHaveProperty('workspace');
+      await result.current.signUpWithCredentialsInWorkspace({
+        email,
+        password,
+      });
     });
 
-    expect(mocks[2].result).toHaveBeenCalled();
+    expect(mocks.signUpInWorkspace.result).toHaveBeenCalled();
   });
 });

@@ -1,29 +1,32 @@
-import { ServerlessFunctionEntity } from 'src/engine/metadata-modules/serverless-function/serverless-function.entity';
-import { ServerlessFunctionExecutionStatus } from 'src/engine/metadata-modules/serverless-function/dtos/serverless-function-execution-result.dto';
+import { type ServerlessFunctionExecutionStatus } from 'src/engine/metadata-modules/serverless-function/dtos/serverless-function-execution-result.dto';
+import { type ServerlessFunctionEntity } from 'src/engine/metadata-modules/serverless-function/serverless-function.entity';
 
 export type ServerlessExecuteError = {
   errorType: string;
   errorMessage: string;
-  stackTrace: string;
+  stackTrace: string | string[];
 };
 
 export type ServerlessExecuteResult = {
   data: object | null;
   duration: number;
+  logs: string;
   status: ServerlessFunctionExecutionStatus;
   error?: ServerlessExecuteError;
 };
 
+// TODO refactor to be using FlatServerlessFunction
 export interface ServerlessDriver {
   delete(serverlessFunction: ServerlessFunctionEntity): Promise<void>;
-  build(
-    serverlessFunction: ServerlessFunctionEntity,
-    version: string,
-  ): Promise<void>;
-  publish(serverlessFunction: ServerlessFunctionEntity): Promise<string>;
-  execute(
-    serverlessFunction: ServerlessFunctionEntity,
-    payload: object,
-    version: string,
-  ): Promise<ServerlessExecuteResult>;
+  execute({
+    serverlessFunction,
+    payload,
+    version,
+    env,
+  }: {
+    serverlessFunction: ServerlessFunctionEntity;
+    payload: object;
+    version: string;
+    env?: Record<string, string>;
+  }): Promise<ServerlessExecuteResult>;
 }

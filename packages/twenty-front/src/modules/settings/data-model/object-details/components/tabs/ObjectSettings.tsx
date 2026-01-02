@@ -1,47 +1,25 @@
-/* eslint-disable react/jsx-props-no-spreading */
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { FormProvider, useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
-import { Button, H2Title, IconArchive, Section } from 'twenty-ui';
-import { z, ZodError } from 'zod';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 
-import { useLastVisitedObjectMetadataItem } from '@/navigation/hooks/useLastVisitedObjectMetadataItem';
-import { useLastVisitedView } from '@/navigation/hooks/useLastVisitedView';
+import { useDeleteOneObjectMetadataItem } from '@/object-metadata/hooks/useDeleteOneObjectMetadataItem';
 import { useUpdateOneObjectMetadataItem } from '@/object-metadata/hooks/useUpdateOneObjectMetadataItem';
-import { getObjectSlug } from '@/object-metadata/utils/getObjectSlug';
-import { RecordFieldValueSelectorContextProvider } from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
-import {
-  IS_LABEL_SYNCED_WITH_NAME_LABEL,
-  SettingsDataModelObjectAboutForm,
-  settingsDataModelObjectAboutFormSchema,
-} from '@/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm';
-import { settingsDataModelObjectIdentifiersFormSchema } from '@/settings/data-model/objects/forms/components/SettingsDataModelObjectIdentifiersForm';
+import { isObjectMetadataReadOnly } from '@/object-record/read-only/utils/isObjectMetadataReadOnly';
+import { SettingsUpdateDataModelObjectAboutForm } from '@/settings/data-model/object-details/components/SettingsUpdateDataModelObjectAboutForm';
 import { SettingsDataModelObjectSettingsFormCard } from '@/settings/data-model/objects/forms/components/SettingsDataModelObjectSettingsFormCard';
-import { settingsUpdateObjectInputSchema } from '@/settings/data-model/validation-schemas/settingsUpdateObjectInputSchema';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
-import { SettingsPath } from '@/types/SettingsPath';
-import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import { navigationMemorizedUrlState } from '@/ui/navigation/states/navigationMemorizedUrlState';
+import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
+import { useModal } from '@/ui/layout/modal/hooks/useModal';
 import styled from '@emotion/styled';
-import isEmpty from 'lodash.isempty';
-import pick from 'lodash.pick';
-import { useSetRecoilState } from 'recoil';
-import { updatedObjectSlugState } from '~/pages/settings/data-model/states/updatedObjectSlugState';
-import { computeMetadataNameFromLabel } from '~/pages/settings/data-model/utils/compute-metadata-name-from-label.utils';
-
-const objectEditFormSchema = z
-  .object({})
-  .merge(settingsDataModelObjectAboutFormSchema)
-  .merge(settingsDataModelObjectIdentifiersFormSchema);
-
-type SettingsDataModelObjectEditFormValues = z.infer<
-  typeof objectEditFormSchema
->;
+import { useLingui } from '@lingui/react/macro';
+import { SettingsPath } from 'twenty-shared/types';
+import { H2Title, IconArchive, IconTrash } from 'twenty-ui/display';
+import { Button } from 'twenty-ui/input';
+import { Section } from 'twenty-ui/layout';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 
 type ObjectSettingsProps = {
   objectMetadataItem: ObjectMetadataItem;
+  isDeleting: boolean;
+  setIsDeleting: (isDeleting: boolean) => void;
 };
 
 const StyledContentContainer = styled.div`
@@ -54,169 +32,122 @@ const StyledFormSection = styled(Section)`
   padding-left: 0 !important;
 `;
 
-export const ObjectSettings = ({ objectMetadataItem }: ObjectSettingsProps) => {
-  const navigate = useNavigate();
-  const { enqueueSnackBar } = useSnackBar();
-  const setUpdatedObjectSlugState = useSetRecoilState(updatedObjectSlugState);
+const StyledDangerButtonsContainer = styled.div`
+  display: flex;
+  gap: ${({ theme }) => theme.spacing(2)};
+`;
 
+const DELETE_OBJECT_MODAL_ID = 'delete-object-confirmation-modal';
+
+export const ObjectSettings = ({
+  objectMetadataItem,
+  isDeleting,
+  setIsDeleting,
+}: ObjectSettingsProps) => {
+  const { t } = useLingui();
+  const navigate = useNavigateSettings();
   const { updateOneObjectMetadataItem } = useUpdateOneObjectMetadataItem();
-  const { lastVisitedObjectMetadataItemId } =
-    useLastVisitedObjectMetadataItem();
-  const { getLastVisitedViewIdFromObjectMetadataItemId } = useLastVisitedView();
+  const { deleteOneObjectMetadataItem } = useDeleteOneObjectMetadataItem();
+  const { enqueueSuccessSnackBar } = useSnackBar();
+  const { openModal, closeModal } = useModal();
 
-  const settingsObjectsPagePath = getSettingsPagePath(SettingsPath.Objects);
-
-  const formConfig = useForm<SettingsDataModelObjectEditFormValues>({
-    mode: 'onTouched',
-    resolver: zodResolver(objectEditFormSchema),
-  });
-
-  const setNavigationMemorizedUrl = useSetRecoilState(
-    navigationMemorizedUrlState,
-  );
-
-  const getUpdatePayload = (
-    formValues: SettingsDataModelObjectEditFormValues,
-  ) => {
-    let values = formValues;
-    const dirtyFieldKeys = Object.keys(
-      formConfig.formState.dirtyFields,
-    ) as (keyof SettingsDataModelObjectEditFormValues)[];
-    const shouldComputeNamesFromLabels: boolean = dirtyFieldKeys.includes(
-      IS_LABEL_SYNCED_WITH_NAME_LABEL,
-    )
-      ? (formValues.isLabelSyncedWithName as boolean)
-      : objectMetadataItem.isLabelSyncedWithName;
-
-    if (shouldComputeNamesFromLabels) {
-      values = {
-        ...values,
-        ...(values.labelSingular && dirtyFieldKeys.includes('labelSingular')
-          ? {
-              nameSingular: computeMetadataNameFromLabel(
-                formValues.labelSingular,
-              ),
-            }
-          : {}),
-        ...(values.labelPlural && dirtyFieldKeys.includes('labelPlural')
-          ? {
-              namePlural: computeMetadataNameFromLabel(formValues.labelPlural),
-            }
-          : {}),
-      };
-    }
-
-    return settingsUpdateObjectInputSchema.parse(
-      pick(values, [
-        ...dirtyFieldKeys,
-        ...(shouldComputeNamesFromLabels &&
-        dirtyFieldKeys.includes('labelPlural')
-          ? ['namePlural']
-          : []),
-        ...(shouldComputeNamesFromLabels &&
-        dirtyFieldKeys.includes('labelSingular')
-          ? ['nameSingular']
-          : []),
-      ]),
-    );
-  };
-
-  const handleSave = async (
-    formValues: SettingsDataModelObjectEditFormValues,
-  ) => {
-    if (isEmpty(formConfig.formState.dirtyFields) === true) {
-      return;
-    }
-    try {
-      const updatePayload = getUpdatePayload(formValues);
-      const objectNamePluralForRedirection =
-        updatePayload.namePlural ?? objectMetadataItem.namePlural;
-      const objectSlug = getObjectSlug({
-        ...updatePayload,
-        namePlural: objectNamePluralForRedirection,
-      });
-
-      setUpdatedObjectSlugState(objectSlug);
-
-      await updateOneObjectMetadataItem({
-        idToUpdate: objectMetadataItem.id,
-        updatePayload,
-      });
-
-      formConfig.reset(undefined, { keepValues: true });
-
-      if (lastVisitedObjectMetadataItemId === objectMetadataItem.id) {
-        const lastVisitedView = getLastVisitedViewIdFromObjectMetadataItemId(
-          objectMetadataItem.id,
-        );
-        setNavigationMemorizedUrl(
-          `/objects/${objectNamePluralForRedirection}?view=${lastVisitedView}`,
-        );
-      }
-
-      navigate(`${settingsObjectsPagePath}/${objectSlug}`);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        enqueueSnackBar(error.issues[0].message, {
-          variant: SnackBarVariant.Error,
-        });
-      } else {
-        enqueueSnackBar((error as Error).message, {
-          variant: SnackBarVariant.Error,
-        });
-      }
-    }
-  };
+  const isReadOnly = isObjectMetadataReadOnly({ objectMetadataItem });
 
   const handleDisable = async () => {
-    await updateOneObjectMetadataItem({
+    const result = await updateOneObjectMetadataItem({
       idToUpdate: objectMetadataItem.id,
       updatePayload: { isActive: false },
     });
-    navigate(settingsObjectsPagePath);
+
+    if (result.status === 'successful') {
+      navigate(SettingsPath.Objects);
+    }
   };
 
+  const handleDelete = () => {
+    openModal(DELETE_OBJECT_MODAL_ID);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    const result = await deleteOneObjectMetadataItem(objectMetadataItem.id);
+
+    if (result.status === 'successful') {
+      enqueueSuccessSnackBar({
+        message: t`Object deleted`,
+      });
+      closeModal(DELETE_OBJECT_MODAL_ID);
+      navigate(SettingsPath.Objects);
+      return;
+    }
+
+    setIsDeleting(false);
+    closeModal(DELETE_OBJECT_MODAL_ID);
+  };
+
+  const objectLabel = objectMetadataItem.labelPlural;
+
   return (
-    <RecordFieldValueSelectorContextProvider>
-      <FormProvider {...formConfig}>
-        <StyledContentContainer>
-          <StyledFormSection>
+    <StyledContentContainer>
+      <StyledFormSection>
+        <H2Title
+          title={t`About`}
+          description={t`Name in both singular (e.g., 'Invoice') and plural (e.g., 'Invoices') forms.`}
+        />
+        <SettingsUpdateDataModelObjectAboutForm
+          objectMetadataItem={objectMetadataItem}
+        />
+      </StyledFormSection>
+      <StyledFormSection>
+        <Section>
+          <H2Title
+            title={t`Options`}
+            description={t`Choose the fields that will identify your records`}
+          />
+          <SettingsDataModelObjectSettingsFormCard
+            objectMetadataItem={objectMetadataItem}
+          />
+        </Section>
+      </StyledFormSection>
+      {!isReadOnly && (
+        <StyledFormSection>
+          <Section>
             <H2Title
-              title="About"
-              description="Name in both singular (e.g., 'Invoice') and plural (e.g., 'Invoices') forms."
+              title={t`Danger zone`}
+              description={t`Deactivate object`}
             />
-            <SettingsDataModelObjectAboutForm
-              disableEdition={!objectMetadataItem.isCustom}
-              objectMetadataItem={objectMetadataItem}
-              onBlur={() => {
-                formConfig.handleSubmit(handleSave)();
-              }}
-            />
-          </StyledFormSection>
-          <StyledFormSection>
-            <Section>
-              <H2Title
-                title="Options"
-                description="Choose the fields that will identify your records"
-              />
-              <SettingsDataModelObjectSettingsFormCard
-                objectMetadataItem={objectMetadataItem}
-              />
-            </Section>
-          </StyledFormSection>
-          <StyledFormSection>
-            <Section>
-              <H2Title title="Danger zone" description="Deactivate object" />
+            <StyledDangerButtonsContainer>
               <Button
                 Icon={IconArchive}
-                title="Deactivate"
+                title={t`Deactivate`}
                 size="small"
                 onClick={handleDisable}
               />
-            </Section>
-          </StyledFormSection>
-        </StyledContentContainer>
-      </FormProvider>
-    </RecordFieldValueSelectorContextProvider>
+              {objectMetadataItem.isCustom && (
+                <Button
+                  Icon={IconTrash}
+                  title={t`Delete`}
+                  size="small"
+                  accent="danger"
+                  variant="secondary"
+                  onClick={handleDelete}
+                />
+              )}
+            </StyledDangerButtonsContainer>
+          </Section>
+        </StyledFormSection>
+      )}
+      <ConfirmationModal
+        modalId={DELETE_OBJECT_MODAL_ID}
+        title={t`Delete ${objectLabel} object?`}
+        subtitle={t`This will permanently delete the object and all its records. Type "yes" to confirm.`}
+        confirmButtonText={t`Delete`}
+        onConfirmClick={confirmDelete}
+        onClose={() => closeModal(DELETE_OBJECT_MODAL_ID)}
+        confirmationValue="yes"
+        confirmationPlaceholder="yes"
+        loading={isDeleting}
+      />
+    </StyledContentContainer>
   );
 };

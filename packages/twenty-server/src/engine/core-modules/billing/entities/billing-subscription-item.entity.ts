@@ -1,7 +1,11 @@
+/* @license Enterprise */
+
+import Stripe from 'stripe';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   Relation,
@@ -9,18 +13,15 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { BillingSubscription } from 'src/engine/core-modules/billing/entities/billing-subscription.entity';
-
+import { BillingProductEntity } from 'src/engine/core-modules/billing/entities/billing-product.entity';
+import { BillingSubscriptionEntity } from 'src/engine/core-modules/billing/entities/billing-subscription.entity';
+import { BillingSubscriptionItemMetadata } from 'src/engine/core-modules/billing/types/billing-subscription-item-metadata.type';
 @Entity({ name: 'billingSubscriptionItem', schema: 'core' })
-@Unique('IndexOnBillingSubscriptionIdAndStripeProductIdUnique', [
-  'billingSubscriptionId',
-  'stripeProductId',
-])
-@Unique('IndexOnBillingSubscriptionIdAndStripeSubscriptionItemIdUnique', [
-  'billingSubscriptionId',
-  'stripeSubscriptionItemId',
-])
-export class BillingSubscriptionItem {
+@Unique(
+  'IDX_BILLING_SUBSCRIPTION_ITEM_BILLING_SUBSCRIPTION_ID_STRIPE_PRODUCT_ID_UNIQUE',
+  ['billingSubscriptionId', 'stripeProductId'],
+)
+export class BillingSubscriptionItemEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -36,14 +37,30 @@ export class BillingSubscriptionItem {
   @Column({ nullable: false })
   billingSubscriptionId: string;
 
+  @Column({ nullable: true })
+  stripeSubscriptionId: string;
+
+  @Column({ nullable: false, type: 'jsonb', default: {} })
+  metadata: BillingSubscriptionItemMetadata;
+
+  @Column({ nullable: true, type: 'jsonb' })
+  billingThresholds: Stripe.SubscriptionItem.BillingThresholds;
+
   @ManyToOne(
-    () => BillingSubscription,
+    () => BillingSubscriptionEntity,
     (billingSubscription) => billingSubscription.billingSubscriptionItems,
     {
       onDelete: 'CASCADE',
     },
   )
-  billingSubscription: Relation<BillingSubscription>;
+  billingSubscription: Relation<BillingSubscriptionEntity>;
+
+  @ManyToOne(() => BillingProductEntity)
+  @JoinColumn({
+    name: 'stripeProductId',
+    referencedColumnName: 'stripeProductId',
+  })
+  billingProduct: Relation<BillingProductEntity>;
 
   @Column({ nullable: false })
   stripeProductId: string;
@@ -51,9 +68,12 @@ export class BillingSubscriptionItem {
   @Column({ nullable: false })
   stripePriceId: string;
 
-  @Column({ nullable: false })
+  @Column({ nullable: false, unique: true })
   stripeSubscriptionItemId: string;
 
-  @Column({ nullable: false })
-  quantity: number;
+  @Column({ nullable: true, type: 'numeric' })
+  quantity: number | null;
+
+  @Column({ type: 'boolean', default: false })
+  hasReachedCurrentPeriodCap: boolean;
 }

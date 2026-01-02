@@ -1,28 +1,24 @@
-import { useRecoilValue } from 'recoil';
-
-import { Attachment } from '@/activities/files/types/Attachment';
+import { type Attachment } from '@/activities/files/types/Attachment';
 import { getFileType } from '@/activities/files/utils/getFileType';
-import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
+import { type ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
 import { getActivityTargetObjectFieldIdName } from '@/activities/utils/getActivityTargetObjectFieldIdName';
-import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
-import { isNonEmptyString } from '@sniptt/guards';
-import { FileFolder, useUploadFileMutation } from '~/generated/graphql';
-import { getFileAbsoluteURI } from '~/utils/file/getFileAbsoluteURI';
-
-// Note: This is probably not the right way to do this.
-export const computePathWithoutToken = (attachmentPath: string): string => {
-  return attachmentPath.replace(/\?token=[^&]*$/, '');
-};
+import { isDefined } from 'twenty-shared/utils';
+import {
+  FileFolder,
+  useUploadFileMutation,
+} from '~/generated-metadata/graphql';
 
 export const useUploadAttachmentFile = () => {
-  const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
-  const [uploadFile] = useUploadFileMutation();
+  const coreClient = useApolloCoreClient();
+  const [uploadFile] = useUploadFileMutation({ client: coreClient });
 
   const { createOneRecord: createOneAttachment } =
     useCreateOneRecord<Attachment>({
       objectNameSingular: CoreObjectNameSingular.Attachment,
+      shouldMatchRootQueryFilter: true,
     });
 
   const uploadAttachmentFile = async (
@@ -36,31 +32,28 @@ export const useUploadAttachmentFile = () => {
       },
     });
 
-    const attachmentPath = result?.data?.uploadFile;
+    const signedFile = result?.data?.uploadFile;
 
-    if (!isNonEmptyString(attachmentPath)) {
+    if (!isDefined(signedFile)) {
       throw new Error("Couldn't upload the attachment.");
     }
+
+    const { path: attachmentPath } = signedFile;
 
     const targetableObjectFieldIdName = getActivityTargetObjectFieldIdName({
       nameSingular: targetableObject.targetObjectNameSingular,
     });
 
     const attachmentToCreate = {
-      authorId: currentWorkspaceMember?.id,
       name: file.name,
-      fullPath: computePathWithoutToken(attachmentPath),
-      type: getFileType(file.name),
+      fullPath: attachmentPath,
+      fileCategory: getFileType(file.name),
       [targetableObjectFieldIdName]: targetableObject.id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     } as Partial<Attachment>;
 
-    await createOneAttachment(attachmentToCreate);
+    const createdAttachment = await createOneAttachment(attachmentToCreate);
 
-    const attachementAbsoluteURL = getFileAbsoluteURI(attachmentPath);
-
-    return { attachementAbsoluteURL };
+    return { attachmentAbsoluteURL: createdAttachment.fullPath };
   };
 
   return { uploadAttachmentFile };

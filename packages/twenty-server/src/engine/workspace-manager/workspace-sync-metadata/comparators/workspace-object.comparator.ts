@@ -5,11 +5,11 @@ import diff from 'microdiff';
 
 import {
   ComparatorAction,
-  ObjectComparatorResult,
+  type ObjectComparatorResult,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/comparator.interface';
-import { ComputedPartialWorkspaceEntity } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-object-metadata.interface';
+import { type ComputedPartialWorkspaceEntity } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-object-metadata.interface';
 
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { transformMetadataForComparison } from 'src/engine/workspace-manager/workspace-sync-metadata/comparators/utils/transform-metadata-for-comparison.util';
 
 const objectPropertiesToIgnore = [
@@ -20,6 +20,8 @@ const objectPropertiesToIgnore = [
   'imageIdentifierFieldMetadataId',
   'isActive',
   'fields',
+  'universalIdentifier',
+  'applicationId',
 ];
 
 @Injectable()
@@ -63,9 +65,19 @@ export class WorkspaceObjectComparator {
     for (const difference of objectMetadataDifference) {
       // We only handle CHANGE here as REMOVE and CREATE are handled earlier.
       if (difference.type === 'CHANGE') {
+        // If the old value and the new value are both null, skip
+        // Database is storing null, and we can get undefined here
+        if (
+          difference.oldValue === null &&
+          (difference.value === null || difference.value === undefined)
+        ) {
+          continue;
+        }
+
         const property = difference.path[0];
 
-        objectPropertiesToUpdate[property] = difference.value;
+        // @ts-expect-error legacy noImplicitAny
+        objectPropertiesToUpdate[property] = standardObjectMetadata[property];
       }
     }
 

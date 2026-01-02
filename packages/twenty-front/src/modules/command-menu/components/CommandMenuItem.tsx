@@ -1,47 +1,74 @@
 import { isNonEmptyString } from '@sniptt/guards';
-import { useRecoilValue } from 'recoil';
-import { IconArrowUpRight, IconComponent, MenuItemCommand } from 'twenty-ui';
 
-import { useSelectableList } from '@/ui/layout/selectable-list/hooks/useSelectableList';
-
-import { useCommandMenu } from '../hooks/useCommandMenu';
+import { useCommandMenuOnItemClick } from '@/command-menu/hooks/useCommandMenuOnItemClick';
+import { isSelectedItemIdComponentFamilySelector } from '@/ui/layout/selectable-list/states/selectors/isSelectedItemIdComponentFamilySelector';
+import { useRecoilComponentFamilyValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyValue';
+import { type ReactNode } from 'react';
+import { IconArrowUpRight, type IconComponent } from 'twenty-ui/display';
+import { MenuItem } from 'twenty-ui/navigation';
 
 export type CommandMenuItemProps = {
   label: string;
+  description?: string;
   to?: string;
   id: string;
   onClick?: () => void;
   Icon?: IconComponent;
-  firstHotKey?: string;
-  secondHotKey?: string;
+  hotKeys?: string[];
+  RightComponent?: ReactNode;
+  contextualTextPosition?: 'left' | 'right';
+  hasSubMenu?: boolean;
+  isSubMenuOpened?: boolean;
+  disabled?: boolean;
 };
 
 export const CommandMenuItem = ({
   label,
+  description,
+  contextualTextPosition = 'left',
   to,
   id,
   onClick,
   Icon,
-  firstHotKey,
-  secondHotKey,
+  hotKeys,
+  RightComponent,
+  hasSubMenu = false,
+  isSubMenuOpened = false,
+  disabled = false,
 }: CommandMenuItemProps) => {
-  const { onItemClick } = useCommandMenu();
+  const { onItemClick } = useCommandMenuOnItemClick();
 
   if (isNonEmptyString(to) && !Icon) {
     Icon = IconArrowUpRight;
   }
 
-  const { isSelectedItemIdSelector } = useSelectableList();
-  const isSelectedItemId = useRecoilValue(isSelectedItemIdSelector(id));
+  const isSelectedItemId = useRecoilComponentFamilyValue(
+    isSelectedItemIdComponentFamilySelector,
+    id,
+  );
 
   return (
-    <MenuItemCommand
+    <MenuItem
+      withIconContainer={true}
       LeftIcon={Icon}
       text={label}
-      firstHotKey={firstHotKey}
-      secondHotKey={secondHotKey}
-      onClick={() => onItemClick(onClick, to)}
-      isSelected={isSelectedItemId}
+      contextualText={description}
+      contextualTextPosition={contextualTextPosition}
+      hotKeys={hotKeys}
+      onClick={
+        onClick || to
+          ? () =>
+              onItemClick({
+                onClick,
+                to,
+              })
+          : undefined
+      }
+      focused={isSelectedItemId}
+      RightComponent={RightComponent}
+      hasSubMenu={hasSubMenu}
+      isSubMenuOpened={isSubMenuOpened}
+      disabled={disabled}
     />
   );
 };

@@ -1,14 +1,19 @@
-import styled from '@emotion/styled';
-import { useMemo } from 'react';
-import { Controller, useFormContext } from 'react-hook-form';
-import { IconCircleOff, isDefined, useIcons } from 'twenty-ui';
-import { z } from 'zod';
-
-import { LABEL_IDENTIFIER_FIELD_METADATA_TYPES } from '@/object-metadata/constants/LabelIdentifierFieldMetadataTypes';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { useUpdateOneObjectMetadataItem } from '@/object-metadata/hooks/useUpdateOneObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { getActiveFieldMetadataItems } from '@/object-metadata/utils/getActiveFieldMetadataItems';
 import { objectMetadataItemSchema } from '@/object-metadata/validation-schemas/objectMetadataItemSchema';
-import { Select, SelectOption } from '@/ui/input/components/Select';
+import { isObjectMetadataReadOnly } from '@/object-record/read-only/utils/isObjectMetadataReadOnly';
+import { Select } from '@/ui/input/components/Select';
+import styled from '@emotion/styled';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { t } from '@lingui/core/macro';
+import { useMemo } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+import { isLabelIdentifierFieldMetadataTypes } from 'twenty-shared/utils';
+import { IconCircleOff, IconPlus, useIcons } from 'twenty-ui/display';
+import { type SelectOption } from 'twenty-ui/input';
+import { type z } from 'zod';
 
 export const settingsDataModelObjectIdentifiersFormSchema =
   objectMetadataItemSchema.pick({
@@ -19,11 +24,15 @@ export const settingsDataModelObjectIdentifiersFormSchema =
 export type SettingsDataModelObjectIdentifiersFormValues = z.infer<
   typeof settingsDataModelObjectIdentifiersFormSchema
 >;
-
+export type SettingsDataModelObjectIdentifiers =
+  keyof SettingsDataModelObjectIdentifiersFormValues;
 type SettingsDataModelObjectIdentifiersFormProps = {
   objectMetadataItem: ObjectMetadataItem;
-  defaultLabelIdentifierFieldMetadataId: string;
 };
+const LABEL_IDENTIFIER_FIELD_METADATA_ID: SettingsDataModelObjectIdentifiers =
+  'labelIdentifierFieldMetadataId';
+const IMAGE_IDENTIFIER_FIELD_METADATA_ID: SettingsDataModelObjectIdentifiers =
+  'imageIdentifierFieldMetadataId';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -32,18 +41,36 @@ const StyledContainer = styled.div`
 
 export const SettingsDataModelObjectIdentifiersForm = ({
   objectMetadataItem,
-  defaultLabelIdentifierFieldMetadataId,
 }: SettingsDataModelObjectIdentifiersFormProps) => {
-  const { control } =
-    useFormContext<SettingsDataModelObjectIdentifiersFormValues>();
-  const { getIcon } = useIcons();
+  const readonly = isObjectMetadataReadOnly({
+    objectMetadataItem,
+  });
+  const formConfig = useForm<SettingsDataModelObjectIdentifiersFormValues>({
+    mode: 'onTouched',
+    resolver: zodResolver(settingsDataModelObjectIdentifiersFormSchema),
+  });
+  const { updateOneObjectMetadataItem } = useUpdateOneObjectMetadataItem();
 
+  const handleSave = async (
+    formValues: SettingsDataModelObjectIdentifiersFormValues,
+  ) => {
+    const result = await updateOneObjectMetadataItem({
+      idToUpdate: objectMetadataItem.id,
+      updatePayload: formValues,
+    });
+
+    if (result.status === 'successful') {
+      formConfig.reset(undefined, { keepValues: true });
+    }
+  };
+
+  const { getIcon } = useIcons();
   const labelIdentifierFieldOptions = useMemo(
     () =>
       getActiveFieldMetadataItems(objectMetadataItem)
         .filter(
           ({ id, type }) =>
-            LABEL_IDENTIFIER_FIELD_METADATA_TYPES.includes(type) ||
+            isLabelIdentifierFieldMetadataTypes(type) ||
             objectMetadataItem.labelIdentifierFieldMetadataId === id,
         )
         .map<SelectOption<string | null>>((fieldMetadataItem) => ({
@@ -57,49 +84,60 @@ export const SettingsDataModelObjectIdentifiersForm = ({
 
   const emptyOption: SelectOption<string | null> = {
     Icon: IconCircleOff,
-    label: 'None',
+    label: t`None`,
     value: null,
   };
+
+  const navigate = useNavigate();
+
   return (
     <StyledContainer>
       {[
         {
-          label: 'Record label',
-          fieldName: 'labelIdentifierFieldMetadataId' as const,
+          label: t`Record label`,
+          fieldName: LABEL_IDENTIFIER_FIELD_METADATA_ID,
           options: labelIdentifierFieldOptions,
+          defaultValue: objectMetadataItem.labelIdentifierFieldMetadataId,
         },
         {
-          label: 'Record image',
-          fieldName: 'imageIdentifierFieldMetadataId' as const,
+          label: t`Record image`,
+          fieldName: IMAGE_IDENTIFIER_FIELD_METADATA_ID,
           options: imageIdentifierFieldOptions,
+          defaultValue: null,
         },
-      ].map(({ fieldName, label, options }) => (
+      ].map(({ fieldName, label, options, defaultValue }) => (
         <Controller
           key={fieldName}
           name={fieldName}
-          control={control}
-          defaultValue={
-            fieldName === 'labelIdentifierFieldMetadataId'
-              ? isDefined(objectMetadataItem[fieldName])
-                ? objectMetadataItem[fieldName]
-                : defaultLabelIdentifierFieldMetadataId
-              : objectMetadataItem[fieldName]
-          }
-          render={({ field: { onBlur, onChange, value } }) => {
-            return (
-              <Select
-                label={label}
-                disabled={!objectMetadataItem.isCustom || !options.length}
-                fullWidth
-                dropdownId={`${fieldName}-select`}
-                emptyOption={emptyOption}
-                options={options}
-                value={value}
-                onChange={onChange}
-                onBlur={onBlur}
-              />
-            );
-          }}
+          control={formConfig.control}
+          defaultValue={defaultValue}
+          render={({ field: { onChange, value } }) => (
+            <Select
+              label={label}
+              fullWidth
+              dropdownId={`${fieldName}-select`}
+              emptyOption={emptyOption}
+              options={options}
+              value={value}
+              withSearchInput={label === t`Record label`}
+              disabled={!objectMetadataItem.isCustom || readonly}
+              callToActionButton={
+                label === t`Record label`
+                  ? {
+                      text: 'Create Text Field',
+                      Icon: IconPlus,
+                      onClick: () => {
+                        navigate('./new-field/select');
+                      },
+                    }
+                  : undefined
+              }
+              onChange={(value) => {
+                onChange(value);
+                formConfig.handleSubmit(handleSave)();
+              }}
+            />
+          )}
         />
       ))}
     </StyledContainer>

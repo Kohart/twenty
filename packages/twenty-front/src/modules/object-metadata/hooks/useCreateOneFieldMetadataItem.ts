@@ -1,37 +1,67 @@
-import { useMutation } from '@apollo/client';
-import { getOperationName } from '@apollo/client/utilities';
-
 import {
-  CreateFieldInput,
-  CreateOneFieldMetadataItemMutation,
-  CreateOneFieldMetadataItemMutationVariables,
+  type CreateFieldInput,
+  useCreateOneFieldMetadataItemMutation,
 } from '~/generated-metadata/graphql';
 
-import { CREATE_ONE_FIELD_METADATA_ITEM } from '../graphql/mutations';
-import { FIND_MANY_OBJECT_METADATA_ITEMS } from '../graphql/queries';
-
-import { useApolloMetadataClient } from './useApolloMetadataClient';
+import { useMetadataErrorHandler } from '@/metadata-error-handler/hooks/useMetadataErrorHandler';
+import { useRefreshObjectMetadataItems } from '@/object-metadata/hooks/useRefreshObjectMetadataItems';
+import { type MetadataRequestResult } from '@/object-metadata/types/MetadataRequestResult.type';
+import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
+import { useRefreshCoreViewsByObjectMetadataId } from '@/views/hooks/useRefreshCoreViewsByObjectMetadataId';
+import { ApolloError } from '@apollo/client';
+import { t } from '@lingui/core/macro';
 
 export const useCreateOneFieldMetadataItem = () => {
-  const apolloMetadataClient = useApolloMetadataClient();
+  const { refreshObjectMetadataItems } =
+    useRefreshObjectMetadataItems('network-only');
 
-  const [mutate] = useMutation<
-    CreateOneFieldMetadataItemMutation,
-    CreateOneFieldMetadataItemMutationVariables
-  >(CREATE_ONE_FIELD_METADATA_ITEM, {
-    client: apolloMetadataClient,
-  });
+  const [createOneFieldMetadataItemMutation] =
+    useCreateOneFieldMetadataItemMutation();
 
-  const createOneFieldMetadataItem = async (input: CreateFieldInput) => {
-    return await mutate({
-      variables: {
-        input: {
-          field: input,
+  const { refreshCoreViewsByObjectMetadataId } =
+    useRefreshCoreViewsByObjectMetadataId();
+
+  const { handleMetadataError } = useMetadataErrorHandler();
+  const { enqueueErrorSnackBar } = useSnackBar();
+
+  const createOneFieldMetadataItem = async (
+    input: CreateFieldInput,
+  ): Promise<
+    MetadataRequestResult<
+      Awaited<ReturnType<typeof createOneFieldMetadataItemMutation>>
+    >
+  > => {
+    try {
+      const response = await createOneFieldMetadataItemMutation({
+        variables: {
+          input: {
+            field: input,
+          },
         },
-      },
-      awaitRefetchQueries: true,
-      refetchQueries: [getOperationName(FIND_MANY_OBJECT_METADATA_ITEMS) ?? ''],
-    });
+      });
+
+      await refreshObjectMetadataItems();
+
+      await refreshCoreViewsByObjectMetadataId(input.objectMetadataId);
+
+      return {
+        status: 'successful',
+        response,
+      };
+    } catch (error) {
+      if (error instanceof ApolloError) {
+        handleMetadataError(error, {
+          primaryMetadataName: 'fieldMetadata',
+        });
+      } else {
+        enqueueErrorSnackBar({ message: t`An error occurred.` });
+      }
+
+      return {
+        status: 'failed',
+        error,
+      };
+    }
   };
 
   return {

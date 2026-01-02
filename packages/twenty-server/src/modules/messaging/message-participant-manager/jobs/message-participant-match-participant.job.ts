@@ -4,13 +4,15 @@ import { Process } from 'src/engine/core-modules/message-queue/decorators/proces
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MatchParticipantService } from 'src/modules/match-participant/match-participant.service';
-import { MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
+import { type MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
 
 export type MessageParticipantMatchParticipantJobData = {
   workspaceId: string;
-  email: string;
-  personId?: string;
-  workspaceMemberId?: string;
+  participantMatching: {
+    personIds: string[];
+    personEmails: string[];
+    workspaceMemberIds: string[];
+  };
 };
 
 @Processor({
@@ -24,13 +26,25 @@ export class MessageParticipantMatchParticipantJob {
 
   @Process(MessageParticipantMatchParticipantJob.name)
   async handle(data: MessageParticipantMatchParticipantJobData): Promise<void> {
-    const { email, personId, workspaceMemberId } = data;
+    const { participantMatching, workspaceId } = data;
 
-    await this.matchParticipantService.matchParticipantsAfterPersonOrWorkspaceMemberCreation(
-      email,
-      'messageParticipant',
-      personId,
-      workspaceMemberId,
-    );
+    if (
+      participantMatching.personIds.length > 0 ||
+      participantMatching.personEmails.length > 0
+    ) {
+      await this.matchParticipantService.matchParticipantsForPeople({
+        participantMatching,
+        objectMetadataName: 'messageParticipant',
+        workspaceId,
+      });
+    }
+
+    if (participantMatching.workspaceMemberIds.length > 0) {
+      await this.matchParticipantService.matchParticipantsForWorkspaceMembers({
+        participantMatching,
+        objectMetadataName: 'messageParticipant',
+        workspaceId,
+      });
+    }
   }
 }

@@ -1,27 +1,22 @@
-import { fork } from 'child_process';
 import { promises as fs } from 'fs';
+import { spawn } from 'node:child_process';
 import { join } from 'path';
 
-import dotenv from 'dotenv';
-
 import {
-  ServerlessDriver,
-  ServerlessExecuteError,
-  ServerlessExecuteResult,
+  type ServerlessDriver,
+  type ServerlessExecuteResult,
 } from 'src/engine/core-modules/serverless/drivers/interfaces/serverless-driver.interface';
 
-import { FileStorageService } from 'src/engine/core-modules/file-storage/file-storage.service';
+import { type FileStorageService } from 'src/engine/core-modules/file-storage/file-storage.service';
+import { SERVERLESS_TMPDIR_FOLDER } from 'src/engine/core-modules/serverless/drivers/constants/serverless-tmpdir-folder';
+import { buildServerlessFunctionInMemory } from 'src/engine/core-modules/serverless/drivers/utils/build-serverless-function-in-memory';
+import { copyAndBuildDependencies } from 'src/engine/core-modules/serverless/drivers/utils/copy-and-build-dependencies';
+import { formatBuildError } from 'src/engine/core-modules/serverless/drivers/utils/format-build-error';
+import { ConsoleListener } from 'src/engine/core-modules/serverless/drivers/utils/intercept-console';
+import { LambdaBuildDirectoryManager } from 'src/engine/core-modules/serverless/drivers/utils/lambda-build-directory-manager';
 import { getServerlessFolder } from 'src/engine/core-modules/serverless/utils/serverless-get-folder.utils';
 import { ServerlessFunctionExecutionStatus } from 'src/engine/metadata-modules/serverless-function/dtos/serverless-function-execution-result.dto';
-import { ServerlessFunctionEntity } from 'src/engine/metadata-modules/serverless-function/serverless-function.entity';
-import { COMMON_LAYER_NAME } from 'src/engine/core-modules/serverless/drivers/constants/common-layer-name';
-import { copyAndBuildDependencies } from 'src/engine/core-modules/serverless/drivers/utils/copy-and-build-dependencies';
-import { SERVERLESS_TMPDIR_FOLDER } from 'src/engine/core-modules/serverless/drivers/constants/serverless-tmpdir-folder';
-import { compileTypescript } from 'src/engine/core-modules/serverless/drivers/utils/compile-typescript';
-import { OUTDIR_FOLDER } from 'src/engine/core-modules/serverless/drivers/constants/outdir-folder';
-import { ENV_FILE_NAME } from 'src/engine/core-modules/serverless/drivers/constants/env-file-name';
-
-const LISTENER_FILE_NAME = 'listener.js';
+import { type ServerlessFunctionEntity } from 'src/engine/metadata-modules/serverless-function/serverless-function.entity';
 
 export interface LocalDriverOptions {
   fileStorageService: FileStorageService;
@@ -34,230 +29,330 @@ export class LocalDriver implements ServerlessDriver {
     this.fileStorageService = options.fileStorageService;
   }
 
-  private getInMemoryServerlessFunctionFolderPath = (
+  private getInMemoryLayerFolderPath = (
     serverlessFunction: ServerlessFunctionEntity,
-    version: string,
   ) => {
-    return join(SERVERLESS_TMPDIR_FOLDER, serverlessFunction.id, version);
+    return join(
+      SERVERLESS_TMPDIR_FOLDER,
+      serverlessFunction.serverlessFunctionLayer.checksum,
+    );
   };
 
-  private getInMemoryLayerFolderPath = (version: number) => {
-    return join(SERVERLESS_TMPDIR_FOLDER, COMMON_LAYER_NAME, `${version}`);
-  };
-
-  private async createLayerIfNotExists(version: number) {
-    const inMemoryLastVersionLayerFolderPath =
-      this.getInMemoryLayerFolderPath(version);
+  private async createLayerIfNotExists(
+    serverlessFunction: ServerlessFunctionEntity,
+  ) {
+    const inMemoryLayerFolderPath =
+      this.getInMemoryLayerFolderPath(serverlessFunction);
 
     try {
-      await fs.access(inMemoryLastVersionLayerFolderPath);
-    } catch (e) {
-      await copyAndBuildDependencies(inMemoryLastVersionLayerFolderPath);
+      await fs.access(inMemoryLayerFolderPath);
+    } catch {
+      await copyAndBuildDependencies(
+        inMemoryLayerFolderPath,
+        serverlessFunction,
+      );
     }
   }
 
   async delete() {}
 
-  async build(serverlessFunction: ServerlessFunctionEntity, version: string) {
-    const computedVersion =
-      version === 'latest' ? serverlessFunction.latestVersion : version;
+  private async build(serverlessFunction: ServerlessFunctionEntity) {
+    await this.createLayerIfNotExists(serverlessFunction);
+  }
 
-    await this.createLayerIfNotExists(serverlessFunction.layerVersion);
+  async execute({
+    serverlessFunction,
+    payload,
+    version,
+    env,
+  }: {
+    serverlessFunction: ServerlessFunctionEntity;
+    payload: object;
+    version: string;
+    env?: Record<string, string>;
+  }): Promise<ServerlessExecuteResult> {
+    await this.build(serverlessFunction);
 
-    const inMemoryServerlessFunctionFolderPath =
-      this.getInMemoryServerlessFunctionFolderPath(
-        serverlessFunction,
-        computedVersion,
-      );
+    const startTime = Date.now();
 
     const folderPath = getServerlessFolder({
       serverlessFunction,
       version,
     });
 
-    await this.fileStorageService.download({
-      from: { folderPath },
-      to: { folderPath: inMemoryServerlessFunctionFolderPath },
-    });
-
-    compileTypescript(inMemoryServerlessFunctionFolderPath);
-
-    const envFileContent = await fs.readFile(
-      join(inMemoryServerlessFunctionFolderPath, ENV_FILE_NAME),
-    );
-
-    const envVariables = dotenv.parse(envFileContent);
-
-    const listener = `
-    const index_1 = require("./src/index");
-    
-    process.env = ${JSON.stringify(envVariables)}
-    
-    process.on('message', async (message) => {
-      const { params } = message;
-      try {
-        const result = await index_1.main(params);
-        process.send(result);
-      } catch (error) {
-        process.send({
-          errorType: error.name,
-          errorMessage: error.message,
-          stackTrace: error.stack.split('\\n').filter((line) => line.trim() !== ''),
-        });
-      }
-    });
-    `;
-
-    await fs.writeFile(
-      join(
-        inMemoryServerlessFunctionFolderPath,
-        OUTDIR_FOLDER,
-        LISTENER_FILE_NAME,
-      ),
-      listener,
-    );
+    const lambdaBuildDirectoryManager = new LambdaBuildDirectoryManager();
 
     try {
-      await fs.symlink(
-        join(
-          this.getInMemoryLayerFolderPath(serverlessFunction.layerVersion),
-          'node_modules',
-        ),
-        join(
-          inMemoryServerlessFunctionFolderPath,
-          OUTDIR_FOLDER,
-          'node_modules',
-        ),
-        'dir',
-      );
-    } catch (err) {
-      if (err.code !== 'EEXIST') {
-        throw err;
+      const { sourceTemporaryDir } = await lambdaBuildDirectoryManager.init();
+
+      await this.fileStorageService.download({
+        from: { folderPath },
+        to: { folderPath: sourceTemporaryDir },
+      });
+
+      let builtBundleFilePath = '';
+
+      try {
+        builtBundleFilePath = await buildServerlessFunctionInMemory({
+          sourceTemporaryDir,
+          handlerPath: serverlessFunction.handlerPath,
+        });
+      } catch (error) {
+        return formatBuildError(error, startTime);
       }
+
+      try {
+        await fs.symlink(
+          join(
+            this.getInMemoryLayerFolderPath(serverlessFunction),
+            'node_modules',
+          ),
+          join(sourceTemporaryDir, 'node_modules'),
+          'dir',
+        );
+      } catch (err) {
+        if (err.code !== 'EEXIST') {
+          throw err;
+        }
+      }
+
+      let logs = '';
+
+      const consoleListener = new ConsoleListener();
+
+      consoleListener.intercept((type, args) => {
+        const formattedArgs = args.map((arg) => {
+          if (typeof arg === 'object' && arg !== null) {
+            const seen = new WeakSet();
+
+            return JSON.stringify(
+              arg,
+              (_key, value) => {
+                if (typeof value === 'object' && value !== null) {
+                  if (seen.has(value)) {
+                    return '[Circular]'; // Handle circular references
+                  }
+                  seen.add(value);
+                }
+
+                return value;
+              },
+              2,
+            );
+          }
+
+          return arg;
+        });
+
+        const formattedType = type === 'log' ? 'info' : type;
+
+        logs += `${new Date().toISOString()} ${formattedType.toUpperCase()} ${formattedArgs.join(' ')}\n`;
+      });
+
+      try {
+        const runnerPath = await this.writeBootstrapRunner({
+          dir: sourceTemporaryDir,
+          builtFileAbsPath: builtBundleFilePath,
+          handlerName: serverlessFunction.handlerName,
+        });
+
+        const { ok, result, error, stack, stdout, stderr } =
+          await this.runChildWithEnv({
+            runnerPath,
+            env: env ?? {},
+            payload,
+            timeoutMs: 900_000, // timeout is handled by the serverless function service
+          });
+
+        if (stdout)
+          logs +=
+            stdout
+              .split('\n')
+              .filter(Boolean)
+              .map((l) => `${new Date().toISOString()} INFO ${l}`)
+              .join('\n') + '\n';
+        if (stderr)
+          logs +=
+            stderr
+              .split('\n')
+              .filter(Boolean)
+              .map((l) => `${new Date().toISOString()} ERROR ${l}`)
+              .join('\n') + '\n';
+
+        const duration = Date.now() - startTime;
+
+        if (ok) {
+          return {
+            data: (result ?? null) as object | null,
+            logs,
+            duration,
+            status: ServerlessFunctionExecutionStatus.SUCCESS,
+          };
+        }
+
+        return {
+          data: null,
+          logs,
+          duration,
+          error: {
+            errorType: 'UnhandledError',
+            errorMessage: error || 'Unknown error',
+            stackTrace: stack ? String(stack).split('\n') : [],
+          },
+          status: ServerlessFunctionExecutionStatus.ERROR,
+        };
+      } finally {
+        consoleListener.release();
+      }
+    } finally {
+      await lambdaBuildDirectoryManager.clean();
     }
   }
 
-  async publish(serverlessFunction: ServerlessFunctionEntity) {
-    const newVersion = serverlessFunction.latestVersion
-      ? `${parseInt(serverlessFunction.latestVersion, 10) + 1}`
-      : '1';
+  async writeBootstrapRunner({
+    dir,
+    builtFileAbsPath,
+    handlerName,
+  }: {
+    dir: string;
+    builtFileAbsPath: string;
+    handlerName: string;
+  }) {
+    const runnerPath = join(dir, '__runner.cjs');
+    const code = `
+      // Auto-generated. Do not edit.
+      const { pathToFileURL } = require('node:url');
 
-    const draftFolderPath = getServerlessFolder({
-      serverlessFunction: serverlessFunction,
-      version: 'draft',
-    });
-    const newFolderPath = getServerlessFolder({
-      serverlessFunction: serverlessFunction,
-      version: newVersion,
-    });
+      (async () => {
+        try {
+          const builtUrl = pathToFileURL(${JSON.stringify(builtFileAbsPath)});
+          const mod = await import(builtUrl.href);
+          if (typeof mod.${handlerName} !== 'function') {
+            throw new Error('Export "${handlerName}" not found in serverless bundle');
+          }
 
-    await this.fileStorageService.copy({
-      from: { folderPath: draftFolderPath },
-      to: { folderPath: newFolderPath },
-    });
-
-    await this.build(serverlessFunction, newVersion);
-
-    return newVersion;
-  }
-
-  async execute(
-    serverlessFunction: ServerlessFunctionEntity,
-    payload: object,
-    version: string,
-  ): Promise<ServerlessExecuteResult> {
-    const startTime = Date.now();
-    const computedVersion =
-      version === 'latest' ? serverlessFunction.latestVersion : version;
-
-    const listenerFile = join(
-      this.getInMemoryServerlessFunctionFolderPath(
-        serverlessFunction,
-        computedVersion,
-      ),
-      OUTDIR_FOLDER,
-      LISTENER_FILE_NAME,
-    );
-
-    try {
-      return await new Promise((resolve, reject) => {
-        const child = fork(listenerFile, { silent: true });
-
-        child.on('message', (message: object | ServerlessExecuteError) => {
-          const duration = Date.now() - startTime;
-
-          if ('errorType' in message) {
-            resolve({
-              data: null,
-              duration,
-              error: message,
-              status: ServerlessFunctionExecutionStatus.ERROR,
+          let payload = undefined;
+          if (process.send) {
+            process.on('message', async (msg) => {
+              if (!msg || msg.type !== 'run') return;
+              try {
+                const out = await mod.${handlerName}(msg.payload);
+                process.send && process.send({ ok: true, result: out });
+                process.exit(0);
+              } catch (err) {
+                process.send && process.send({ ok: false, error: String(err), stack: err?.stack });
+                process.exit(1);
+              }
             });
           } else {
-            resolve({
-              data: message,
-              duration,
-              status: ServerlessFunctionExecutionStatus.SUCCESS,
-            });
+            // Fallback: read payload from argv[2] (JSON) and print to stdout
+            const json = process.argv[2];
+            payload = json ? JSON.parse(json) : undefined;
+            const out = await mod.${handlerName}(payload);
+            console.log(JSON.stringify({ ok: true, result: out }));
+            process.exit(0);
           }
-          child.kill();
-        });
-
-        child.stderr?.on('data', (data) => {
-          const stackTrace = data
-            .toString()
-            .split('\n')
-            .filter((line: string) => line.trim() !== '');
-          const errorTrace = stackTrace.filter((line: string) =>
-            line.includes('Error: '),
-          )?.[0];
-
-          let errorType = 'Unknown';
-          let errorMessage = '';
-
-          if (errorTrace) {
-            errorType = errorTrace.split(':')[0];
-            errorMessage = errorTrace.split(': ')[1];
+        } catch (err) {
+          const msg = String(err);
+          if (process.send) {
+            process.send({ ok: false, error: msg, stack: err?.stack });
+          } else {
+            console.error(msg);
           }
-          const duration = Date.now() - startTime;
+          process.exit(1);
+        }
+      })();
+    `;
 
-          resolve({
-            data: null,
-            duration,
-            status: ServerlessFunctionExecutionStatus.ERROR,
-            error: {
-              errorType,
-              errorMessage,
-              stackTrace: stackTrace,
-            },
-          });
-          child.kill();
-        });
+    await fs.writeFile(runnerPath, code, 'utf8');
 
-        child.on('error', (error) => {
-          reject(error);
-          child.kill();
-        });
+    return runnerPath;
+  }
 
-        child.on('exit', (code) => {
-          if (code && code !== 0) {
-            reject(new Error(`Child process exited with code ${code}`));
-          }
-        });
+  runChildWithEnv(options: {
+    runnerPath: string;
+    env: Record<string, string>;
+    payload: unknown;
+    timeoutMs: number;
+  }) {
+    const { runnerPath, env, payload, timeoutMs } = options;
 
-        child.send({ params: payload });
+    return new Promise<{
+      ok: boolean;
+      result?: unknown;
+      error?: string;
+      stack?: string;
+      stdout: string;
+      stderr: string;
+    }>((resolve, _) => {
+      const child = spawn(process.execPath, [runnerPath], {
+        env: { ...process.env, ...env },
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
       });
-    } catch (error) {
-      return {
-        data: null,
-        duration: Date.now() - startTime,
-        error: {
-          errorType: 'UnhandledError',
-          errorMessage: error.message || 'Unknown error',
-          stackTrace: error.stack ? error.stack.split('\n') : [],
+
+      let stdout = '';
+      let stderr = '';
+      let settled = false;
+
+      child.stdout?.on('data', (d) => (stdout += String(d)));
+      child.stderr?.on('data', (d) => (stderr += String(d)));
+
+      child.on(
+        'message',
+        (
+          msg:
+            | {
+                ok: true;
+                result?: unknown;
+                stdout?: string;
+                stderr?: string;
+              }
+            | {
+                ok: false;
+                error: string;
+                stack?: string;
+                stdout?: string;
+                stderr?: string;
+              },
+        ) => {
+          if (settled) return;
+          settled = true;
+          resolve({ ...msg, stdout, stderr });
         },
-        status: ServerlessFunctionExecutionStatus.ERROR,
-      };
-    }
+      );
+
+      child.on('exit', (code) => {
+        if (settled) return;
+        settled = true;
+        if (code === 0) {
+          // Fallback path if no IPC (shouldn’t happen with our stdio)
+          resolve({ ok: true, stdout, stderr });
+        } else {
+          resolve({
+            ok: false,
+            error: `Exited with code ${code}`,
+            stdout,
+            stderr,
+          });
+        }
+      });
+
+      const t = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        child.kill('SIGKILL');
+        resolve({
+          ok: false,
+          error: `Timed out after ${timeoutMs}ms`,
+          stdout,
+          stderr,
+        });
+      }, timeoutMs);
+
+      // Kick it off
+      child.send?.({ type: 'run', payload });
+
+      child.on('close', () => clearTimeout(t));
+    });
   }
 }

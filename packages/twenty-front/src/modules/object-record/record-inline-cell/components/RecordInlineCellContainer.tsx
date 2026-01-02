@@ -1,21 +1,19 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { ReactElement, useContext } from 'react';
+import { useContext } from 'react';
+
+import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
+import { useFieldFocus } from '@/object-record/record-field/ui/hooks/useFieldFocus';
+import { RecordInlineCellValue } from '@/object-record/record-inline-cell/components/RecordInlineCellValue';
+import { getRecordFieldInputInstanceId } from '@/object-record/utils/getRecordFieldInputId';
+
+import { assertFieldMetadata } from '@/object-record/record-field/ui/types/guards/assertFieldMetadata';
+import { isFieldText } from '@/object-record/record-field/ui/types/guards/isFieldText';
 import {
   AppTooltip,
-  IconComponent,
   OverflowingTextWithTooltip,
   TooltipDelay,
-} from 'twenty-ui';
-
-import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
-import { useFieldFocus } from '@/object-record/record-field/hooks/useFieldFocus';
-import { RecordInlineCellValue } from '@/object-record/record-inline-cell/components/RecordInlineCellValue';
-import { getRecordFieldInputId } from '@/object-record/utils/getRecordFieldInputId';
-import { HotkeyScope } from '@/ui/utilities/hotkey/types/HotkeyScope';
-
-import { assertFieldMetadata } from '@/object-record/record-field/types/guards/assertFieldMetadata';
-import { isFieldText } from '@/object-record/record-field/types/guards/isFieldText';
+} from 'twenty-ui/display';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 import { useRecordInlineCellContext } from './RecordInlineCellContext';
 
@@ -36,17 +34,18 @@ const StyledIconContainer = styled.div`
 
 const StyledLabelAndIconContainer = styled.div`
   align-items: center;
+  align-self: flex-start;
   color: ${({ theme }) => theme.font.color.tertiary};
   display: flex;
   gap: ${({ theme }) => theme.spacing(1)};
   height: 24px;
 `;
 
-const StyledValueContainer = styled.div`
+const StyledValueContainer = styled.div<{ readonly: boolean }>`
   display: flex;
-  flex-grow: 1;
   min-width: 0;
   position: relative;
+  width: 100%;
 `;
 
 const StyledLabelContainer = styled.div<{ width?: number }>`
@@ -55,46 +54,30 @@ const StyledLabelContainer = styled.div<{ width?: number }>`
   width: ${({ width }) => width}px;
 `;
 
-const StyledInlineCellBaseContainer = styled.div`
-  align-items: flex-start;
+const StyledInlineCellBaseContainer = styled.div<{ readonly: boolean }>`
   box-sizing: border-box;
   width: 100%;
   display: flex;
   height: fit-content;
-  line-height: 24px;
   gap: ${({ theme }) => theme.spacing(1)};
   user-select: none;
-  justify-content: center;
+  align-items: center;
+  cursor: ${({ readonly }) => (readonly ? 'default' : 'pointer')};
 `;
 
 export const StyledSkeletonDiv = styled.div`
   height: 24px;
 `;
 
-export type RecordInlineCellContainerProps = {
-  readonly?: boolean;
-  IconLabel?: IconComponent;
-  label?: string;
-  labelWidth?: number;
-  showLabel?: boolean;
-  buttonIcon?: IconComponent;
-  editModeContent?: ReactElement;
-  editModeContentOnly?: boolean;
-  displayModeContent: ReactElement;
-  customEditHotkeyScope?: HotkeyScope;
-  isDisplayModeFixHeight?: boolean;
-  disableHoverEffect?: boolean;
-  loading?: boolean;
-};
-
 export const RecordInlineCellContainer = () => {
   const { readonly, IconLabel, label, labelWidth, showLabel } =
     useRecordInlineCellContext();
 
-  const { recordId, fieldDefinition } = useContext(FieldContext);
+  const { recordId, fieldDefinition, onMouseEnter, onMouseLeave, anchorId } =
+    useContext(FieldContext);
 
   if (isFieldText(fieldDefinition)) {
-    assertFieldMetadata(FieldMetadataType.Text, isFieldText, fieldDefinition);
+    assertFieldMetadata(FieldMetadataType.TEXT, isFieldText, fieldDefinition);
   }
 
   const { setIsFocused } = useFieldFocus();
@@ -103,22 +86,25 @@ export const RecordInlineCellContainer = () => {
     if (!readonly) {
       setIsFocused(true);
     }
+    onMouseEnter?.();
   };
 
   const handleContainerMouseLeave = () => {
     if (!readonly) {
       setIsFocused(false);
     }
+    onMouseLeave?.();
   };
 
   const theme = useTheme();
-  const labelId = `label-${getRecordFieldInputId(
+  const labelId = `label-${getRecordFieldInputInstanceId({
     recordId,
-    fieldDefinition?.metadata?.fieldName,
-  )}`;
+    fieldName: fieldDefinition?.metadata?.fieldName,
+  })}`;
 
   return (
     <StyledInlineCellBaseContainer
+      readonly={readonly ?? false}
       onMouseEnter={handleContainerMouseEnter}
       onMouseLeave={handleContainerMouseLeave}
     >
@@ -129,13 +115,13 @@ export const RecordInlineCellContainer = () => {
               <IconLabel stroke={theme.icon.stroke.sm} />
             </StyledIconContainer>
           )}
-          {showLabel && label && (
+          {showLabel && (
             <StyledLabelContainer width={labelWidth}>
-              <OverflowingTextWithTooltip text={label} isLabel={true} />
+              <OverflowingTextWithTooltip text={label} displayedMaxRows={1} />
             </StyledLabelContainer>
           )}
           {/* TODO: Displaying Tooltips on the board is causing performance issues https://react-tooltip.com/docs/examples/render */}
-          {!showLabel && !fieldDefinition?.disableTooltip && (
+          {!showLabel && (
             <AppTooltip
               anchorSelect={`#${labelId}`}
               content={label}
@@ -148,7 +134,7 @@ export const RecordInlineCellContainer = () => {
           )}
         </StyledLabelAndIconContainer>
       )}
-      <StyledValueContainer>
+      <StyledValueContainer readonly={readonly ?? false} id={anchorId}>
         <RecordInlineCellValue />
       </StyledValueContainer>
     </StyledInlineCellBaseContainer>

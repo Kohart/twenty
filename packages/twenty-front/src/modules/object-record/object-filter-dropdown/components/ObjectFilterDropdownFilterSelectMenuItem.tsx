@@ -1,124 +1,49 @@
-import { useAdvancedFilterDropdown } from '@/object-record/advanced-filter/hooks/useAdvancedFilterDropdown';
-import { OBJECT_FILTER_DROPDOWN_ID } from '@/object-record/object-filter-dropdown/constants/ObjectFilterDropdownId';
-import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
-import { useSelectFilter } from '@/object-record/object-filter-dropdown/hooks/useSelectFilter';
-import { objectFilterDropdownFilterIsSelectedComponentState } from '@/object-record/object-filter-dropdown/states/objectFilterDropdownFilterIsSelectedComponentState';
-import { objectFilterDropdownFirstLevelFilterDefinitionComponentState } from '@/object-record/object-filter-dropdown/states/objectFilterDropdownFirstLevelFilterDefinitionComponentState';
-import { objectFilterDropdownIsSelectingCompositeFieldComponentState } from '@/object-record/object-filter-dropdown/states/objectFilterDropdownIsSelectingCompositeFieldComponentState';
-import { objectFilterDropdownSubMenuFieldTypeComponentState } from '@/object-record/object-filter-dropdown/states/objectFilterDropdownSubMenuFieldTypeComponentState';
-import { CompositeFilterableFieldType } from '@/object-record/object-filter-dropdown/types/CompositeFilterableFieldType';
-
-import { FilterDefinition } from '@/object-record/object-filter-dropdown/types/FilterDefinition';
-import { getOperandsForFilterDefinition } from '@/object-record/object-filter-dropdown/utils/getOperandsForFilterType';
-import { isCompositeField } from '@/object-record/object-filter-dropdown/utils/isCompositeField';
-import { RelationPickerHotkeyScope } from '@/object-record/relation-picker/types/RelationPickerHotkeyScope';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { FILTER_FIELD_LIST_ID } from '@/object-record/object-filter-dropdown/constants/FilterFieldListId';
+import { isCompositeFieldType } from '@/object-record/object-filter-dropdown/utils/isCompositeFieldType';
 import { useSelectableList } from '@/ui/layout/selectable-list/hooks/useSelectableList';
-import { useSetHotkeyScope } from '@/ui/utilities/hotkey/hooks/useSetHotkeyScope';
-import { useRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentStateV2';
-import { useRecoilValue } from 'recoil';
-import { MenuItemSelect, useIcons } from 'twenty-ui';
+import { isSelectedItemIdComponentFamilySelector } from '@/ui/layout/selectable-list/states/selectors/isSelectedItemIdComponentFamilySelector';
+import { useRecoilComponentFamilyValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyValue';
+import { useIcons } from 'twenty-ui/display';
+import { MenuItem } from 'twenty-ui/navigation';
 
 export type ObjectFilterDropdownFilterSelectMenuItemProps = {
-  filterDefinition: FilterDefinition;
+  fieldMetadataItemToSelect: FieldMetadataItem;
+  onClick: (selectedFieldMetadataItem: FieldMetadataItem) => void;
 };
 
 export const ObjectFilterDropdownFilterSelectMenuItem = ({
-  filterDefinition,
+  fieldMetadataItemToSelect,
+  onClick,
 }: ObjectFilterDropdownFilterSelectMenuItemProps) => {
-  const { selectFilter } = useSelectFilter();
+  const { resetSelectedItem } = useSelectableList(FILTER_FIELD_LIST_ID);
 
-  const [, setObjectFilterDropdownFirstLevelFilterDefinition] =
-    useRecoilComponentStateV2(
-      objectFilterDropdownFirstLevelFilterDefinitionComponentState,
-    );
-
-  const [, setObjectFilterDropdownSubMenuFieldType] = useRecoilComponentStateV2(
-    objectFilterDropdownSubMenuFieldTypeComponentState,
+  const isSelectedItem = useRecoilComponentFamilyValue(
+    isSelectedItemIdComponentFamilySelector,
+    fieldMetadataItemToSelect.id,
   );
-
-  const [, setObjectFilterDropdownIsSelectingCompositeField] =
-    useRecoilComponentStateV2(
-      objectFilterDropdownIsSelectingCompositeFieldComponentState,
-    );
-
-  const [, setObjectFilterDropdownFilterIsSelected] = useRecoilComponentStateV2(
-    objectFilterDropdownFilterIsSelectedComponentState,
-  );
-
-  const { isSelectedItemIdSelector, resetSelectedItem } = useSelectableList(
-    OBJECT_FILTER_DROPDOWN_ID,
-  );
-
-  const isSelectedItem = useRecoilValue(
-    isSelectedItemIdSelector(filterDefinition.fieldMetadataId),
-  );
-
-  const isACompositeField = isCompositeField(filterDefinition.type);
-
-  const {
-    setFilterDefinitionUsedInDropdown,
-    setSelectedOperandInDropdown,
-    setObjectFilterDropdownSearchInput,
-    advancedFilterViewFilterIdState,
-  } = useFilterDropdown();
-
-  const setHotkeyScope = useSetHotkeyScope();
-
-  const advancedFilterViewFilterId = useRecoilValue(
-    advancedFilterViewFilterIdState,
-  );
-
-  const { closeAdvancedFilterDropdown } = useAdvancedFilterDropdown(
-    advancedFilterViewFilterId,
-  );
-
-  const handleSelectFilter = (availableFilterDefinition: FilterDefinition) => {
-    closeAdvancedFilterDropdown();
-    selectFilter({ filterDefinition: availableFilterDefinition });
-
-    setFilterDefinitionUsedInDropdown(availableFilterDefinition);
-
-    if (
-      availableFilterDefinition.type === 'RELATION' ||
-      availableFilterDefinition.type === 'SELECT'
-    ) {
-      setHotkeyScope(RelationPickerHotkeyScope.RelationPicker);
-    }
-
-    setSelectedOperandInDropdown(
-      getOperandsForFilterDefinition(availableFilterDefinition)[0],
-    );
-
-    setObjectFilterDropdownSearchInput('');
-
-    setObjectFilterDropdownFilterIsSelected(true);
-  };
 
   const { getIcon } = useIcons();
+
+  const Icon = getIcon(fieldMetadataItemToSelect.icon);
+
+  const shouldShowSubMenu = isCompositeFieldType(
+    fieldMetadataItemToSelect.type,
+  );
 
   const handleClick = () => {
     resetSelectedItem();
 
-    if (isACompositeField) {
-      // TODO: create isCompositeFilterableFieldType type guard
-      setObjectFilterDropdownSubMenuFieldType(
-        filterDefinition.type as CompositeFilterableFieldType,
-      );
-      setObjectFilterDropdownFirstLevelFilterDefinition(filterDefinition);
-      setObjectFilterDropdownIsSelectingCompositeField(true);
-    } else {
-      handleSelectFilter(filterDefinition);
-    }
+    onClick(fieldMetadataItemToSelect);
   };
 
   return (
-    <MenuItemSelect
-      selected={false}
-      hovered={isSelectedItem}
+    <MenuItem
+      focused={isSelectedItem}
       onClick={handleClick}
-      LeftIcon={getIcon(filterDefinition.iconName)}
-      text={filterDefinition.label}
-      hasSubMenu={isACompositeField}
+      LeftIcon={Icon}
+      text={fieldMetadataItemToSelect.label}
+      hasSubMenu={shouldShowSubMenu}
     />
   );
 };

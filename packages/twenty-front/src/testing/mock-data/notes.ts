@@ -1,5 +1,5 @@
-import { Note } from '@/activities/types/Note';
-import { NoteTarget } from '@/activities/types/NoteTarget';
+import { type Note } from '@/activities/types/Note';
+import { type NoteTarget } from '@/activities/types/NoteTarget';
 
 type MockedNote = Partial<Note> & { __typename?: string };
 
@@ -9,7 +9,10 @@ export const mockedNotes: Array<MockedNote> = [
     createdAt: '2023-04-26T10:12:42.33625+00:00',
     updatedAt: '2023-04-26T10:23:42.33625+00:00',
     title: 'My very first note',
-    body: null,
+    bodyV2: {
+      blocknote: null,
+      markdown: null,
+    },
     noteTargets: [
       {
         id: '89bb825c-171e-4bcc-9cf7-43448d6fb300',
@@ -64,7 +67,10 @@ export const mockedNotes: Array<MockedNote> = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     title: 'Another note',
-    body: null,
+    bodyV2: {
+      blocknote: null,
+      markdown: null,
+    },
     noteTargets: [
       {
         id: '89bb825c-171e-4bcc-9cf7-43448d6fb278t',

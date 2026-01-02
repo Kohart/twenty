@@ -1,12 +1,13 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import {
   CatalogDecorator,
-  CatalogStory,
+  type CatalogStory,
   ComponentDecorator,
 } from '@ui/testing';
 
 import {
   Checkbox,
+  CheckboxAccent,
   CheckboxShape,
   CheckboxSize,
   CheckboxVariant,
@@ -29,6 +30,7 @@ export const Default: Story = {
     variant: CheckboxVariant.Primary,
     size: CheckboxSize.Small,
     shape: CheckboxShape.Squared,
+    accent: CheckboxAccent.Blue,
   },
   decorators: [ComponentDecorator],
 };
@@ -42,6 +44,7 @@ export const Catalog: CatalogStory<Story, typeof Checkbox> = {
     checked: { control: false },
     hoverable: { control: false },
     shape: { control: false },
+    accent: { control: false },
   },
   parameters: {
     catalog: {
@@ -81,6 +84,11 @@ export const Catalog: CatalogStory<Story, typeof Checkbox> = {
           name: 'size',
           values: Object.values(CheckboxSize),
           props: (size: CheckboxSize) => ({ size }),
+        },
+        {
+          name: 'accent',
+          values: Object.values(CheckboxAccent),
+          props: (accent: CheckboxAccent) => ({ accent }),
         },
       ],
     },

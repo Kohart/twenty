@@ -1,40 +1,50 @@
-import { useRecoilCallback } from 'recoil';
+import { useRecoilCallback, useRecoilValue } from 'recoil';
 
-import { getSnapshotValue } from '@/ui/utilities/recoil-scope/utils/getSnapshotValue';
-import { useRecoilComponentCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackStateV2';
+import { useContextStoreObjectMetadataItemOrThrow } from '@/context-store/hooks/useContextStoreObjectMetadataItemOrThrow';
+import { useRecoilComponentCallbackState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackState';
+import { getSnapshotValue } from '@/ui/utilities/state/utils/getSnapshotValue';
+import { usePersistView } from '@/views/hooks/internal/usePersistView';
 import { useChangeView } from '@/views/hooks/useChangeView';
-import { useDeleteView } from '@/views/hooks/useDeleteView';
-import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
+import { useGetCurrentViewOnly } from '@/views/hooks/useGetCurrentViewOnly';
+import { coreViewsByObjectMetadataIdFamilySelector } from '@/views/states/selectors/coreViewsByObjectMetadataIdFamilySelector';
+import { coreViewsFromObjectMetadataItemFamilySelector } from '@/views/states/selectors/coreViewsFromObjectMetadataItemFamilySelector';
 import { useCloseAndResetViewPicker } from '@/views/view-picker/hooks/useCloseAndResetViewPicker';
 import { viewPickerIsDirtyComponentState } from '@/views/view-picker/states/viewPickerIsDirtyComponentState';
 import { viewPickerIsPersistingComponentState } from '@/views/view-picker/states/viewPickerIsPersistingComponentState';
 import { viewPickerReferenceViewIdComponentState } from '@/views/view-picker/states/viewPickerReferenceViewIdComponentState';
 
 export const useDeleteViewFromCurrentState = (viewBarInstanceId?: string) => {
-  const { viewsOnCurrentObject, currentViewId } =
-    useGetCurrentView(viewBarInstanceId);
-
   const { closeAndResetViewPicker } = useCloseAndResetViewPicker();
 
-  const viewPickerIsPersistingCallbackState = useRecoilComponentCallbackStateV2(
+  const viewPickerIsPersistingCallbackState = useRecoilComponentCallbackState(
     viewPickerIsPersistingComponentState,
     viewBarInstanceId,
   );
 
-  const viewPickerIsDirtyCallbackState = useRecoilComponentCallbackStateV2(
+  const viewPickerIsDirtyCallbackState = useRecoilComponentCallbackState(
     viewPickerIsDirtyComponentState,
     viewBarInstanceId,
   );
 
   const viewPickerReferenceViewIdCallbackState =
-    useRecoilComponentCallbackStateV2(
+    useRecoilComponentCallbackState(
       viewPickerReferenceViewIdComponentState,
       viewBarInstanceId,
     );
 
-  const { changeView } = useChangeView(viewBarInstanceId);
+  const { objectMetadataItem } = useContextStoreObjectMetadataItemOrThrow();
 
-  const { deleteView } = useDeleteView();
+  const viewsOnCurrentObject = useRecoilValue(
+    coreViewsFromObjectMetadataItemFamilySelector({
+      objectMetadataItemId: objectMetadataItem.id,
+    }),
+  );
+
+  const { currentView } = useGetCurrentViewOnly();
+
+  const { changeView } = useChangeView();
+
+  const { deleteView } = usePersistView();
 
   const deleteViewFromCurrentState = useRecoilCallback(
     ({ set, snapshot }) =>
@@ -48,7 +58,7 @@ export const useDeleteViewFromCurrentState = (viewBarInstanceId?: string) => {
           viewPickerReferenceViewIdCallbackState,
         );
 
-        const shouldChangeView = viewPickerReferenceViewId === currentViewId;
+        const shouldChangeView = viewPickerReferenceViewId === currentView?.id;
 
         if (shouldChangeView) {
           changeView(
@@ -58,11 +68,18 @@ export const useDeleteViewFromCurrentState = (viewBarInstanceId?: string) => {
           );
         }
 
-        await deleteView(viewPickerReferenceViewId);
+        set(
+          coreViewsByObjectMetadataIdFamilySelector(objectMetadataItem.id),
+          (views) =>
+            views.filter((view) => view.id !== viewPickerReferenceViewId),
+        );
+
+        await deleteView({ id: viewPickerReferenceViewId });
       },
     [
-      currentViewId,
+      currentView,
       closeAndResetViewPicker,
+      objectMetadataItem.id,
       changeView,
       deleteView,
       viewPickerIsDirtyCallbackState,

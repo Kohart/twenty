@@ -1,10 +1,9 @@
 import React from 'react';
 import { useRecoilValue } from 'recoil';
 
-import { ObjectMetadataItemsLoadEffect } from '@/object-metadata/components/ObjectMetadataItemsLoadEffect';
 import { PreComputedChipGeneratorsProvider } from '@/object-metadata/components/PreComputedChipGeneratorsProvider';
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { RelationPickerScope } from '@/object-record/relation-picker/scopes/RelationPickerScope';
+import { shouldAppBeLoadingState } from '@/object-metadata/states/shouldAppBeLoadingState';
 import { UserOrMetadataLoader } from '~/loading/components/UserOrMetadataLoader';
 
 export const ObjectMetadataItemsProvider = ({
@@ -12,16 +11,16 @@ export const ObjectMetadataItemsProvider = ({
 }: React.PropsWithChildren) => {
   const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
 
-  const shouldDisplayChildren = objectMetadataItems.length > 0;
+  const shouldAppBeLoading = useRecoilValue(shouldAppBeLoadingState);
+
+  const shouldDisplayChildren =
+    !shouldAppBeLoading && objectMetadataItems.length > 0;
 
   return (
     <>
-      <ObjectMetadataItemsLoadEffect />
       {shouldDisplayChildren ? (
         <PreComputedChipGeneratorsProvider>
-          <RelationPickerScope relationPickerScopeId="relation-picker">
-            {children}
-          </RelationPickerScope>
+          {children}
         </PreComputedChipGeneratorsProvider>
       ) : (
         <UserOrMetadataLoader />

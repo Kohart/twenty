@@ -1,17 +1,16 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { IMaskInput, IMaskInputProps } from 'react-imask';
-import { IconComponent, TEXT_INPUT_STYLE } from 'twenty-ui';
+import { useEffect, useRef, useState } from 'react';
 
-import { useRegisterInputEvents } from '@/object-record/record-field/meta-types/input/hooks/useRegisterInputEvents';
-import { SETTINGS_FIELD_CURRENCY_CODES } from '@/settings/data-model/constants/SettingsFieldCurrencyCodes';
+import { useRegisterInputEvents } from '@/object-record/record-field/ui/meta-types/input/hooks/useRegisterInputEvents';
+import { CURRENCIES } from '@/settings/data-model/constants/Currencies';
 import { CurrencyPickerDropdownButton } from '@/ui/input/components/internal/currency/components/CurrencyPickerDropdownButton';
+import { type Currency } from '@/ui/input/components/internal/types/Currency';
+import { IMaskInput } from 'react-imask';
+import { type IconComponent } from 'twenty-ui/display';
+import { TEXT_INPUT_STYLE } from 'twenty-ui/theme';
 
-type StyledInputProps = React.ComponentProps<'input'> &
-  IMaskInputProps<HTMLInputElement>;
-
-export const StyledIMaskInput = styled(IMaskInput)<StyledInputProps>`
+export const StyledIMaskInput = styled(IMaskInput)`
   margin: 0;
   ${TEXT_INPUT_STYLE}
   width: 100%;
@@ -20,10 +19,6 @@ export const StyledIMaskInput = styled(IMaskInput)<StyledInputProps>`
 
 const StyledContainer = styled.div`
   align-items: center;
-
-  border: none;
-  border-radius: ${({ theme }) => theme.border.radius.sm};
-  box-shadow: ${({ theme }) => theme.boxShadow.strong};
 
   display: flex;
   justify-content: center;
@@ -42,9 +37,11 @@ const StyledIcon = styled.div`
 `;
 
 export type CurrencyInputProps = {
+  instanceId: string;
   placeholder?: string;
   autoFocus?: boolean;
   value: string;
+  decimals?: number;
   currencyCode: string;
   onEnter: (newText: string) => void;
   onEscape: (newText: string) => void;
@@ -53,16 +50,10 @@ export type CurrencyInputProps = {
   onClickOutside: (event: MouseEvent | TouchEvent, inputValue: string) => void;
   onChange?: (newText: string) => void;
   onSelect?: (newText: string) => void;
-  hotkeyScope: string;
-};
-
-type Currency = {
-  label: string;
-  value: string;
-  Icon: any;
 };
 
 export const CurrencyInput = ({
+  instanceId,
   autoFocus,
   value,
   currencyCode,
@@ -74,7 +65,7 @@ export const CurrencyInput = ({
   onClickOutside,
   onChange,
   onSelect,
-  hotkeyScope,
+  decimals,
 }: CurrencyInputProps) => {
   const theme = useTheme();
 
@@ -92,6 +83,7 @@ export const CurrencyInput = ({
   };
 
   useRegisterInputEvents({
+    focusId: instanceId,
     inputRef: wrapperRef,
     inputValue: internalText,
     onEnter,
@@ -99,22 +91,9 @@ export const CurrencyInput = ({
     onClickOutside,
     onTab,
     onShiftTab,
-    hotkeyScope,
   });
 
-  const currencies = useMemo<Currency[]>(
-    () =>
-      Object.entries(SETTINGS_FIELD_CURRENCY_CODES).map(
-        ([key, { Icon, label }]) => ({
-          value: key,
-          Icon,
-          label,
-        }),
-      ),
-    [],
-  );
-
-  const currency = currencies.find(({ value }) => value === currencyCode);
+  const currency = CURRENCIES.find(({ value }) => value === currencyCode);
 
   useEffect(() => {
     setInternalText(value);
@@ -125,9 +104,8 @@ export const CurrencyInput = ({
   return (
     <StyledContainer ref={wrapperRef}>
       <CurrencyPickerDropdownButton
-        valueCode={currency?.value ?? ''}
+        selectedCurrencyCode={currency?.value ?? ''}
         onChange={handleCurrencyChange}
-        currencies={currencies}
       />
       <StyledIcon>
         {Icon && (
@@ -136,8 +114,9 @@ export const CurrencyInput = ({
       </StyledIcon>
       <StyledIMaskInput
         mask={Number}
-        thousandsSeparator={','}
+        thousandsSeparator=","
         radix="."
+        scale={decimals}
         onAccept={(value: string) => handleChange(value)}
         inputRef={wrapperRef}
         autoComplete="off"

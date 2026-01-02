@@ -1,35 +1,38 @@
 import { useSearchRecordGroupField } from '@/object-record/object-options-dropdown/hooks/useSearchRecordGroupField';
-import { RecordIndexRootPropsContext } from '@/object-record/record-index/contexts/RecordIndexRootPropsContext';
+import { RecordIndexContextProvider } from '@/object-record/record-index/contexts/RecordIndexContext';
 import { ViewComponentInstanceContext } from '@/views/states/contexts/ViewComponentInstanceContext';
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import { RecoilRoot } from 'recoil';
-import { FieldMetadataType } from '~/generated/graphql';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 describe('useSearchRecordGroupField', () => {
   const renderWithContext = (contextValue: any) =>
     renderHook(() => useSearchRecordGroupField(), {
       wrapper: ({ children }) => (
         <RecoilRoot>
-          <RecordIndexRootPropsContext.Provider value={contextValue}>
+          <RecordIndexContextProvider value={contextValue}>
             <ViewComponentInstanceContext.Provider
               value={{ instanceId: 'myViewInstanceId' }}
             >
               {children}
             </ViewComponentInstanceContext.Provider>
-          </RecordIndexRootPropsContext.Provider>
+          </RecordIndexContextProvider>
         </RecoilRoot>
       ),
     });
 
   it('filters fields correctly based on input', () => {
+    const fields = [
+      { type: FieldMetadataType.SELECT, label: 'First' },
+      { type: FieldMetadataType.SELECT, label: 'Second' },
+      { type: FieldMetadataType.TEXT, label: 'Third' },
+    ];
     const mockContextValue = {
       objectMetadataItem: {
-        fields: [
-          { type: FieldMetadataType.Select, label: 'First' },
-          { type: FieldMetadataType.Select, label: 'Second' },
-          { type: FieldMetadataType.Text, label: 'Third' },
-        ],
+        fields,
+        readableFields: fields,
+        updatableFields: fields,
       },
     };
 
@@ -40,26 +43,29 @@ describe('useSearchRecordGroupField', () => {
     });
 
     expect(result.current.filteredRecordGroupFieldMetadataItems).toEqual([
-      { type: FieldMetadataType.Select, label: 'First' },
+      { type: FieldMetadataType.SELECT, label: 'First' },
     ]);
   });
 
   it('returns all select fields when search input is empty', () => {
+    const fields = [
+      { type: FieldMetadataType.SELECT, label: 'First' },
+      { type: FieldMetadataType.SELECT, label: 'Second' },
+      { type: FieldMetadataType.TEXT, label: 'Third' },
+    ];
     const mockContextValue = {
       objectMetadataItem: {
-        fields: [
-          { type: FieldMetadataType.Select, label: 'First' },
-          { type: FieldMetadataType.Select, label: 'Second' },
-          { type: FieldMetadataType.Text, label: 'Third' },
-        ],
+        fields,
+        readableFields: fields,
+        updatableFields: fields,
       },
     };
 
     const { result } = renderWithContext(mockContextValue);
 
     expect(result.current.filteredRecordGroupFieldMetadataItems).toEqual([
-      { type: FieldMetadataType.Select, label: 'First' },
-      { type: FieldMetadataType.Select, label: 'Second' },
+      { type: FieldMetadataType.SELECT, label: 'First' },
+      { type: FieldMetadataType.SELECT, label: 'Second' },
     ]);
   });
 });

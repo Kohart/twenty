@@ -1,136 +1,112 @@
-import { NavigationDrawerAnimatedCollapseWrapper } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerAnimatedCollapseWrapper';
-import { isNavigationDrawerExpandedState } from '@/ui/navigation/states/isNavigationDrawerExpanded';
-import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
+import { TextInput } from '@/ui/input/components/TextInput';
+import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
+import { useRemoveFocusItemFromFocusStackById } from '@/ui/utilities/focus/hooks/useRemoveFocusItemFromFocusStackById';
+import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
+import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
 import { useListenClickOutside } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
-import { useTheme } from '@emotion/react';
-import styled from '@emotion/styled';
-import { ChangeEvent, FocusEvent, useRef } from 'react';
-import { useRecoilState } from 'recoil';
+import { type FocusEvent, useRef } from 'react';
 import { Key } from 'ts-key-enum';
-import {
-  IconComponent,
-  isDefined,
-  TablerIconsProps,
-  TEXT_INPUT_STYLE,
-} from 'twenty-ui';
-import { useHotkeyScopeOnMount } from '~/hooks/useHotkeyScopeOnMount';
+import { isDefined } from 'twenty-shared/utils';
+import { type IconComponent, type TablerIconsProps } from 'twenty-ui/display';
 
 type NavigationDrawerInputProps = {
   className?: string;
-  Icon: IconComponent | ((props: TablerIconsProps) => JSX.Element);
+  Icon?: IconComponent | ((props: TablerIconsProps) => JSX.Element);
+  placeholder?: string;
   value: string;
   onChange: (value: string) => void;
   onSubmit: (value: string) => void;
   onCancel: (value: string) => void;
   onClickOutside: (event: MouseEvent | TouchEvent, value: string) => void;
-  hotkeyScope: string;
 };
 
-const StyledItem = styled.div<{ isNavigationDrawerExpanded: boolean }>`
-  align-items: center;
-  background-color: ${({ theme }) => theme.background.primary};
-  border: 1px solid ${({ theme }) => theme.color.blue};
-  border-radius: ${({ theme }) => theme.border.radius.sm};
-  box-sizing: content-box;
-  color: ${({ theme }) => theme.font.color.primary};
-  display: flex;
-  font-family: ${({ theme }) => theme.font.family};
-  font-size: ${({ theme }) => theme.font.size.md};
-  height: calc(${({ theme }) => theme.spacing(5)} - 2px);
-  padding: ${({ theme }) => theme.spacing(1)};
-  text-decoration: none;
-  user-select: none;
-`;
-
-const StyledItemElementsContainer = styled.span`
-  align-items: center;
-
-  display: flex;
-  width: 100%;
-`;
-
-const StyledTextInput = styled.input`
-  ${TEXT_INPUT_STYLE}
-  margin: 0;
-  width: 100%;
-`;
+const NAVIGATION_DRAWER_INPUT_FOCUS_ID = 'navigation-drawer-input';
 
 export const NavigationDrawerInput = ({
   className,
+  placeholder,
   Icon,
   value,
   onChange,
   onSubmit,
   onCancel,
   onClickOutside,
-  hotkeyScope,
 }: NavigationDrawerInputProps) => {
-  const theme = useTheme();
-  const [isNavigationDrawerExpanded] = useRecoilState(
-    isNavigationDrawerExpandedState,
-  );
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useHotkeyScopeOnMount(hotkeyScope);
-
-  useScopedHotkeys(
-    [Key.Escape],
-    () => {
+  useHotkeysOnFocusedElement({
+    keys: Key.Escape,
+    callback: () => {
       onCancel(value);
+      removeFocusItemFromFocusStackById({
+        focusId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
+      });
     },
-    hotkeyScope,
-  );
+    focusId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
+  });
 
-  useScopedHotkeys(
-    [Key.Enter],
-    () => {
+  useHotkeysOnFocusedElement({
+    keys: Key.Enter,
+    callback: () => {
       onSubmit(value);
+      removeFocusItemFromFocusStackById({
+        focusId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
+      });
     },
-    hotkeyScope,
-  );
+    focusId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
+  });
 
   useListenClickOutside({
     refs: [inputRef],
     callback: (event) => {
       event.stopImmediatePropagation();
       onClickOutside(event, value);
+      removeFocusItemFromFocusStackById({
+        focusId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
+      });
     },
+    listenerId: 'navigation-drawer-input',
   });
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange(event.target.value);
-  };
+  const { pushFocusItemToFocusStack } = usePushFocusItemToFocusStack();
+  const { removeFocusItemFromFocusStackById } =
+    useRemoveFocusItemFromFocusStackById();
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
     if (isDefined(value)) {
       event.target.select();
     }
+    pushFocusItemToFocusStack({
+      focusId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
+      component: {
+        type: FocusComponentType.TEXT_INPUT,
+        instanceId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
+      },
+      globalHotkeysConfig: {
+        enableGlobalHotkeysConflictingWithKeyboard: false,
+      },
+    });
+  };
+
+  const handleBlur = () => {
+    removeFocusItemFromFocusStackById({
+      focusId: NAVIGATION_DRAWER_INPUT_FOCUS_ID,
+    });
   };
 
   return (
-    <StyledItem
+    <TextInput
       className={className}
-      isNavigationDrawerExpanded={isNavigationDrawerExpanded}
-    >
-      <StyledItemElementsContainer>
-        {Icon && (
-          <Icon
-            style={{ minWidth: theme.icon.size.md }}
-            size={theme.icon.size.md}
-            stroke={theme.icon.stroke.md}
-            color="currentColor"
-          />
-        )}
-        <NavigationDrawerAnimatedCollapseWrapper>
-          <StyledTextInput
-            ref={inputRef}
-            value={value}
-            onChange={handleChange}
-            onFocus={handleFocus}
-            autoFocus
-          />
-        </NavigationDrawerAnimatedCollapseWrapper>
-      </StyledItemElementsContainer>
-    </StyledItem>
+      LeftIcon={Icon}
+      ref={inputRef}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      sizeVariant="md"
+      fullWidth
+      autoFocus
+    />
   );
 };

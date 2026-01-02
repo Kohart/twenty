@@ -1,23 +1,26 @@
 import { ActivityRow } from '@/activities/components/ActivityRow';
 import { AttachmentDropdown } from '@/activities/files/components/AttachmentDropdown';
-import { AttachmentIcon } from '@/activities/files/components/AttachmentIcon';
-import { Attachment } from '@/activities/files/types/Attachment';
+import { type Attachment } from '@/activities/files/types/Attachment';
 import { downloadFile } from '@/activities/files/utils/downloadFile';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { useDeleteOneRecord } from '@/object-record/hooks/useDeleteOneRecord';
+import { useDestroyOneRecord } from '@/object-record/hooks/useDestroyOneRecord';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import {
   FieldContext,
-  GenericFieldContextType,
-} from '@/object-record/record-field/contexts/FieldContext';
-import { TextInput } from '@/ui/input/components/TextInput';
+  type GenericFieldContextType,
+} from '@/object-record/record-field/ui/contexts/FieldContext';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { useMemo, useState } from 'react';
-import { IconCalendar, OverflowingTextWithTooltip } from 'twenty-ui';
+import { useState } from 'react';
+import { isDefined } from 'twenty-shared/utils';
 
+import { FileIcon } from '@/file/components/FileIcon';
+import { useHasPermissionFlag } from '@/settings/roles/hooks/useHasPermissionFlag';
+import { IconCalendar, OverflowingTextWithTooltip } from 'twenty-ui/display';
+import { isNavigationModifierPressed } from 'twenty-ui/utilities';
+import { PermissionFlagType } from '~/generated-metadata/graphql';
 import { formatToHumanReadableDate } from '~/utils/date-utils';
-import { getFileAbsoluteURI } from '~/utils/file/getFileAbsoluteURI';
 import { getFileNameAndExtension } from '~/utils/file/getFileNameAndExtension';
 
 const StyledLeftContent = styled.div`
@@ -44,10 +47,17 @@ const StyledCalendarIconContainer = styled.div`
 
 const StyledLink = styled.a`
   align-items: center;
+  appearance: none;
+  background: none;
+  border: none;
   color: ${({ theme }) => theme.font.color.primary};
+  cursor: pointer;
   display: flex;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+  text-align: left;
   text-decoration: none;
-
   width: 100%;
 
   :hover {
@@ -60,9 +70,21 @@ const StyledLinkContainer = styled.div`
   width: 100%;
 `;
 
-export const AttachmentRow = ({ attachment }: { attachment: Attachment }) => {
+type AttachmentRowProps = {
+  attachment: Attachment;
+  onPreview?: (attachment: Attachment) => void;
+};
+
+export const AttachmentRow = ({
+  attachment,
+  onPreview,
+}: AttachmentRowProps) => {
   const theme = useTheme();
   const [isEditing, setIsEditing] = useState(false);
+
+  const hasDownloadPermission = useHasPermissionFlag(
+    PermissionFlagType.DOWNLOAD_FILE,
+  );
 
   const { name: originalFileName, extension: attachmentFileExtension } =
     getFileNameAndExtension(attachment.name);
@@ -70,17 +92,12 @@ export const AttachmentRow = ({ attachment }: { attachment: Attachment }) => {
   const [attachmentFileName, setAttachmentFileName] =
     useState(originalFileName);
 
-  const fieldContext = useMemo(
-    () => ({ recoilScopeId: attachment?.id ?? '' }),
-    [attachment?.id],
-  );
-
-  const { deleteOneRecord: deleteOneAttachment } = useDeleteOneRecord({
+  const { destroyOneRecord: destroyOneAttachment } = useDestroyOneRecord({
     objectNameSingular: CoreObjectNameSingular.Attachment,
   });
 
   const handleDelete = () => {
-    deleteOneAttachment(attachment.id);
+    destroyOneAttachment(attachment.id);
   };
 
   const { updateOneRecord: updateOneAttachment } = useUpdateOneRecord({
@@ -123,13 +140,33 @@ export const AttachmentRow = ({ attachment }: { attachment: Attachment }) => {
     );
   };
 
+  const handleOpenDocument = (e: React.MouseEvent) => {
+    // Cmd/Ctrl+click opens new tab, right click opens context menu
+    if (isNavigationModifierPressed(e) === true) {
+      return;
+    }
+
+    // Only prevent default and use preview if onPreview is provided
+    if (isDefined(onPreview)) {
+      e.preventDefault();
+      onPreview(attachment);
+    }
+  };
+
   return (
-    <FieldContext.Provider value={fieldContext as GenericFieldContextType}>
+    <FieldContext.Provider
+      value={
+        {
+          recordId: attachment.id,
+        } as GenericFieldContextType
+      }
+    >
       <ActivityRow disabled>
         <StyledLeftContent>
-          <AttachmentIcon attachmentType={attachment.type} />
+          <FileIcon fileCategory={attachment.fileCategory} />
           {isEditing ? (
-            <TextInput
+            <SettingsTextInput
+              instanceId={`attachment-${attachment.id}-name`}
               value={attachmentFileName}
               onChange={handleOnChange}
               onBlur={handleOnBlur}
@@ -139,8 +176,10 @@ export const AttachmentRow = ({ attachment }: { attachment: Attachment }) => {
           ) : (
             <StyledLinkContainer>
               <StyledLink
-                href={getFileAbsoluteURI(attachment.fullPath)}
-                target="__blank"
+                onClick={handleOpenDocument}
+                href={attachment.fullPath}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 <OverflowingTextWithTooltip text={attachment.name} />
               </StyledLink>
@@ -153,10 +192,11 @@ export const AttachmentRow = ({ attachment }: { attachment: Attachment }) => {
           </StyledCalendarIconContainer>
           {formatToHumanReadableDate(attachment.createdAt)}
           <AttachmentDropdown
-            scopeKey={attachment.id}
+            attachmentId={attachment.id}
             onDelete={handleDelete}
             onDownload={handleDownload}
             onRename={handleRename}
+            hasDownloadPermission={hasDownloadPermission}
           />
         </StyledRightContent>
       </ActivityRow>

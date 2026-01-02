@@ -1,18 +1,27 @@
-import { Filter } from '@/object-record/object-filter-dropdown/types/Filter';
-import { isDefined } from 'twenty-ui';
+import { type RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
+import { compareStrictlyExceptForNullAndUndefined } from '~/utils/compareStrictlyExceptForNullAndUndefined';
+import { isDefined } from 'twenty-shared/utils';
 
 export const shouldReplaceFilter = (
-  oldFilter: Pick<Filter, 'id' | 'fieldMetadataId' | 'viewFilterGroupId'>,
-  newFilter: Pick<Filter, 'id' | 'fieldMetadataId' | 'viewFilterGroupId'>,
+  oldFilter: Pick<
+    RecordFilter,
+    'id' | 'fieldMetadataId' | 'recordFilterGroupId'
+  >,
+  newFilter: Pick<
+    RecordFilter,
+    'id' | 'fieldMetadataId' | 'recordFilterGroupId'
+  >,
 ) => {
-  const isNewFilterAdvancedFilter = isDefined(newFilter.viewFilterGroupId);
+  const isNewFilterAdvancedFilter = isDefined(newFilter.recordFilterGroupId);
 
   if (isNewFilterAdvancedFilter) {
     return newFilter.id === oldFilter.id;
   } else {
     return (
-      newFilter.fieldMetadataId === oldFilter.fieldMetadataId &&
-      !oldFilter.viewFilterGroupId
+      compareStrictlyExceptForNullAndUndefined(
+        newFilter.fieldMetadataId,
+        oldFilter.fieldMetadataId,
+      ) && !isDefined(oldFilter.recordFilterGroupId)
     );
   }
 };

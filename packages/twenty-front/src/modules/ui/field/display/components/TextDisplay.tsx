@@ -1,10 +1,28 @@
-import { OverflowingTextWithTooltip } from 'twenty-ui';
+import { styled } from '@linaria/react';
+import { isUndefined } from '@sniptt/guards';
+import { OverflowingTextWithTooltip } from 'twenty-ui/display';
 
 type TextDisplayProps = {
   text: string;
   displayedMaxRows?: number;
 };
 
-export const TextDisplay = ({ text, displayedMaxRows }: TextDisplayProps) => (
-  <OverflowingTextWithTooltip text={text} displayedMaxRows={displayedMaxRows} />
-);
+const StyledContainer = styled.div<{ fixHeight: boolean }>`
+  height: ${({ fixHeight }) => (fixHeight ? '20px' : 'auto')};
+  display: flex;
+  align-items: center;
+`;
+
+export const TextDisplay = ({ text, displayedMaxRows }: TextDisplayProps) => {
+  return (
+    <StyledContainer
+      fixHeight={isUndefined(displayedMaxRows) || displayedMaxRows === 1}
+    >
+      <OverflowingTextWithTooltip
+        text={text}
+        displayedMaxRows={displayedMaxRows}
+        isTooltipMultiline={true}
+      />
+    </StyledContainer>
+  );
+};

@@ -1,11 +1,8 @@
-import { useEffect } from 'react';
 import { loadDevMessages, loadErrorMessages } from '@apollo/client/dev';
-import { useRecoilValue } from 'recoil';
-
-import { isDebugModeState } from '@/client-config/states/isDebugModeState';
+import { useEffect } from 'react';
 
 export const ApolloDevLogEffect = () => {
-  const isDebugMode = useRecoilValue(isDebugModeState);
+  const isDebugMode = process.env.IS_DEBUG_MODE === 'true';
 
   useEffect(() => {
     if (isDebugMode) {

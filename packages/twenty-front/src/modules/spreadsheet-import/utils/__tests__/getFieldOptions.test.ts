@@ -1,5 +1,6 @@
-import { Field } from '@/spreadsheet-import/types';
+import { type SpreadsheetImportField } from '@/spreadsheet-import/types';
 import { getFieldOptions } from '@/spreadsheet-import/utils/getFieldOptions';
+import { FieldMetadataType } from 'twenty-shared/types';
 
 describe('getFieldOptions', () => {
   const optionsArray = [
@@ -16,23 +17,29 @@ describe('getFieldOptions', () => {
       value: 'Three',
     },
   ];
-  const fields: Field<'Options' | 'Name'>[] = [
+  const fields: SpreadsheetImportField[] = [
     {
       key: 'Options',
-      icon: null,
+      Icon: null,
       label: 'options',
       fieldType: {
         type: 'select',
         options: optionsArray,
       },
+      fieldMetadataType: FieldMetadataType.SELECT,
+      fieldMetadataItemId: '1',
+      isNestedField: false,
     },
     {
       key: 'Name',
-      icon: null,
+      Icon: null,
       label: 'name',
       fieldType: {
         type: 'input',
       },
+      fieldMetadataType: FieldMetadataType.TEXT,
+      fieldMetadataItemId: '2',
+      isNestedField: false,
     },
   ];
 

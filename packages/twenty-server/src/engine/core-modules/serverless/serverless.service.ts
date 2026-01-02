@@ -2,11 +2,11 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import {
   ServerlessDriver,
-  ServerlessExecuteResult,
+  type ServerlessExecuteResult,
 } from 'src/engine/core-modules/serverless/drivers/interfaces/serverless-driver.interface';
 
 import { SERVERLESS_DRIVER } from 'src/engine/core-modules/serverless/serverless.constants';
-import { ServerlessFunctionEntity } from 'src/engine/metadata-modules/serverless-function/serverless-function.entity';
+import { type ServerlessFunctionEntity } from 'src/engine/metadata-modules/serverless-function/serverless-function.entity';
 
 @Injectable()
 export class ServerlessService implements ServerlessDriver {
@@ -16,22 +16,17 @@ export class ServerlessService implements ServerlessDriver {
     return this.driver.delete(serverlessFunction);
   }
 
-  async build(
-    serverlessFunction: ServerlessFunctionEntity,
-    version: string,
-  ): Promise<void> {
-    return this.driver.build(serverlessFunction, version);
-  }
-
-  async publish(serverlessFunction: ServerlessFunctionEntity): Promise<string> {
-    return this.driver.publish(serverlessFunction);
-  }
-
-  async execute(
-    serverlessFunction: ServerlessFunctionEntity,
-    payload: object,
-    version: string,
-  ): Promise<ServerlessExecuteResult> {
-    return this.driver.execute(serverlessFunction, payload, version);
+  async execute({
+    serverlessFunction,
+    payload,
+    version,
+    env,
+  }: {
+    serverlessFunction: ServerlessFunctionEntity;
+    payload: object;
+    version: string;
+    env?: Record<string, string>;
+  }): Promise<ServerlessExecuteResult> {
+    return this.driver.execute({ serverlessFunction, payload, version, env });
   }
 }

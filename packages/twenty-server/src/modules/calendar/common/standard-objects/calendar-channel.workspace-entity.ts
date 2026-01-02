@@ -1,15 +1,16 @@
 import { registerEnumType } from '@nestjs/graphql';
 
+import { msg } from '@lingui/core/macro';
+import { STANDARD_OBJECT_IDS } from 'twenty-shared/metadata';
+import { FieldMetadataType, RelationOnDeleteAction } from 'twenty-shared/types';
+
+import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
 import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import {
-  RelationMetadataType,
-  RelationOnDeleteAction,
-} from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 import { BaseWorkspaceEntity } from 'src/engine/twenty-orm/base.workspace-entity';
 import { WorkspaceEntity } from 'src/engine/twenty-orm/decorators/workspace-entity.decorator';
 import { WorkspaceField } from 'src/engine/twenty-orm/decorators/workspace-field.decorator';
+import { WorkspaceIsFieldUIReadOnly } from 'src/engine/twenty-orm/decorators/workspace-is-field-ui-readonly.decorator';
 import { WorkspaceIsNotAuditLogged } from 'src/engine/twenty-orm/decorators/workspace-is-not-audit-logged.decorator';
 import { WorkspaceIsNullable } from 'src/engine/twenty-orm/decorators/workspace-is-nullable.decorator';
 import { WorkspaceIsSystem } from 'src/engine/twenty-orm/decorators/workspace-is-system.decorator';
@@ -17,7 +18,6 @@ import { WorkspaceJoinColumn } from 'src/engine/twenty-orm/decorators/workspace-
 import { WorkspaceRelation } from 'src/engine/twenty-orm/decorators/workspace-relation.decorator';
 import { CALENDAR_CHANNEL_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { STANDARD_OBJECT_ICONS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-icons';
-import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 import { CalendarChannelEventAssociationWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-channel-event-association.workspace-entity';
 import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
 
@@ -35,10 +35,12 @@ export enum CalendarChannelSyncStatus {
 }
 
 export enum CalendarChannelSyncStage {
-  FULL_CALENDAR_EVENT_LIST_FETCH_PENDING = 'FULL_CALENDAR_EVENT_LIST_FETCH_PENDING',
-  PARTIAL_CALENDAR_EVENT_LIST_FETCH_PENDING = 'PARTIAL_CALENDAR_EVENT_LIST_FETCH_PENDING',
+  PENDING_CONFIGURATION = 'PENDING_CONFIGURATION',
+  CALENDAR_EVENT_LIST_FETCH_PENDING = 'CALENDAR_EVENT_LIST_FETCH_PENDING',
+  CALENDAR_EVENT_LIST_FETCH_SCHEDULED = 'CALENDAR_EVENT_LIST_FETCH_SCHEDULED',
   CALENDAR_EVENT_LIST_FETCH_ONGOING = 'CALENDAR_EVENT_LIST_FETCH_ONGOING',
   CALENDAR_EVENTS_IMPORT_PENDING = 'CALENDAR_EVENTS_IMPORT_PENDING',
+  CALENDAR_EVENTS_IMPORT_SCHEDULED = 'CALENDAR_EVENTS_IMPORT_SCHEDULED',
   CALENDAR_EVENTS_IMPORT_ONGOING = 'CALENDAR_EVENTS_IMPORT_ONGOING',
   FAILED = 'FAILED',
 }
@@ -68,10 +70,11 @@ registerEnumType(CalendarChannelContactAutoCreationPolicy, {
 
 @WorkspaceEntity({
   standardId: STANDARD_OBJECT_IDS.calendarChannel,
+
   namePlural: 'calendarChannels',
-  labelSingular: 'Calendar Channel',
-  labelPlural: 'Calendar Channels',
-  description: 'Calendar Channels',
+  labelSingular: msg`Calendar Channel`,
+  labelPlural: msg`Calendar Channels`,
+  description: msg`Calendar Channels`,
   icon: STANDARD_OBJECT_ICONS.calendarChannel,
   labelIdentifierStandardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.handle,
 })
@@ -81,17 +84,19 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.handle,
     type: FieldMetadataType.TEXT,
-    label: 'Handle',
-    description: 'Handle',
+    label: msg`Handle`,
+    description: msg`Handle`,
     icon: 'IconAt',
   })
-  handle: string;
+  @WorkspaceIsFieldUIReadOnly()
+  @WorkspaceIsNullable()
+  handle: string | null;
 
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.syncStatus,
     type: FieldMetadataType.SELECT,
-    label: 'Sync status',
-    description: 'Sync status',
+    label: msg`Sync status`,
+    description: msg`Sync status`,
     icon: 'IconStatusChange',
     options: [
       {
@@ -126,28 +131,28 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
       },
     ],
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   syncStatus: CalendarChannelSyncStatus | null;
 
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.syncStage,
     type: FieldMetadataType.SELECT,
-    label: 'Sync stage',
-    description: 'Sync stage',
+    label: msg`Sync stage`,
+    description: msg`Sync stage`,
     icon: 'IconStatusChange',
     options: [
       {
-        value: CalendarChannelSyncStage.FULL_CALENDAR_EVENT_LIST_FETCH_PENDING,
-        label: 'Full calendar event list fetch pending',
+        value: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+        label: 'Calendar event list fetch pending',
         position: 0,
         color: 'blue',
       },
       {
-        value:
-          CalendarChannelSyncStage.PARTIAL_CALENDAR_EVENT_LIST_FETCH_PENDING,
-        label: 'Partial calendar event list fetch pending',
+        value: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+        label: 'Calendar event list fetch scheduled',
         position: 1,
-        color: 'blue',
+        color: 'green',
       },
       {
         value: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_ONGOING,
@@ -162,27 +167,40 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
         color: 'blue',
       },
       {
+        value: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_SCHEDULED,
+        label: 'Calendar events import scheduled',
+        position: 4,
+        color: 'green',
+      },
+      {
         value: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_ONGOING,
         label: 'Calendar events import ongoing',
-        position: 4,
+        position: 5,
         color: 'orange',
       },
       {
         value: CalendarChannelSyncStage.FAILED,
         label: 'Failed',
-        position: 5,
+        position: 6,
         color: 'red',
       },
+      {
+        value: CalendarChannelSyncStage.PENDING_CONFIGURATION,
+        label: 'Pending configuration',
+        position: 9,
+        color: 'gray',
+      },
     ],
-    defaultValue: `'${CalendarChannelSyncStage.FULL_CALENDAR_EVENT_LIST_FETCH_PENDING}'`,
+    defaultValue: `'${CalendarChannelSyncStage.PENDING_CONFIGURATION}'`,
   })
+  @WorkspaceIsFieldUIReadOnly()
   syncStage: CalendarChannelSyncStage;
 
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.visibility,
     type: FieldMetadataType.SELECT,
-    label: 'Visibility',
-    description: 'Visibility',
+    label: msg`Visibility`,
+    description: msg`Visibility`,
     icon: 'IconEyeglass',
     options: [
       {
@@ -200,25 +218,26 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
     ],
     defaultValue: `'${CalendarChannelVisibility.SHARE_EVERYTHING}'`,
   })
+  @WorkspaceIsFieldUIReadOnly()
   visibility: string;
 
   @WorkspaceField({
     standardId:
       CALENDAR_CHANNEL_STANDARD_FIELD_IDS.isContactAutoCreationEnabled,
     type: FieldMetadataType.BOOLEAN,
-    label: 'Is Contact Auto Creation Enabled',
-    description: 'Is Contact Auto Creation Enabled',
+    label: msg`Is Contact Auto Creation Enabled`,
+    description: msg`Is Contact Auto Creation Enabled`,
     icon: 'IconUserCircle',
     defaultValue: true,
   })
+  @WorkspaceIsFieldUIReadOnly()
   isContactAutoCreationEnabled: boolean;
 
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.contactAutoCreationPolicy,
     type: FieldMetadataType.SELECT,
-    label: 'Contact auto creation policy',
-    description:
-      'Automatically create records for people you participated with in an event.',
+    label: msg`Contact auto creation policy`,
+    description: msg`Automatically create records for people you participated with in an event.`,
     icon: 'IconUserCircle',
     options: [
       {
@@ -249,67 +268,75 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
     ],
     defaultValue: `'${CalendarChannelContactAutoCreationPolicy.AS_PARTICIPANT_AND_ORGANIZER}'`,
   })
+  @WorkspaceIsFieldUIReadOnly()
   contactAutoCreationPolicy: CalendarChannelContactAutoCreationPolicy;
 
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.isSyncEnabled,
     type: FieldMetadataType.BOOLEAN,
-    label: 'Is Sync Enabled',
-    description: 'Is Sync Enabled',
+    label: msg`Is Sync Enabled`,
+    description: msg`Is Sync Enabled`,
     icon: 'IconRefresh',
     defaultValue: true,
   })
+  @WorkspaceIsFieldUIReadOnly()
   isSyncEnabled: boolean;
 
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.syncCursor,
     type: FieldMetadataType.TEXT,
-    label: 'Sync Cursor',
-    description:
-      'Sync Cursor. Used for syncing events from the calendar provider',
+    label: msg`Sync Cursor`,
+    description: msg`Sync Cursor. Used for syncing events from the calendar provider`,
     icon: 'IconReload',
   })
-  syncCursor: string;
+  @WorkspaceIsFieldUIReadOnly()
+  @WorkspaceIsNullable()
+  syncCursor: string | null;
 
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.syncedAt,
     type: FieldMetadataType.DATE_TIME,
-    label: 'Last sync date',
-    description: 'Last sync date',
+    label: msg`Last sync date`,
+    description: msg`Last sync date`,
     icon: 'IconHistory',
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   syncedAt: string | null;
 
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.syncStageStartedAt,
     type: FieldMetadataType.DATE_TIME,
-    label: 'Sync stage started at',
-    description: 'Sync stage started at',
+    label: msg`Sync stage started at`,
+    description: msg`Sync stage started at`,
     icon: 'IconHistory',
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   syncStageStartedAt: string | null;
 
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.throttleFailureCount,
     type: FieldMetadataType.NUMBER,
-    label: 'Throttle Failure Count',
-    description: 'Throttle Failure Count',
+    label: msg`Throttle Failure Count`,
+    description: msg`Throttle Failure Count`,
     icon: 'IconX',
     defaultValue: 0,
   })
+  @WorkspaceIsFieldUIReadOnly()
   throttleFailureCount: number;
 
   @WorkspaceRelation({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.connectedAccount,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Connected Account',
-    description: 'Connected Account',
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Connected Account`,
+    description: msg`Connected Account`,
     icon: 'IconUserCircle',
     inverseSideTarget: () => ConnectedAccountWorkspaceEntity,
     inverseSideFieldKey: 'calendarChannels',
+    onDelete: RelationOnDeleteAction.CASCADE,
   })
+  @WorkspaceIsFieldUIReadOnly()
   connectedAccount: Relation<ConnectedAccountWorkspaceEntity>;
 
   @WorkspaceJoinColumn('connectedAccount')
@@ -318,13 +345,14 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceRelation({
     standardId:
       CALENDAR_CHANNEL_STANDARD_FIELD_IDS.calendarChannelEventAssociations,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Calendar Channel Event Associations',
-    description: 'Calendar Channel Event Associations',
+    type: RelationType.ONE_TO_MANY,
+    label: msg`Calendar Channel Event Associations`,
+    description: msg`Calendar Channel Event Associations`,
     icon: 'IconCalendar',
     inverseSideTarget: () => CalendarChannelEventAssociationWorkspaceEntity,
     onDelete: RelationOnDeleteAction.CASCADE,
   })
+  @WorkspaceIsFieldUIReadOnly()
   calendarChannelEventAssociations: Relation<
     CalendarChannelEventAssociationWorkspaceEntity[]
   >;

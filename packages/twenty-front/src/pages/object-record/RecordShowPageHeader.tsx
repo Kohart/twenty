@@ -1,4 +1,5 @@
-import { useRecordShowPage } from '@/object-record/record-show/hooks/useRecordShowPage';
+import { getObjectMetadataIdentifierFields } from '@/object-metadata/utils/getObjectMetadataIdentifierFields';
+import { ObjectRecordShowPageBreadcrumb } from '@/object-record/record-show/components/ObjectRecordShowPageBreadcrumb';
 import { useRecordShowPagePagination } from '@/object-record/record-show/hooks/useRecordShowPagePagination';
 import { PageHeader } from '@/ui/layout/page/components/PageHeader';
 
@@ -9,31 +10,26 @@ export const RecordShowPageHeader = ({
 }: {
   objectNameSingular: string;
   objectRecordId: string;
-  headerIcon: React.ComponentType;
   children?: React.ReactNode;
 }) => {
-  const {
-    viewName,
-    hasPreviousRecord,
-    hasNextRecord,
-    navigateToPreviousRecord,
-    navigateToNextRecord,
-    navigateToIndexView,
-  } = useRecordShowPagePagination(objectNameSingular, objectRecordId);
+  const { objectMetadataItem } = useRecordShowPagePagination(
+    objectNameSingular,
+    objectRecordId,
+  );
 
-  const { headerIcon } = useRecordShowPage(objectNameSingular, objectRecordId);
+  const { labelIdentifierFieldMetadataItem } =
+    getObjectMetadataIdentifierFields({ objectMetadataItem });
 
   return (
     <PageHeader
-      title={viewName}
-      hasPaginationButtons
-      hasClosePageButton
-      onClosePage={navigateToIndexView}
-      hasPreviousRecord={hasPreviousRecord}
-      navigateToPreviousRecord={navigateToPreviousRecord}
-      hasNextRecord={hasNextRecord}
-      navigateToNextRecord={navigateToNextRecord}
-      Icon={headerIcon}
+      title={
+        <ObjectRecordShowPageBreadcrumb
+          objectNameSingular={objectNameSingular}
+          objectRecordId={objectRecordId}
+          objectLabel={objectMetadataItem.labelSingular}
+          labelIdentifierFieldMetadataItem={labelIdentifierFieldMetadataItem}
+        />
+      }
     >
       {children}
     </PageHeader>

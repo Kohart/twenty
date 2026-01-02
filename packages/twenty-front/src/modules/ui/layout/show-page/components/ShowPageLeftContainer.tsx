@@ -1,6 +1,7 @@
 import styled from '@emotion/styled';
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
+import { PAGE_LAYOUT_LEFT_PANEL_CONTAINER_WIDTH } from '@/page-layout/constants/PageLayoutLeftPanelContainerWidth';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 import { ScrollWrapper } from '@/ui/utilities/scroll/components/ScrollWrapper';
 
@@ -20,7 +21,8 @@ const StyledOuterContainer = styled.div<{ isMobile: boolean }>`
 const StyledInnerContainer = styled.div<{ isMobile: boolean }>`
   display: flex;
   flex-direction: column;
-  width: ${({ isMobile }) => (isMobile ? `100%` : '348px')};
+  width: ${({ isMobile }) =>
+    isMobile ? `100%` : `${PAGE_LAYOUT_LEFT_PANEL_CONTAINER_WIDTH}px`};
 `;
 
 const StyledIntermediateContainer = styled.div`
@@ -30,15 +32,14 @@ const StyledIntermediateContainer = styled.div`
 `;
 
 export type ShowPageLeftContainerProps = {
-  forceMobile: boolean;
   children: ReactNode;
 };
 
 export const ShowPageLeftContainer = ({
-  forceMobile = false,
   children,
 }: ShowPageLeftContainerProps) => {
-  const isMobile = useIsMobile() || forceMobile;
+  const isMobile = useIsMobile();
+
   return (
     <StyledOuterContainer isMobile={isMobile}>
       {isMobile ? (
@@ -46,7 +47,9 @@ export const ShowPageLeftContainer = ({
           {children}
         </StyledInnerContainer>
       ) : (
-        <ScrollWrapper contextProviderName="showPageLeftContainer">
+        <ScrollWrapper
+          componentInstanceId={`scroll-wrapper-show-page-left-container`}
+        >
           <StyledIntermediateContainer>
             <StyledInnerContainer isMobile={isMobile}>
               {children}

@@ -1,7 +1,8 @@
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { buildShowPageURL } from '@/object-record/record-show/utils/buildShowPageURL';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { currentViewIdComponentState } from '@/views/states/currentViewIdComponentState';
+import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { AppPath } from 'twenty-shared/types';
+import { getAppPath } from 'twenty-shared/utils';
 
 export const useHandleIndexIdentifierClick = ({
   objectMetadataItem,
@@ -10,18 +11,22 @@ export const useHandleIndexIdentifierClick = ({
   recordIndexId: string;
   objectMetadataItem: ObjectMetadataItem;
 }) => {
-  const currentViewId = useRecoilComponentValueV2(
-    currentViewIdComponentState,
+  const currentViewId = useRecoilComponentValue(
+    contextStoreCurrentViewIdComponentState,
     recordIndexId,
   );
 
   const indexIdentifierUrl = (recordId: string) => {
-    const showPageURL = buildShowPageURL(
-      objectMetadataItem.nameSingular,
-      recordId,
-      currentViewId,
+    return getAppPath(
+      AppPath.RecordShowPage,
+      {
+        objectNameSingular: objectMetadataItem.nameSingular,
+        objectRecordId: recordId,
+      },
+      {
+        viewId: currentViewId,
+      },
     );
-    return showPageURL;
   };
 
   return { indexIdentifierUrl };

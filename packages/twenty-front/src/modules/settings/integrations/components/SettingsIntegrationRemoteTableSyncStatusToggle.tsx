@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Toggle } from 'twenty-ui';
 
 import { RemoteTableStatus } from '~/generated-metadata/graphql';
+import { Toggle } from 'twenty-ui/input';
 
 export const SettingsIntegrationRemoteTableSyncStatusToggle = ({
   tableName,
@@ -23,7 +23,7 @@ export const SettingsIntegrationRemoteTableSyncStatusToggle = ({
 
   return (
     <Toggle
-      value={tableStatus === RemoteTableStatus.Synced}
+      value={tableStatus === RemoteTableStatus.SYNCED}
       disabled={isToggleLoading}
       onChange={onChange}
     />

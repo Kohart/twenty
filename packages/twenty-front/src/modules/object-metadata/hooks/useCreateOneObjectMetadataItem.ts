@@ -1,55 +1,72 @@
-import { useApolloClient, useMutation } from '@apollo/client';
-import { getOperationName } from '@apollo/client/utilities';
-
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { useFindManyRecordsQuery } from '@/object-record/hooks/useFindManyRecordsQuery';
 import {
-  CreateObjectInput,
-  CreateOneObjectMetadataItemMutation,
-  CreateOneObjectMetadataItemMutationVariables,
+  type CreateObjectInput,
+  useCreateOneObjectMetadataItemMutation,
 } from '~/generated-metadata/graphql';
 
-import { CREATE_ONE_OBJECT_METADATA_ITEM } from '../graphql/mutations';
-import { FIND_MANY_OBJECT_METADATA_ITEMS } from '../graphql/queries';
-
-import { useApolloMetadataClient } from './useApolloMetadataClient';
+import { useMetadataErrorHandler } from '@/metadata-error-handler/hooks/useMetadataErrorHandler';
+import { useRefreshObjectMetadataItems } from '@/object-metadata/hooks/useRefreshObjectMetadataItems';
+import { type MetadataRequestResult } from '@/object-metadata/types/MetadataRequestResult.type';
+import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
+import { useRefreshCoreViewsByObjectMetadataId } from '@/views/hooks/useRefreshCoreViewsByObjectMetadataId';
+import { ApolloError } from '@apollo/client';
+import { t } from '@lingui/core/macro';
+import { isDefined } from 'twenty-shared/utils';
 
 export const useCreateOneObjectMetadataItem = () => {
-  const apolloMetadataClient = useApolloMetadataClient();
-  const apolloClient = useApolloClient();
+  const { refreshObjectMetadataItems } =
+    useRefreshObjectMetadataItems('network-only');
+  const { refreshCoreViewsByObjectMetadataId } =
+    useRefreshCoreViewsByObjectMetadataId();
 
-  const { findManyRecordsQuery } = useFindManyRecordsQuery({
-    objectNameSingular: CoreObjectNameSingular.View,
-  });
+  const [createOneObjectMetadataItemMutation] =
+    useCreateOneObjectMetadataItemMutation();
 
-  const [mutate] = useMutation<
-    CreateOneObjectMetadataItemMutation,
-    CreateOneObjectMetadataItemMutationVariables
-  >(CREATE_ONE_OBJECT_METADATA_ITEM, {
-    client: apolloMetadataClient,
-  });
+  const { handleMetadataError } = useMetadataErrorHandler();
+  const { enqueueErrorSnackBar } = useSnackBar();
 
-  const createOneObjectMetadataItem = async (input: CreateObjectInput) => {
-    const createdObjectMetadata = await mutate({
-      variables: {
-        input: { object: input },
-      },
-      awaitRefetchQueries: true,
-      refetchQueries: [getOperationName(FIND_MANY_OBJECT_METADATA_ITEMS) ?? ''],
-    });
+  const createOneObjectMetadataItem = async (
+    input: CreateObjectInput,
+  ): Promise<
+    MetadataRequestResult<
+      Awaited<ReturnType<typeof createOneObjectMetadataItemMutation>>
+    >
+  > => {
+    try {
+      const createdObjectMetadata = await createOneObjectMetadataItemMutation({
+        variables: {
+          input: { object: input },
+        },
+      });
 
-    return createdObjectMetadata;
-  };
+      await refreshObjectMetadataItems();
 
-  const findManyRecordsCache = async () => {
-    await apolloClient.query({
-      query: findManyRecordsQuery,
-      fetchPolicy: 'network-only',
-    });
+      if (isDefined(createdObjectMetadata.data?.createOneObject?.id)) {
+        await refreshCoreViewsByObjectMetadataId(
+          createdObjectMetadata.data.createOneObject.id,
+        );
+      }
+
+      return {
+        status: 'successful',
+        response: createdObjectMetadata,
+      };
+    } catch (error) {
+      if (error instanceof ApolloError) {
+        handleMetadataError(error, {
+          primaryMetadataName: 'objectMetadata',
+        });
+      } else {
+        enqueueErrorSnackBar({ message: t`An error occurred.` });
+      }
+
+      return {
+        status: 'failed',
+        error,
+      };
+    }
   };
 
   return {
     createOneObjectMetadataItem,
-    findManyRecordsCache,
   };
 };

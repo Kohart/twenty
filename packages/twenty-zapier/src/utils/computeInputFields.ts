@@ -1,8 +1,8 @@
+import { FieldMetadataType } from '../types/FieldMetadataType';
 import {
-  FieldMetadataType,
-  InputField,
-  Node,
-  NodeField,
+  type InputField,
+  type Node,
+  type NodeField,
 } from '../utils/data.types';
 
 const getListFromFieldMetadataType = (fieldMetadataType: FieldMetadataType) => {
@@ -16,9 +16,6 @@ const getTypeFromFieldMetadataType = (
     case FieldMetadataType.UUID:
     case FieldMetadataType.TEXT:
     case FieldMetadataType.RICH_TEXT:
-    case FieldMetadataType.PHONE:
-    case FieldMetadataType.EMAIL:
-    case FieldMetadataType.LINK:
     case FieldMetadataType.ARRAY:
     case FieldMetadataType.RATING:
       return 'string';
@@ -58,25 +55,6 @@ const get_subfieldsFromField = (nodeField: NodeField): NodeField[] => {
         defaultValue: null,
       };
       return [firstName, lastName];
-    }
-    case FieldMetadataType.LINK: {
-      const url: NodeField = {
-        type: FieldMetadataType.TEXT,
-        name: 'url',
-        label: 'Url',
-        description: 'Link Url',
-        isNullable: true,
-        defaultValue: null,
-      };
-      const label: NodeField = {
-        type: FieldMetadataType.TEXT,
-        name: 'label',
-        label: 'Label',
-        description: 'Link Label',
-        isNullable: true,
-        defaultValue: null,
-      };
-      return [url, label];
     }
     case FieldMetadataType.CURRENCY: {
       const amountMicros: NodeField = {
@@ -172,7 +150,7 @@ const get_subfieldsFromField = (nodeField: NodeField): NodeField[] => {
         description: 'Additional Phones',
         isNullable: true,
         defaultValue: null,
-        placeholder: '{ number: "", countryCode: "" }',
+        placeholder: '{ number: "", callingCode: "" }',
         list: true,
       };
       return [primaryPhoneNumber, primaryPhoneCountryCode, additionalPhones];
@@ -232,7 +210,7 @@ const get_subfieldsFromField = (nodeField: NodeField): NodeField[] => {
 };
 
 const isFieldRequired = (nodeField: NodeField): boolean => {
-  return !nodeField.isNullable && !nodeField.defaultValue;
+  return !nodeField.isNullable && nodeField.defaultValue === null;
 };
 
 export const computeInputFields = (
@@ -244,7 +222,6 @@ export const computeInputFields = (
     const nodeField = field.node;
     switch (nodeField.type) {
       case FieldMetadataType.FULL_NAME:
-      case FieldMetadataType.LINK:
       case FieldMetadataType.CURRENCY:
       case FieldMetadataType.PHONES:
       case FieldMetadataType.EMAILS:
@@ -266,14 +243,11 @@ export const computeInputFields = (
       case FieldMetadataType.UUID:
       case FieldMetadataType.TEXT:
       case FieldMetadataType.RICH_TEXT:
-      case FieldMetadataType.PHONE:
-      case FieldMetadataType.EMAIL:
       case FieldMetadataType.DATE_TIME:
       case FieldMetadataType.DATE:
       case FieldMetadataType.BOOLEAN:
       case FieldMetadataType.NUMBER:
       case FieldMetadataType.NUMERIC:
-      case FieldMetadataType.POSITION:
       case FieldMetadataType.ARRAY:
       case FieldMetadataType.RATING: {
         const nodeFieldType = getTypeFromFieldMetadataType(nodeField.type);

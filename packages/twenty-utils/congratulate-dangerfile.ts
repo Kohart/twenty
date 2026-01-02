@@ -1,11 +1,11 @@
 import { danger } from 'danger';
 
-const ordinalSuffix = (number) => {
+const ordinalSuffix = (number: number) => {
   const v = number % 100;
   if (v === 11 || v === 12 || v === 13) {
     return number + 'th';
   }
-  const suffixes = { 1: 'st', 2: 'nd', 3: 'rd' };
+  const suffixes: Record<number, string> = { 1: 'st', 2: 'nd', 3: 'rd' };
   return number + (suffixes[v % 10] || 'th');
 };
 
@@ -27,26 +27,31 @@ const runCongratulate = async () => {
   const pullRequest = danger.github.pr;
   const userName = pullRequest.user.login;
   const teamMembers = [
-    'dependabot',
-    'cyborch',
-    'emilienchvt',
-    'Samox',
+    'ady-beraud',
+    'AMoreaux',
+    'Bonapara',
+    'bosiraphael',
     'charlesBochet',
+    'cyborch',
+    'dependabot',
+    'Devessier',
+    'emilienchvt',
+    'etiennejouan',
+    'FelixMalfait',
+    'Freebios',
     'gitstart-app',
-    'thaisguigon',
+    'gitstart-twenty',
+    'guillim',
+    'ijreilly',
     'lucasbordeau',
     'magrinj',
-    'Weiko',
-    'gitstart-twenty',
-    'bosiraphael',
     'martmull',
-    'FelixMalfait',
-    'thomtrp',
-    'Bonapara',
     'nimraahmed',
-    'ady-beraud',
-    'Freebios',
-    'ijreilly',
+    'prastoin',
+    'Samox',
+    'thaisguigon',
+    'thomtrp',
+    'Weiko',
   ];
 
   if (teamMembers.includes(userName)) {

@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, type QueryRunner, Repository } from 'typeorm';
 
 import {
   WorkspaceMigrationEntity,
-  WorkspaceMigrationTableAction,
+  type WorkspaceMigrationTableAction,
 } from './workspace-migration.entity';
 
 @Injectable()
 export class WorkspaceMigrationService {
   constructor(
-    @InjectRepository(WorkspaceMigrationEntity, 'metadata')
+    @InjectRepository(WorkspaceMigrationEntity)
     private readonly workspaceMigrationRepository: Repository<WorkspaceMigrationEntity>,
   ) {}
 
@@ -23,8 +23,13 @@ export class WorkspaceMigrationService {
    */
   public async getPendingMigrations(
     workspaceId: string,
+    queryRunner?: QueryRunner,
   ): Promise<WorkspaceMigrationEntity[]> {
-    const pendingMigrations = await this.workspaceMigrationRepository.find({
+    const workspaceMigrationRepository = queryRunner
+      ? queryRunner.manager.getRepository(WorkspaceMigrationEntity)
+      : this.workspaceMigrationRepository;
+
+    const pendingMigrations = await workspaceMigrationRepository.find({
       order: { createdAt: 'ASC', name: 'ASC' },
       where: {
         appliedAt: IsNull(),
@@ -47,6 +52,42 @@ export class WorkspaceMigrationService {
         a.name.localeCompare(b.name)
       );
     });
+  }
+
+  /**
+   * Find workspaces with pending migrations
+   *
+   * @returns Promise<{ workspaceId: string; pendingMigrations: number }[]>
+   */
+  public async getWorkspacesWithPendingMigrations(limit: number) {
+    const results = await this.workspaceMigrationRepository
+      .createQueryBuilder('workspaceMigration')
+      .select('workspaceMigration.workspaceId', 'workspaceId')
+      .addSelect('COUNT(*)', 'pendingCount')
+      .where('workspaceMigration.appliedAt IS NULL')
+      .groupBy('workspaceMigration.workspaceId')
+      .limit(limit)
+      .getRawMany();
+
+    return results.map((result) => ({
+      workspaceId: result.workspaceId,
+      pendingMigrations: Number(result.pendingCount) || 0,
+    }));
+  }
+
+  /**
+   * Count total number of workspaces with pending migrations
+   *
+   * @returns Promise<number>
+   */
+  public async countWorkspacesWithPendingMigrations(): Promise<number> {
+    const result = await this.workspaceMigrationRepository
+      .createQueryBuilder('workspaceMigration')
+      .select('COUNT(DISTINCT workspaceMigration.workspaceId)', 'count')
+      .where('workspaceMigration.appliedAt IS NULL')
+      .getRawOne();
+
+    return Number(result.count) || 0;
   }
 
   /**
@@ -77,13 +118,21 @@ export class WorkspaceMigrationService {
     name: string,
     workspaceId: string,
     migrations: WorkspaceMigrationTableAction[],
+    queryRunner?: QueryRunner,
   ) {
-    return this.workspaceMigrationRepository.save({
+    const workspaceMigrationRepository = queryRunner
+      ? queryRunner.manager.getRepository(WorkspaceMigrationEntity)
+      : this.workspaceMigrationRepository;
+
+    const migration = await workspaceMigrationRepository.save({
       name,
       migrations,
       workspaceId,
       isCustom: true,
+      createdAt: new Date(),
     });
+
+    return migration;
   }
 
   public async deleteAllWithinWorkspace(workspaceId: string) {

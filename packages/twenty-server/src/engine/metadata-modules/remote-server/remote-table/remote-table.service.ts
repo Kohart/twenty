@@ -1,23 +1,21 @@
 import { Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import isEmpty from 'lodash.isempty';
 import { plural } from 'pluralize';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { DataSourceService } from 'src/engine/metadata-modules/data-source/data-source.service';
-import { CreateFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/create-field.input';
-import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { FieldMetadataService } from 'src/engine/metadata-modules/field-metadata/field-metadata.service';
-import { CreateObjectInput } from 'src/engine/metadata-modules/object-metadata/dtos/create-object.input';
+import { FieldMetadataService } from 'src/engine/metadata-modules/field-metadata/services/field-metadata.service';
+import { FlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/types/flat-field-metadata.type';
 import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
 import {
   RemoteServerEntity,
-  RemoteServerType,
+  type RemoteServerType,
 } from 'src/engine/metadata-modules/remote-server/remote-server.entity';
 import { DistantTableService } from 'src/engine/metadata-modules/remote-server/remote-table/distant-table/distant-table.service';
 import { sortDistantTables } from 'src/engine/metadata-modules/remote-server/remote-table/distant-table/utils/sort-distant-tables.util';
-import { RemoteTableInput } from 'src/engine/metadata-modules/remote-server/remote-table/dtos/remote-table-input';
+import { type RemoteTableInput } from 'src/engine/metadata-modules/remote-server/remote-table/dtos/remote-table-input';
 import {
   DistantTableUpdate,
   RemoteTableStatus,
@@ -35,10 +33,10 @@ import {
   mapUdtNameToFieldSettings,
   mapUdtNameToFieldType,
 } from 'src/engine/metadata-modules/remote-server/remote-table/utils/udt-name-mapper.util';
-import { PostgresTableSchemaColumn } from 'src/engine/metadata-modules/remote-server/types/postgres-table-schema-column';
+import { type PostgresTableSchemaColumn } from 'src/engine/metadata-modules/remote-server/types/postgres-table-schema-column';
 import { WorkspaceMetadataVersionService } from 'src/engine/metadata-modules/workspace-metadata-version/services/workspace-metadata-version.service';
 import {
-  WorkspaceMigrationColumnAction,
+  type WorkspaceMigrationColumnAction,
   WorkspaceMigrationColumnActionType,
 } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
 import { WorkspaceDataSourceService } from 'src/engine/workspace-datasource/workspace-datasource.service';
@@ -49,9 +47,9 @@ export class RemoteTableService {
   private readonly logger = new Logger(RemoteTableService.name);
 
   constructor(
-    @InjectRepository(RemoteTableEntity, 'metadata')
+    @InjectRepository(RemoteTableEntity)
     private readonly remoteTableRepository: Repository<RemoteTableEntity>,
-    @InjectRepository(RemoteServerEntity, 'metadata')
+    @InjectRepository(RemoteServerEntity)
     private readonly remoteServerRepository: Repository<
       RemoteServerEntity<RemoteServerType>
     >,
@@ -63,6 +61,8 @@ export class RemoteTableService {
     private readonly foreignTableService: ForeignTableService,
     private readonly workspaceDataSourceService: WorkspaceDataSourceService,
     private readonly remoteTableSchemaUpdateService: RemoteTableSchemaUpdateService,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
   ) {}
 
   public async findDistantTablesWithStatus(
@@ -182,16 +182,11 @@ export class RemoteTableService {
         workspaceId,
       );
 
-    const workspaceDataSource =
-      await this.workspaceDataSourceService.connectToWorkspaceDataSource(
-        workspaceId,
-      );
-
     const { baseName: localTableBaseName, suffix: localTableSuffix } =
       await getRemoteTableLocalName(
         input.name,
         dataSourceMetatada.schema,
-        workspaceDataSource,
+        this.coreDataSource,
       );
 
     const localTableName = localTableSuffix
@@ -424,10 +419,10 @@ export class RemoteTableService {
       });
 
     if (objectMetadata) {
-      await this.objectMetadataService.deleteOneObject(
-        { id: objectMetadata.id },
+      await this.objectMetadataService.deleteOneObject({
+        deleteObjectInput: { id: objectMetadata.id },
         workspaceId,
-      );
+      });
     }
 
     await this.foreignTableService.deleteForeignTable(
@@ -458,21 +453,23 @@ export class RemoteTableService {
       ? `${plural(localTableBaseName)}${localTableSuffix}`
       : plural(localTableBaseName);
 
-    const objectMetadata = await this.objectMetadataService.createOne({
-      nameSingular: camelCase(localTableNameSingular),
-      namePlural: camelCase(localTableNamePlural),
-      labelSingular: camelToTitleCase(camelCase(localTableBaseName)),
-      labelPlural: camelToTitleCase(plural(camelCase(localTableBaseName))),
-      description: 'Remote table',
-      dataSourceId: dataSourceMetadataId,
+    const objectMetadata = await this.objectMetadataService.createOneObject({
+      createObjectInput: {
+        nameSingular: camelCase(localTableNameSingular),
+        namePlural: camelCase(localTableNamePlural),
+        labelSingular: camelToTitleCase(camelCase(localTableBaseName)),
+        labelPlural: camelToTitleCase(plural(camelCase(localTableBaseName))),
+        description: 'Remote table',
+        dataSourceId: dataSourceMetadataId,
+        icon: 'IconPlug',
+        isRemote: true,
+        primaryKeyColumnType: distantTableIdColumn.udtName,
+        primaryKeyFieldMetadataSettings: mapUdtNameToFieldSettings(
+          distantTableIdColumn.udtName,
+        ),
+      },
       workspaceId: workspaceId,
-      icon: 'IconPlug',
-      isRemote: true,
-      primaryKeyColumnType: distantTableIdColumn.udtName,
-      primaryKeyFieldMetadataSettings: mapUdtNameToFieldSettings(
-        distantTableIdColumn.udtName,
-      ),
-    } satisfies CreateObjectInput);
+    });
 
     for (const column of distantTableColumns) {
       const columnName = camelCase(column.columnName);
@@ -487,8 +484,14 @@ export class RemoteTableService {
         );
 
         if (columnName === 'id') {
-          await this.objectMetadataService.updateOne(objectMetadata.id, {
-            labelIdentifierFieldMetadataId: field.id,
+          await this.objectMetadataService.updateOneObject({
+            workspaceId,
+            updateObjectInput: {
+              id: objectMetadata.id,
+              update: {
+                labelIdentifierFieldMetadataId: field.id,
+              },
+            },
           });
         }
       } catch (error) {
@@ -592,7 +595,10 @@ export class RemoteTableService {
         );
       }
 
-      await this.fieldMetadataService.deleteOne(fieldMetadataToDelete.id);
+      await this.fieldMetadataService.deleteOneField({
+        deleteOneFieldInput: { id: fieldMetadataToDelete.id },
+        workspaceId,
+      });
     }
   }
 
@@ -601,18 +607,20 @@ export class RemoteTableService {
     columnName: string,
     columnType: string,
     objectMetadataId: string,
-  ): Promise<FieldMetadataEntity> {
-    return this.fieldMetadataService.createOne({
-      name: columnName,
-      label: camelToTitleCase(columnName),
-      description: 'Field of remote',
-      type: mapUdtNameToFieldType(columnType),
+  ): Promise<FlatFieldMetadata> {
+    return this.fieldMetadataService.createOneField({
+      createFieldInput: {
+        name: columnName,
+        label: camelToTitleCase(columnName),
+        description: 'Field of remote',
+        type: mapUdtNameToFieldType(columnType),
+        objectMetadataId: objectMetadataId,
+        isRemoteCreation: true,
+        isNullable: true,
+        icon: 'IconPlug',
+        settings: mapUdtNameToFieldSettings(columnType),
+      },
       workspaceId: workspaceId,
-      objectMetadataId: objectMetadataId,
-      isRemoteCreation: true,
-      isNullable: true,
-      icon: 'IconPlug',
-      settings: mapUdtNameToFieldSettings(columnType),
-    } satisfies CreateFieldInput);
+    });
   }
 }

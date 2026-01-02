@@ -1,41 +1,46 @@
 import {
-  Field,
-  ImportedStructuredRow,
-  Info,
-  RowHook,
-  TableHook,
+  type ImportedStructuredRow,
+  type SpreadsheetImportField,
+  type SpreadsheetImportInfo,
+  type SpreadsheetImportRowHook,
+  type SpreadsheetImportTableHook,
 } from '@/spreadsheet-import/types';
 import { addErrorsAndRunHooks } from '@/spreadsheet-import/utils/dataMutations';
+import { FieldMetadataType } from 'twenty-shared/types';
 
 describe('addErrorsAndRunHooks', () => {
-  type FullData = ImportedStructuredRow<'name' | 'age' | 'country'>;
-  const requiredField: Field<'name'> = {
+  const requiredField = {
     key: 'name',
     label: 'Name',
     fieldValidationDefinitions: [{ rule: 'required' }],
-    icon: null,
+    Icon: null,
     fieldType: { type: 'input' },
-  };
+    fieldMetadataType: FieldMetadataType.TEXT,
+  } as SpreadsheetImportField;
 
-  const regexField: Field<'age'> = {
+  const regexField = {
     key: 'age',
     label: 'Age',
     fieldValidationDefinitions: [
       { rule: 'regex', value: '\\d+', errorMessage: 'Regex error' },
     ],
-    icon: null,
+    Icon: null,
     fieldType: { type: 'input' },
-  };
+    fieldMetadataType: FieldMetadataType.NUMBER,
+  } as SpreadsheetImportField;
 
-  const uniqueField: Field<'country'> = {
+  const uniqueField = {
     key: 'country',
     label: 'Country',
     fieldValidationDefinitions: [{ rule: 'unique' }],
-    icon: null,
+    Icon: null,
     fieldType: { type: 'input' },
-  };
+    fieldMetadataType: FieldMetadataType.SELECT,
+    fieldMetadataItemId: '2',
+    isNestedField: false,
+  } as SpreadsheetImportField;
 
-  const functionValidationFieldTrue: Field<'email'> = {
+  const functionValidationFieldTrue = {
     key: 'email',
     label: 'Email',
     fieldValidationDefinitions: [
@@ -45,11 +50,14 @@ describe('addErrorsAndRunHooks', () => {
         errorMessage: 'Field is invalid',
       },
     ],
-    icon: null,
+    Icon: null,
     fieldType: { type: 'input' },
-  };
+    fieldMetadataType: FieldMetadataType.EMAILS,
+    fieldMetadataItemId: '1',
+    isNestedField: false,
+  } as SpreadsheetImportField;
 
-  const functionValidationFieldFalse: Field<'email'> = {
+  const functionValidationFieldFalse = {
     key: 'email',
     label: 'Email',
     fieldValidationDefinitions: [
@@ -59,44 +67,62 @@ describe('addErrorsAndRunHooks', () => {
         errorMessage: 'Field is invalid',
       },
     ],
-    icon: null,
+    Icon: null,
     fieldType: { type: 'input' },
-  };
+    fieldMetadataType: FieldMetadataType.EMAILS,
+    fieldMetadataItemId: '3',
+    isNestedField: false,
+  } as SpreadsheetImportField;
 
-  const validData: ImportedStructuredRow<'name' | 'age'> = {
+  const validData: ImportedStructuredRow = {
     name: 'John',
     age: '30',
   };
-  const dataWithoutNameAndInvalidAge: ImportedStructuredRow<'name' | 'age'> = {
+  const dataWithoutNameAndInvalidAge: ImportedStructuredRow = {
     name: '',
     age: 'Invalid',
   };
-  const dataWithDuplicatedValue: FullData = {
+  const dataWithDuplicatedValue: ImportedStructuredRow = {
     name: 'Alice',
     age: '40',
     country: 'Brazil',
   };
 
-  const data: ImportedStructuredRow<'name' | 'age'>[] = [
+  const data: ImportedStructuredRow[] = [
     validData,
     dataWithoutNameAndInvalidAge,
   ];
 
-  const basicError: Info = { message: 'Field is invalid', level: 'error' };
-  const nameError: Info = { message: 'Name Error', level: 'error' };
-  const ageError: Info = { message: 'Age Error', level: 'error' };
-  const regexError: Info = { message: 'Regex error', level: 'error' };
-  const requiredError: Info = { message: 'Field is required', level: 'error' };
-  const duplicatedError: Info = {
+  const basicError: SpreadsheetImportInfo = {
+    message: 'Field is invalid',
+    level: 'error',
+  };
+  const nameError: SpreadsheetImportInfo = {
+    message: 'Name Error',
+    level: 'error',
+  };
+  const ageError: SpreadsheetImportInfo = {
+    message: 'Age Error',
+    level: 'error',
+  };
+  const regexError: SpreadsheetImportInfo = {
+    message: 'Regex error',
+    level: 'error',
+  };
+  const requiredError: SpreadsheetImportInfo = {
+    message: 'Field is required',
+    level: 'error',
+  };
+  const duplicatedError: SpreadsheetImportInfo = {
     message: 'Field must be unique',
     level: 'error',
   };
 
-  const rowHook: RowHook<'name' | 'age'> = jest.fn((row, addError) => {
+  const rowHook: SpreadsheetImportRowHook = jest.fn((row, addError) => {
     addError('name', nameError);
     return row;
   });
-  const tableHook: TableHook<'name' | 'age'> = jest.fn((table, addError) => {
+  const tableHook: SpreadsheetImportTableHook = jest.fn((table, addError) => {
     addError(0, 'age', ageError);
     return table;
   });
@@ -154,7 +180,7 @@ describe('addErrorsAndRunHooks', () => {
       [
         dataWithDuplicatedValue,
         dataWithDuplicatedValue,
-      ] as unknown as FullData[],
+      ] as unknown as ImportedStructuredRow[],
       [uniqueField],
     );
 

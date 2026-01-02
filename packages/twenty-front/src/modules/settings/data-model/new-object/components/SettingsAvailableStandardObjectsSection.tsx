@@ -1,10 +1,11 @@
-import { H2Title, Section } from 'twenty-ui';
-
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { Table } from '@/ui/layout/table/components/Table';
 import { TableBody } from '@/ui/layout/table/components/TableBody';
 import { TableHeader } from '@/ui/layout/table/components/TableHeader';
 
+import { t } from '@lingui/core/macro';
+import { H2Title } from 'twenty-ui/display';
+import { Section } from 'twenty-ui/layout';
 import {
   SettingsAvailableStandardObjectItemTableRow,
   StyledAvailableStandardObjectTableRow,
@@ -23,15 +24,15 @@ export const SettingsAvailableStandardObjectsSection = ({
 }: SettingsAvailableStandardObjectsSectionProps) => (
   <Section>
     <H2Title
-      title="Available"
-      description="Select one or several standard objects to activate below"
+      title={t`Available`}
+      description={t`Select one or several standard objects to activate below`}
     />
     <Table>
       <StyledAvailableStandardObjectTableRow>
         <TableHeader></TableHeader>
-        <TableHeader>Name</TableHeader>
-        <TableHeader>Description</TableHeader>
-        <TableHeader align="right">Fields</TableHeader>
+        <TableHeader>{t`Name`}</TableHeader>
+        <TableHeader>{t`Description`}</TableHeader>
+        <TableHeader align="right">{t`Fields`}</TableHeader>
       </StyledAvailableStandardObjectTableRow>
       <TableBody>
         {objectItems.map((objectItem) => (

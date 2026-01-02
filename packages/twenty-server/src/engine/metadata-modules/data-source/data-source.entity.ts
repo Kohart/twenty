@@ -1,19 +1,22 @@
 import {
   Column,
   CreateDateColumn,
+  type DataSourceOptions,
   Entity,
+  Index,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-  DataSourceOptions,
-  OneToMany,
 } from 'typeorm';
 
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { WorkspaceRelatedEntity } from 'src/engine/workspace-manager/workspace-sync/types/workspace-related-entity';
 
 export type DataSourceType = DataSourceOptions['type'];
 
 @Entity('dataSource')
-export class DataSourceEntity {
+@Index('IDX_DATA_SOURCE_WORKSPACE_ID_CREATED_AT', ['workspaceId', 'createdAt'])
+export class DataSourceEntity extends WorkspaceRelatedEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -36,9 +39,6 @@ export class DataSourceEntity {
     cascade: true,
   })
   objects: ObjectMetadataEntity[];
-
-  @Column({ nullable: false, type: 'uuid' })
-  workspaceId: string;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;

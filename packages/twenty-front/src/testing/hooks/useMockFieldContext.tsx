@@ -1,13 +1,11 @@
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { formatFieldMetadataItemAsColumnDefinition } from '@/object-metadata/utils/formatFieldMetadataItemAsColumnDefinition';
-import { getBasePathToShowPage } from '@/object-metadata/utils/getBasePathToShowPage';
 import {
   FieldContext,
-  RecordUpdateHook,
-} from '@/object-record/record-field/contexts/FieldContext';
-import { InlineCellHotkeyScope } from '@/object-record/record-inline-cell/types/InlineCellHotkeyScope';
+  type RecordUpdateHook,
+} from '@/object-record/record-field/ui/contexts/FieldContext';
 
 export const useMockFieldContext = ({
   clearable,
@@ -16,7 +14,6 @@ export const useMockFieldContext = ({
   isLabelIdentifier = false,
   objectNameSingular,
   objectRecordId,
-  customHotkeyScope,
 }: {
   clearable?: boolean;
   fieldMetadataName: string;
@@ -24,13 +21,8 @@ export const useMockFieldContext = ({
   isLabelIdentifier?: boolean;
   objectNameSingular: string;
   objectRecordId: string;
-  customHotkeyScope?: string;
 }) => {
   const { objectMetadataItem } = useObjectMetadataItem({
-    objectNameSingular,
-  });
-
-  const basePathToShowPage = getBasePathToShowPage({
     objectNameSingular,
   });
 
@@ -50,11 +42,7 @@ export const useMockFieldContext = ({
           <FieldContext.Provider
             key={objectRecordId + fieldMetadataItem.id}
             value={{
-              basePathToShowPage: isLabelIdentifier
-                ? basePathToShowPage
-                : undefined,
               recordId: objectRecordId,
-              recoilScopeId: objectRecordId + fieldMetadataItem.id,
               isLabelIdentifier,
               fieldDefinition: formatFieldMetadataItemAsColumnDefinition({
                 field: fieldMetadataItem,
@@ -62,9 +50,8 @@ export const useMockFieldContext = ({
                 objectMetadataItem,
               }),
               useUpdateRecord: useUpdateOneObjectMutation,
-              hotkeyScope:
-                customHotkeyScope ?? InlineCellHotkeyScope.InlineCell,
               clearable,
+              isRecordFieldReadOnly: false,
             }}
           >
             {children}

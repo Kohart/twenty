@@ -1,18 +1,19 @@
 import { useCountries } from '@/ui/input/components/internal/hooks/useCountries';
-import { Country } from '@/ui/input/components/internal/types/Country';
+import { type Country } from '@/ui/input/components/internal/types/Country';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
-import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { useEffect, useState } from 'react';
-import { IconChevronDown, IconWorld } from 'twenty-ui';
-import { isDefined } from '~/utils/isDefined';
-
-import { CountryPickerHotkeyScope } from '../types/CountryPickerHotkeyScope';
 
 import { PhoneCountryPickerDropdownSelect } from './PhoneCountryPickerDropdownSelect';
 
+import { PHONE_COUNTRY_CODE_PICKER_DROPDOWN_ID } from '@/ui/input/components/internal/phone/constants/PhoneCountryCodePickerDropdownId';
+import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
+import { isDropdownOpenComponentState } from '@/ui/layout/dropdown/states/isDropdownOpenComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import 'react-phone-number-input/style.css';
+import { isDefined } from 'twenty-shared/utils';
+import { IconChevronDown, IconWorld } from 'twenty-ui/display';
 
 type StyledDropdownButtonProps = {
   isUnfolded: boolean;
@@ -33,10 +34,10 @@ const StyledDropdownButtonContainer = styled.div<StyledDropdownButtonProps>`
   padding-right: ${({ theme }) => theme.spacing(1)};
   user-select: none;
 
-  border-right: 1px solid ${({ theme }) => theme.border.color.light};
+  border-right: 1px solid ${({ theme }) => theme.border.color.medium};
 
   &:hover {
-    filter: brightness(0.95);
+    background-color: ${({ theme }) => theme.background.transparent.light};
   }
 `;
 
@@ -77,12 +78,15 @@ export const PhoneCountryPickerDropdownButton = ({
 
   const [selectedCountry, setSelectedCountry] = useState<Country>();
 
-  const { isDropdownOpen, closeDropdown } = useDropdown(
-    'country-picker-dropdown-id',
+  const isDropdownOpen = useRecoilComponentValue(
+    isDropdownOpenComponentState,
+    PHONE_COUNTRY_CODE_PICKER_DROPDOWN_ID,
   );
 
+  const { closeDropdown } = useCloseDropdown();
+
   const handleChange = (countryCode: string) => {
-    closeDropdown();
+    closeDropdown(PHONE_COUNTRY_CODE_PICKER_DROPDOWN_ID);
     onChange(countryCode);
   };
 
@@ -97,8 +101,7 @@ export const PhoneCountryPickerDropdownButton = ({
 
   return (
     <Dropdown
-      dropdownId="country-picker-dropdown-id"
-      dropdownHotkeyScope={{ scope: CountryPickerHotkeyScope.CountryPicker }}
+      dropdownId={PHONE_COUNTRY_CODE_PICKER_DROPDOWN_ID}
       clickableComponent={
         <StyledDropdownButtonContainer isUnfolded={isDropdownOpen}>
           <StyledIconContainer>

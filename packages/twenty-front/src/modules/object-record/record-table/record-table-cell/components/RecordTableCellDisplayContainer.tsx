@@ -1,14 +1,14 @@
+import { t } from '@lingui/core/macro';
+import { type Theme, withTheme } from '@emotion/react';
 import { styled } from '@linaria/react';
-import { Ref } from 'react';
+import { type Ref } from 'react';
 
-const StyledOuterContainer = styled.div<{
-  hasSoftFocus?: boolean;
-}>`
+const StyledOuterContainer = styled.div`
   align-items: center;
   display: flex;
   height: 100%;
   overflow: hidden;
-  padding-left: 6px;
+  padding-left: 8px;
   width: 100%;
 `;
 
@@ -21,27 +21,42 @@ const StyledInnerContainer = styled.div`
   white-space: nowrap;
 `;
 
+const StyledEmptyPlaceholderField = withTheme(styled.div<{ theme: Theme }>`
+  color: ${({ theme }) => theme.font.color.light};
+  padding-left: 4px;
+`);
+
 export type EditableCellDisplayContainerProps = {
-  softFocus?: boolean;
-  onClick?: () => void;
+  focus?: boolean;
+  onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   scrollRef?: Ref<HTMLDivElement>;
   isHovered?: boolean;
+  onContextMenu?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+  placeholderForEmptyCell?: string;
 };
 
 export const RecordTableCellDisplayContainer = ({
   children,
-  softFocus,
+  focus,
   onClick,
   scrollRef,
+  onContextMenu,
+  placeholderForEmptyCell,
 }: React.PropsWithChildren<EditableCellDisplayContainerProps>) => (
   <StyledOuterContainer
     data-testid={
-      softFocus ? 'editable-cell-soft-focus-mode' : 'editable-cell-display-mode'
+      focus ? 'editable-cell-focus-mode' : 'editable-cell-display-mode'
     }
     onClick={onClick}
     ref={scrollRef}
-    hasSoftFocus={softFocus}
+    onContextMenu={onContextMenu}
   >
-    <StyledInnerContainer>{children}</StyledInnerContainer>
+    {placeholderForEmptyCell ? (
+      <StyledEmptyPlaceholderField>
+        {t`Set ${placeholderForEmptyCell}`}
+      </StyledEmptyPlaceholderField>
+    ) : (
+      <StyledInnerContainer>{children}</StyledInnerContainer>
+    )}
   </StyledOuterContainer>
 );

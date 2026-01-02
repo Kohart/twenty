@@ -1,10 +1,11 @@
-import { ComputedPartialFieldMetadata } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-field-metadata.interface';
-import { ComputedPartialWorkspaceEntity } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-object-metadata.interface';
+import { type FieldMetadataType } from 'twenty-shared/types';
 
-import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { IndexMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
-import { RelationMetadataEntity } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
+import { type ComputedPartialFieldMetadata } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-field-metadata.interface';
+import { type ComputedPartialWorkspaceEntity } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-object-metadata.interface';
+
+import { type FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { type IndexMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 
 export class WorkspaceSyncStorage {
   // Object metadata
@@ -27,18 +28,29 @@ export class WorkspaceSyncStorage {
   })[] = [];
   private readonly _fieldMetadataDeleteCollection: FieldMetadataEntity[] = [];
 
-  // Relation metadata
-  private readonly _relationMetadataCreateCollection: Partial<RelationMetadataEntity>[] =
-    [];
-  private readonly _relationMetadataUpdateCollection: Partial<RelationMetadataEntity>[] =
-    [];
-  private readonly _relationMetadataDeleteCollection: RelationMetadataEntity[] =
-    [];
+  // Field relation metadata
+  private readonly _fieldRelationMetadataCreateCollection: (Partial<
+    ComputedPartialFieldMetadata<
+      FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+    >
+  > & {
+    id: string;
+    type?: FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION;
+  })[] = [];
+  private readonly _fieldRelationMetadataUpdateCollection: (Partial<
+    ComputedPartialFieldMetadata<
+      FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+    >
+  > & {
+    id: string;
+    type?: FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION;
+  })[] = [];
+  private readonly _fieldRelationMetadataDeleteCollection: FieldMetadataEntity<
+    FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+  >[] = [];
 
   // Index metadata
   private readonly _indexMetadataCreateCollection: Partial<IndexMetadataEntity>[] =
-    [];
-  private readonly _indexMetadataUpdateCollection: Partial<IndexMetadataEntity>[] =
     [];
   private readonly _indexMetadataDeleteCollection: IndexMetadataEntity[] = [];
 
@@ -68,16 +80,16 @@ export class WorkspaceSyncStorage {
     return this._fieldMetadataDeleteCollection;
   }
 
-  get relationMetadataCreateCollection() {
-    return this._relationMetadataCreateCollection;
+  get fieldRelationMetadataCreateCollection() {
+    return this._fieldRelationMetadataCreateCollection;
   }
 
-  get relationMetadataUpdateCollection() {
-    return this._relationMetadataUpdateCollection;
+  get fieldRelationMetadataUpdateCollection() {
+    return this._fieldRelationMetadataUpdateCollection;
   }
 
-  get relationMetadataDeleteCollection() {
-    return this._relationMetadataDeleteCollection;
+  get fieldRelationMetadataDeleteCollection() {
+    return this._fieldRelationMetadataDeleteCollection;
   }
 
   get indexMetadataCreateCollection() {
@@ -118,16 +130,38 @@ export class WorkspaceSyncStorage {
     this._fieldMetadataDeleteCollection.push(field);
   }
 
-  addCreateRelationMetadata(relation: Partial<RelationMetadataEntity>) {
-    this._relationMetadataCreateCollection.push(relation);
+  addCreateFieldRelationMetadata(
+    field: Partial<
+      ComputedPartialFieldMetadata<
+        FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+      >
+    > & {
+      id: string;
+      type: FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION;
+    },
+  ) {
+    this._fieldRelationMetadataCreateCollection.push(field);
   }
 
-  addUpdateRelationMetadata(relation: Partial<RelationMetadataEntity>) {
-    this._relationMetadataUpdateCollection.push(relation);
+  addUpdateFieldRelationMetadata(
+    field: Partial<
+      ComputedPartialFieldMetadata<
+        FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+      >
+    > & {
+      id: string;
+      type: FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION;
+    },
+  ) {
+    this._fieldRelationMetadataUpdateCollection.push(field);
   }
 
-  addDeleteRelationMetadata(relation: RelationMetadataEntity) {
-    this._relationMetadataDeleteCollection.push(relation);
+  addDeleteFieldRelationMetadata(
+    field: FieldMetadataEntity<
+      FieldMetadataType.RELATION | FieldMetadataType.MORPH_RELATION
+    >,
+  ) {
+    this._fieldRelationMetadataDeleteCollection.push(field);
   }
 
   addCreateIndexMetadata(index: Partial<IndexMetadataEntity>) {

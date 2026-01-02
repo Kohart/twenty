@@ -1,13 +1,16 @@
 /* @license Enterprise */
 
-import { SSOIdentitiesProvidersParamsSchema } from '@/settings/security/validation-schemas/SSOIdentityProviderSchema';
-import { z } from 'zod';
-import { IdpType, SsoIdentityProviderStatus } from '~/generated/graphql';
+import { type SSOIdentitiesProvidersParamsSchema } from '@/settings/security/validation-schemas/SSOIdentityProviderSchema';
+import { type z } from 'zod';
+import {
+  type IdentityProviderType,
+  type SsoIdentityProviderStatus,
+} from '~/generated/graphql';
 
 export type SSOIdentityProvider = {
   __typename: 'SSOIdentityProvider';
   id: string;
-  type: IdpType;
+  type: IdentityProviderType;
   issuer: string;
   name?: string | null;
   status: SsoIdentityProviderStatus;

@@ -1,47 +1,82 @@
-import { renderHook } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { useEffect } from 'react';
 import { RecoilRoot, useSetRecoilState } from 'recoil';
 
 import { currentUserState } from '@/auth/states/currentUserState';
+import { currentUserWorkspaceState } from '@/auth/states/currentUserWorkspaceState';
 import { useDefaultHomePagePath } from '@/navigation/hooks/useDefaultHomePagePath';
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { usePrefetchedData } from '@/prefetch/hooks/usePrefetchedData';
-import { AppPath } from '@/types/AppPath';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { AggregateOperations } from '@/object-record/record-table/constants/AggregateOperations';
+import { coreViewsState } from '@/views/states/coreViewState';
+import { AppPath } from 'twenty-shared/types';
+import {
+  ViewOpenRecordIn,
+  ViewType,
+  ViewVisibility,
+} from '~/generated/graphql';
+import { getMockCompanyObjectMetadataItem } from '~/testing/mock-data/companies';
 import { mockedUserData } from '~/testing/mock-data/users';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 
-jest.mock('@/prefetch/hooks/usePrefetchedData');
-const setupMockPrefetchedData = (viewId?: string) => {
-  const companyObjectMetadata = generatedMockObjectMetadataItems.find(
-    (item) => item.nameSingular === 'company',
-  );
-
-  jest.mocked(usePrefetchedData).mockReturnValue({
-    isDataPrefetched: true,
-    records: viewId
-      ? [
-          {
-            id: viewId,
-            __typename: 'object',
-            objectMetadataId: companyObjectMetadata?.id,
-          },
-        ]
-      : [],
-  });
-};
-
-const renderHooks = (withCurrentUser: boolean) => {
+const renderHooks = ({
+  withCurrentUser,
+  withExistingView,
+}: {
+  withCurrentUser: boolean;
+  withExistingView: boolean;
+}) => {
   const { result } = renderHook(
     () => {
       const setCurrentUser = useSetRecoilState(currentUserState);
+      const setCurrentUserWorkspace = useSetRecoilState(
+        currentUserWorkspaceState,
+      );
       const setObjectMetadataItems = useSetRecoilState(
         objectMetadataItemsState,
       );
+      const setCoreViews = useSetRecoilState(coreViewsState);
 
-      setObjectMetadataItems(generatedMockObjectMetadataItems);
+      useEffect(() => {
+        setObjectMetadataItems(generatedMockObjectMetadataItems);
 
-      if (withCurrentUser) {
-        setCurrentUser(mockedUserData);
-      }
+        if (withExistingView) {
+          setCoreViews([
+            {
+              id: 'viewId',
+              name: 'Test View',
+              objectMetadataId: getMockCompanyObjectMetadataItem().id,
+              type: ViewType.TABLE,
+              key: null,
+              isCompact: false,
+              openRecordIn: ViewOpenRecordIn.SIDE_PANEL,
+              viewFields: [],
+              viewGroups: [],
+              viewSorts: [],
+              kanbanAggregateOperation: AggregateOperations.COUNT,
+              icon: '',
+              kanbanAggregateOperationFieldMetadataId: '',
+              position: 0,
+              viewFilters: [],
+              visibility: ViewVisibility.WORKSPACE,
+              createdByUserWorkspaceId: null,
+              shouldHideEmptyGroups: false,
+            },
+          ]);
+        } else {
+          setCoreViews([]);
+        }
+
+        if (withCurrentUser) {
+          setCurrentUser(mockedUserData);
+          setCurrentUserWorkspace(mockedUserData.currentUserWorkspace);
+        }
+      }, [
+        setCurrentUser,
+        setCurrentUserWorkspace,
+        setObjectMetadataItems,
+        setCoreViews,
+      ]);
+
       return useDefaultHomePagePath();
     },
     {
@@ -50,27 +85,48 @@ const renderHooks = (withCurrentUser: boolean) => {
   );
   return { result };
 };
+
 describe('useDefaultHomePagePath', () => {
-  it('should return proper path when no currentUser', () => {
-    setupMockPrefetchedData();
-    const { result } = renderHooks(false);
-    expect(result.current.defaultHomePagePath).toEqual(AppPath.SignInUp);
+  it('should return proper path when no currentUser', async () => {
+    const { result } = renderHooks({
+      withCurrentUser: false,
+      withExistingView: false,
+    });
+
+    await waitFor(() => {
+      expect(result.current.defaultHomePagePath).toEqual(AppPath.SignInUp);
+    });
   });
-  it('should return proper path when no currentUser and existing view', () => {
-    setupMockPrefetchedData('viewId');
-    const { result } = renderHooks(false);
-    expect(result.current.defaultHomePagePath).toEqual(AppPath.SignInUp);
+  it('should return proper path when no currentUser and existing view', async () => {
+    const { result } = renderHooks({
+      withCurrentUser: false,
+      withExistingView: true,
+    });
+
+    await waitFor(() => {
+      expect(result.current.defaultHomePagePath).toEqual(AppPath.SignInUp);
+    });
   });
-  it('should return proper path when currentUser is defined', () => {
-    setupMockPrefetchedData();
-    const { result } = renderHooks(true);
-    expect(result.current.defaultHomePagePath).toEqual('/objects/companies');
+  it('should return proper path when currentUser is defined', async () => {
+    const { result } = renderHooks({
+      withCurrentUser: true,
+      withExistingView: false,
+    });
+
+    await waitFor(() => {
+      expect(result.current.defaultHomePagePath).toEqual('/objects/companies');
+    });
   });
-  it('should return proper path when currentUser is defined and view exists', () => {
-    setupMockPrefetchedData('viewId');
-    const { result } = renderHooks(true);
-    expect(result.current.defaultHomePagePath).toEqual(
-      '/objects/companies?view=viewId',
-    );
+  it('should return proper path when currentUser is defined and view exists', async () => {
+    const { result } = renderHooks({
+      withCurrentUser: true,
+      withExistingView: true,
+    });
+
+    await waitFor(() => {
+      expect(result.current.defaultHomePagePath).toEqual(
+        '/objects/companies?viewId=viewId',
+      );
+    });
   });
 });

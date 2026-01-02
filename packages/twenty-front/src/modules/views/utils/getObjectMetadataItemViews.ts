@@ -1,4 +1,4 @@
-import { GraphQLView } from '@/views/types/GraphQLView';
+import { type GraphQLView } from '@/views/types/GraphQLView';
 
 export const getObjectMetadataItemViews = (
   viewObjectMetadataId: string,
@@ -16,7 +16,10 @@ export const getObjectMetadataItemViews = (
       key: view.key,
       position: view.position,
       objectMetadataId: view.objectMetadataId,
-      kanbanFieldMetadataId: view.kanbanFieldMetadataId,
+      mainGroupByFieldMetadataId: view.mainGroupByFieldMetadataId,
+      kanbanAggregateOperation: view.kanbanAggregateOperation,
+      kanbanAggregateOperationFieldMetadataId:
+        view.kanbanAggregateOperationFieldMetadataId,
       icon: view.icon,
     }));
 };

@@ -1,100 +1,79 @@
 import styled from '@emotion/styled';
-import { OverlayScrollbars } from 'overlayscrollbars';
-import { useOverlayScrollbars } from 'overlayscrollbars-react';
-import { useEffect, useRef } from 'react';
-import { useSetRecoilState } from 'recoil';
 
-import {
-  ContextProviderName,
-  getContextByProviderName,
-} from '@/ui/utilities/scroll/contexts/ScrollWrapperContexts';
-import { useScrollStates } from '@/ui/utilities/scroll/hooks/internal/useScrollStates';
-import { overlayScrollbarsState } from '@/ui/utilities/scroll/states/overlayScrollbarsState';
-
-import 'overlayscrollbars/overlayscrollbars.css';
+import { ScrollWrapperInitEffect } from '@/ui/utilities/scroll/components/internal/ScrollWrapperInitEffect';
+import { ScrollWrapperComponentInstanceContext } from '@/ui/utilities/scroll/states/contexts/ScrollWrapperComponentInstanceContext';
+import { scrollWrapperScrollBottomComponentState } from '@/ui/utilities/scroll/states/scrollWrapperScrollBottomComponentState';
+import { scrollWrapperScrollLeftComponentState } from '@/ui/utilities/scroll/states/scrollWrapperScrollLeftComponentState';
+import { scrollWrapperScrollTopComponentState } from '@/ui/utilities/scroll/states/scrollWrapperScrollTopComponentState';
+import { useSetRecoilComponentState } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentState';
 
 const StyledScrollWrapper = styled.div`
-  display: flex;
-  height: 100%;
-  width: 100%;
-
-  .os-scrollbar-handle {
-    background-color: ${({ theme }) => theme.border.color.medium};
+  &.scroll-wrapper-x-enabled {
+    overflow-x: overlay;
   }
-`;
-
-const StyledInnerContainer = styled.div`
+  &.scroll-wrapper-y-enabled {
+    overflow-y: overlay;
+  }
+  overflow-x: hidden;
+  overflow-y: hidden;
+  width: 100%;
   height: 100%;
 `;
 
 export type ScrollWrapperProps = {
   children: React.ReactNode;
   className?: string;
-  enableXScroll?: boolean;
-  enableYScroll?: boolean;
-  contextProviderName: ContextProviderName;
-  scrollHide?: boolean;
+  defaultEnableXScroll?: boolean;
+  defaultEnableYScroll?: boolean;
+  componentInstanceId: string;
 };
 
 export const ScrollWrapper = ({
+  componentInstanceId,
   children,
   className,
-  enableXScroll = true,
-  enableYScroll = true,
-  contextProviderName,
-  scrollHide = false,
+  defaultEnableXScroll = true,
+  defaultEnableYScroll = true,
 }: ScrollWrapperProps) => {
-  const scrollableRef = useRef<HTMLDivElement>(null);
-  const Context = getContextByProviderName(contextProviderName);
+  const setScrollTop = useSetRecoilComponentState(
+    scrollWrapperScrollTopComponentState,
+    componentInstanceId,
+  );
 
-  const { scrollTopComponentState, scrollLeftComponentState } =
-    useScrollStates(contextProviderName);
-  const setScrollTop = useSetRecoilState(scrollTopComponentState);
-  const setScrollLeft = useSetRecoilState(scrollLeftComponentState);
-  const handleScroll = (overlayScroll: OverlayScrollbars) => {
-    const target = overlayScroll.elements().scrollOffsetElement;
+  const setScrollLeft = useSetRecoilComponentState(
+    scrollWrapperScrollLeftComponentState,
+    componentInstanceId,
+  );
+
+  const setScrollBottom = useSetRecoilComponentState(
+    scrollWrapperScrollBottomComponentState,
+    componentInstanceId,
+  );
+
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget;
     setScrollTop(target.scrollTop);
     setScrollLeft(target.scrollLeft);
+    setScrollBottom(
+      target.scrollHeight - target.clientHeight - target.scrollTop,
+    );
   };
 
-  const setOverlayScrollbars = useSetRecoilState(overlayScrollbarsState);
-
-  const [initialize, instance] = useOverlayScrollbars({
-    options: {
-      scrollbars: {
-        autoHide: scrollHide ? 'scroll' : 'never',
-        visibility: scrollHide ? 'hidden' : 'visible',
-      },
-      overflow: {
-        x: enableXScroll ? undefined : 'hidden',
-        y: enableYScroll ? undefined : 'hidden',
-      },
-    },
-    events: {
-      scroll: handleScroll,
-    },
-  });
-
-  useEffect(() => {
-    if (scrollableRef?.current !== null) {
-      initialize(scrollableRef.current);
-    }
-  }, [initialize, scrollableRef]);
-
-  useEffect(() => {
-    setOverlayScrollbars(instance());
-  }, [instance, setOverlayScrollbars]);
-
   return (
-    <Context.Provider
-      value={{
-        ref: scrollableRef,
-        id: contextProviderName,
-      }}
+    <ScrollWrapperComponentInstanceContext.Provider
+      value={{ instanceId: componentInstanceId }}
     >
-      <StyledScrollWrapper ref={scrollableRef} className={className}>
-        <StyledInnerContainer>{children}</StyledInnerContainer>
+      <ScrollWrapperInitEffect
+        defaultEnableXScroll={defaultEnableXScroll}
+        defaultEnableYScroll={defaultEnableYScroll}
+      />
+      <StyledScrollWrapper
+        id={`scroll-wrapper-${componentInstanceId}`}
+        className={className}
+        onScroll={handleScroll}
+      >
+        {children}
       </StyledScrollWrapper>
-    </Context.Provider>
+    </ScrollWrapperComponentInstanceContext.Provider>
   );
 };

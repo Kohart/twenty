@@ -1,23 +1,22 @@
 import { Field, HideField, InputType } from '@nestjs/graphql';
 
-import { BeforeCreateOne } from '@ptc-org/nestjs-query-graphql';
 import {
   IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
+  ValidateNested,
 } from 'class-validator';
 import GraphQLJSON from 'graphql-type-json';
-
-import { FieldMetadataSettings } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-settings.interface';
+import {
+  type FieldMetadataSettings,
+  type FieldMetadataType,
+} from 'twenty-shared/types';
+import { Type } from 'class-transformer';
 
 import { IsValidMetadataName } from 'src/engine/decorators/metadata/is-valid-metadata-name.decorator';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { BeforeCreateOneObject } from 'src/engine/metadata-modules/object-metadata/hooks/before-create-one-object.hook';
 
 @InputType()
-@BeforeCreateOne(BeforeCreateOneObject)
 export class CreateObjectInput {
   @IsString()
   @IsNotEmpty()
@@ -60,17 +59,10 @@ export class CreateObjectInput {
   dataSourceId: string;
 
   @HideField()
-  workspaceId: string;
+  applicationId?: string;
 
-  @IsUUID()
-  @IsOptional()
-  @Field({ nullable: true })
-  labelIdentifierFieldMetadataId?: string;
-
-  @IsUUID()
-  @IsOptional()
-  @Field({ nullable: true })
-  imageIdentifierFieldMetadataId?: string;
+  @HideField()
+  standardId?: string;
 
   @IsBoolean()
   @IsOptional()
@@ -83,12 +75,20 @@ export class CreateObjectInput {
 
   @IsOptional()
   @Field(() => GraphQLJSON, { nullable: true })
-  primaryKeyFieldMetadataSettings?: FieldMetadataSettings<
-    FieldMetadataType | 'default'
-  >;
+  primaryKeyFieldMetadataSettings?: FieldMetadataSettings<FieldMetadataType>;
 
   @IsBoolean()
   @IsOptional()
-  @Field({ nullable: true })
+  @Field({ nullable: true }) // Not nullable to me
   isLabelSyncedWithName?: boolean;
+}
+
+@InputType()
+export class CreateOneObjectInput {
+  @Type(() => CreateObjectInput)
+  @ValidateNested()
+  @Field(() => CreateObjectInput, {
+    description: 'The object to create',
+  })
+  object!: CreateObjectInput;
 }

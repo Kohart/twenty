@@ -1,5 +1,4 @@
-import { Meta, StoryObj } from '@storybook/react';
-import { ComponentDecorator } from 'twenty-ui';
+import { type Meta, type StoryObj } from '@storybook/react';
 
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 import { FormProviderDecorator } from '~/testing/decorators/FormProviderDecorator';
@@ -8,8 +7,10 @@ import { ObjectMetadataItemsDecorator } from '~/testing/decorators/ObjectMetadat
 import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
-import { SettingsDataModelFieldSettingsFormCard } from '../SettingsDataModelFieldSettingsFormCard';
+import { ComponentDecorator } from 'twenty-ui/testing';
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
+import { SettingsDataModelFieldSettingsFormCard } from '@/settings/data-model/fields/forms/components/SettingsDataModelFieldSettingsFormCard';
 
 const mockedCompanyObjectMetadataItem = generatedMockObjectMetadataItems.find(
   (item) => item.nameSingular === 'company',
@@ -20,7 +21,7 @@ if (!mockedCompanyObjectMetadataItem) {
 }
 
 const fieldMetadataItem = mockedCompanyObjectMetadataItem.fields.find(
-  ({ type }) => type === FieldMetadataType.Text,
+  ({ type }) => type === FieldMetadataType.TEXT,
 )!;
 
 const meta: Meta<typeof SettingsDataModelFieldSettingsFormCard> = {
@@ -33,10 +34,12 @@ const meta: Meta<typeof SettingsDataModelFieldSettingsFormCard> = {
     ObjectMetadataItemsDecorator,
     SnackBarDecorator,
     FormProviderDecorator,
+    I18nFrontDecorator,
   ],
   args: {
-    fieldMetadataItem,
-    objectMetadataItem: mockedCompanyObjectMetadataItem,
+    existingFieldMetadataId: fieldMetadataItem.id,
+    fieldType: FieldMetadataType.TEXT,
+    objectNameSingular: mockedCompanyObjectMetadataItem.nameSingular,
   },
   parameters: {
     container: { width: 512 },
@@ -51,18 +54,16 @@ export const Default: Story = {};
 
 export const WithRelationForm: Story = {
   args: {
-    fieldMetadataItem: mockedCompanyObjectMetadataItem.fields.find(
-      ({ name }) => name === 'people',
-    ),
+    existingFieldMetadataId: 'new-field',
+    fieldType: FieldMetadataType.RELATION,
+    objectNameSingular: 'company',
   },
 };
 
 export const WithSelectForm: Story = {
   args: {
-    fieldMetadataItem: {
-      label: 'Industry',
-      icon: 'IconBuildingFactory2',
-      type: FieldMetadataType.Select,
-    },
+    existingFieldMetadataId: 'new-field',
+    fieldType: FieldMetadataType.SELECT,
+    objectNameSingular: 'company',
   },
 };

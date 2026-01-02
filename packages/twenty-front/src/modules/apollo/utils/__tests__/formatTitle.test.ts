@@ -1,8 +1,6 @@
-import { expect } from '@storybook/test';
-
 import { OperationType } from '@/apollo/types/operation-type';
 
-import formatTitle from '../formatTitle';
+import formatTitle from '@/apollo/utils/formatTitle';
 
 describe('formatTitle', () => {
   it('should correctly format the title', () => {

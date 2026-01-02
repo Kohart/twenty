@@ -1,3 +1,4 @@
+import { SelectableListComponentInstanceContext } from '@/ui/layout/selectable-list/states/contexts/SelectableListComponentInstanceContext';
 import { createComponentFamilyState } from '@/ui/utilities/state/component-state/utils/createComponentFamilyState';
 
 export const isSelectedItemIdComponentFamilyState = createComponentFamilyState<
@@ -6,4 +7,5 @@ export const isSelectedItemIdComponentFamilyState = createComponentFamilyState<
 >({
   key: 'isSelectedItemIdComponentFamilyState',
   defaultValue: false,
+  componentInstanceContext: SelectableListComponentInstanceContext,
 });

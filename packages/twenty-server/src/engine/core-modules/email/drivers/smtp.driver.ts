@@ -1,11 +1,16 @@
 import { Logger } from '@nestjs/common';
 
-import { createTransport, Transporter, SendMailOptions } from 'nodemailer';
-import SMTPConnection from 'nodemailer/lib/smtp-connection';
+import {
+  createTransport,
+  type SendMailOptions,
+  type Transporter,
+} from 'nodemailer';
 
-import { EmailDriver } from 'src/engine/core-modules/email/drivers/interfaces/email-driver.interface';
+import { type EmailDriverInterface } from 'src/engine/core-modules/email/drivers/interfaces/email-driver.interface';
 
-export class SmtpDriver implements EmailDriver {
+import type SMTPConnection from 'nodemailer/lib/smtp-connection';
+
+export class SmtpDriver implements EmailDriverInterface {
   private readonly logger = new Logger(SmtpDriver.name);
   private transport: Transporter;
 

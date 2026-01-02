@@ -1,5 +1,5 @@
-import { AppPath } from '@/types/AppPath';
-import indexAppPath from '../indexAppPath';
+import { AppPath } from 'twenty-shared/types';
+import indexAppPath from '@/navigation/utils/indexAppPath';
 
 describe('getIndexAppPath', () => {
   it('returns the index app path', () => {

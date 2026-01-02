@@ -1,19 +1,40 @@
-import { useIsFieldEmpty } from '@/object-record/record-field/hooks/useIsFieldEmpty';
-
+import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
+import { useIsFieldInputOnly } from '@/object-record/record-field/ui/hooks/useIsFieldInputOnly';
+import { useRecordTableBodyContextOrThrow } from '@/object-record/record-table/contexts/RecordTableBodyContext';
+import { useOpenRecordTableCellFromCell } from '@/object-record/record-table/record-table-cell/hooks/useOpenRecordTableCellFromCell';
+import { useContext, type ReactNode } from 'react';
 import { RecordTableCellDisplayContainer } from './RecordTableCellDisplayContainer';
 
 export const RecordTableCellDisplayMode = ({
   children,
-  softFocus,
-}: React.PropsWithChildren<{ softFocus?: boolean }>) => {
-  const isEmpty = useIsFieldEmpty();
+}: {
+  children: ReactNode;
+}) => {
+  const { recordId, isRecordFieldReadOnly: isReadOnly } =
+    useContext(FieldContext);
 
-  if (isEmpty) {
-    return <></>;
-  }
+  const { onActionMenuDropdownOpened } = useRecordTableBodyContextOrThrow();
+
+  const { openTableCell } = useOpenRecordTableCellFromCell();
+
+  const isFieldInputOnly = useIsFieldInputOnly();
+
+  const handleActionMenuDropdown = (event: React.MouseEvent) => {
+    onActionMenuDropdownOpened(event, recordId);
+  };
+
+  const handleClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!isFieldInputOnly && !isReadOnly) {
+      openTableCell();
+    }
+  };
 
   return (
-    <RecordTableCellDisplayContainer softFocus={softFocus}>
+    <RecordTableCellDisplayContainer
+      onContextMenu={handleActionMenuDropdown}
+      onClick={handleClick}
+    >
       {children}
     </RecordTableCellDisplayContainer>
   );

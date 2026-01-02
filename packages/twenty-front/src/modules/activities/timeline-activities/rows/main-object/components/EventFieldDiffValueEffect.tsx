@@ -1,11 +1,10 @@
 import { useEffect } from 'react';
 import { useSetRecoilState } from 'recoil';
 
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { useSetRecordValue } from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
-import { isDefined } from 'twenty-ui';
+import { isDefined } from 'twenty-shared/utils';
 
 export const EventFieldDiffValueEffect = ({
   diffArtificialRecordStoreId,
@@ -21,7 +20,6 @@ export const EventFieldDiffValueEffect = ({
   const setEntity = useSetRecoilState(
     recordStoreFamilyState(diffArtificialRecordStoreId),
   );
-  const setRecordValue = useSetRecordValue();
 
   useEffect(() => {
     if (!isDefined(diffRecord)) return;
@@ -33,14 +31,12 @@ export const EventFieldDiffValueEffect = ({
     };
 
     setEntity(forgedObjectRecord);
-    setRecordValue(forgedObjectRecord.id, forgedObjectRecord);
   }, [
     diffRecord,
     diffArtificialRecordStoreId,
     fieldMetadataItem.name,
     mainObjectMetadataItem.nameSingular,
     setEntity,
-    setRecordValue,
   ]);
 
   return <></>;

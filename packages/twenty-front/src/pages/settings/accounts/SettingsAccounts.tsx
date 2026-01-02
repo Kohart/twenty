@@ -1,47 +1,62 @@
-import { useRecoilValue } from 'recoil';
-import { H2Title, Section } from 'twenty-ui';
-
-import { ConnectedAccount } from '@/accounts/types/ConnectedAccount';
+import { type ConnectedAccount } from '@/accounts/types/ConnectedAccount';
+import { MessageChannelSyncStage } from '@/accounts/types/MessageChannel';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
-import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { generateDepthOneRecordGqlFields } from '@/object-record/graphql/utils/generateDepthOneRecordGqlFields';
+import { useGenerateDepthRecordGqlFieldsFromObject } from '@/object-record/graphql/record-gql-fields/hooks/useGenerateDepthRecordGqlFieldsFromObject';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { SettingsAccountLoader } from '@/settings/accounts/components/SettingsAccountLoader';
 import { SettingsAccountsBlocklistSection } from '@/settings/accounts/components/SettingsAccountsBlocklistSection';
 import { SettingsAccountsConnectedAccountsListCard } from '@/settings/accounts/components/SettingsAccountsConnectedAccountsListCard';
 import { SettingsAccountsSettingsSection } from '@/settings/accounts/components/SettingsAccountsSettingsSection';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
-import { SettingsPath } from '@/types/SettingsPath';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
+import { useLingui } from '@lingui/react/macro';
+import { useRecoilValue } from 'recoil';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
+import { H2Title } from 'twenty-ui/display';
+import { Section } from 'twenty-ui/layout';
 
 export const SettingsAccounts = () => {
+  const { t } = useLingui();
   const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
 
-  const { objectMetadataItem } = useObjectMetadataItem({
+  const { recordGqlFields } = useGenerateDepthRecordGqlFieldsFromObject({
     objectNameSingular: CoreObjectNameSingular.ConnectedAccount,
+    depth: 1,
+    shouldOnlyLoadRelationIdentifiers: false,
   });
 
-  const { records: accounts, loading } = useFindManyRecords<ConnectedAccount>({
-    objectNameSingular: 'connectedAccount',
-    filter: {
-      accountOwnerId: {
-        eq: currentWorkspaceMember?.id,
+  const { records: allAccounts, loading } =
+    useFindManyRecords<ConnectedAccount>({
+      objectNameSingular: CoreObjectNameSingular.ConnectedAccount,
+      filter: {
+        accountOwnerId: {
+          eq: currentWorkspaceMember?.id,
+        },
       },
-    },
-    recordGqlFields: generateDepthOneRecordGqlFields({ objectMetadataItem }),
+      recordGqlFields,
+    });
+
+  const accountsToShow = allAccounts.filter((account) => {
+    return (
+      account.messageChannels.length === 0 ||
+      account.messageChannels.some(
+        (channel) =>
+          channel.syncStage !== MessageChannelSyncStage.PENDING_CONFIGURATION,
+      )
+    );
   });
 
   return (
     <SubMenuTopBarContainer
-      title="Account"
+      title={t`Account`}
       links={[
         {
-          children: 'User',
-          href: getSettingsPagePath(SettingsPath.ProfilePage),
+          children: t`User`,
+          href: getSettingsPath(SettingsPath.ProfilePage),
         },
-        { children: 'Account' },
+        { children: t`Account` },
       ]}
     >
       <SettingsPageContainer>
@@ -51,12 +66,11 @@ export const SettingsAccounts = () => {
           <>
             <Section>
               <H2Title
-                title="Connected accounts"
-                description="Manage your internet accounts."
+                title={t`Connected accounts`}
+                description={t`Manage your internet accounts.`}
               />
               <SettingsAccountsConnectedAccountsListCard
-                accounts={accounts}
-                loading={loading}
+                accounts={accountsToShow}
               />
             </Section>
             <SettingsAccountsBlocklistSection />

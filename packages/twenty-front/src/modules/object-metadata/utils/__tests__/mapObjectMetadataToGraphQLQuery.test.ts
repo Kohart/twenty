@@ -1,5 +1,5 @@
 import { mapObjectMetadataToGraphQLQuery } from '@/object-metadata/utils/mapObjectMetadataToGraphQLQuery';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 import { normalizeGQLQuery } from '~/utils/normalizeGQLQuery';
 
 const personObjectMetadataItem = generatedMockObjectMetadataItems.find(
@@ -30,6 +30,16 @@ describe('mapObjectMetadataToGraphQLQuery', () => {
         avatarUrl: true,
         companyId: true,
       },
+      objectPermissionsByObjectMetadataId: {
+        [personObjectMetadataItem.id]: {
+          canReadObjectRecords: true,
+          canUpdateObjectRecords: true,
+          canSoftDeleteObjectRecords: true,
+          canDestroyObjectRecords: true,
+          objectMetadataId: personObjectMetadataItem.id,
+          restrictedFields: {},
+        },
+      },
     });
     expect(normalizeGQLQuery(res)).toEqual(
       normalizeGQLQuery(`{
@@ -48,6 +58,7 @@ describe('mapObjectMetadataToGraphQLQuery', () => {
     {
       primaryPhoneNumber
       primaryPhoneCountryCode
+      primaryPhoneCallingCode
     }
     createdAt
     avatarUrl
@@ -123,6 +134,16 @@ describe('mapObjectMetadataToGraphQLQuery', () => {
       objectMetadataItems: generatedMockObjectMetadataItems,
       objectMetadataItem: personObjectMetadataItem,
       recordGqlFields: { company: { id: true }, id: true, name: true },
+      objectPermissionsByObjectMetadataId: {
+        [personObjectMetadataItem.id]: {
+          canReadObjectRecords: true,
+          canUpdateObjectRecords: true,
+          canSoftDeleteObjectRecords: true,
+          canDestroyObjectRecords: true,
+          objectMetadataId: personObjectMetadataItem.id,
+          restrictedFields: {},
+        },
+      },
     });
     expect(normalizeGQLQuery(res)).toEqual(
       normalizeGQLQuery(`{

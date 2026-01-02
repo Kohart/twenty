@@ -2,15 +2,18 @@ import { isNonEmptyString } from '@sniptt/guards';
 import { useRecoilCallback } from 'recoil';
 import { Key } from 'ts-key-enum';
 
-import { useSelectableListStates } from '@/ui/layout/selectable-list/hooks/internal/useSelectableListStates';
-import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
-import { getSnapshotValue } from '@/ui/utilities/recoil-scope/utils/getSnapshotValue';
+import { selectableItemIdsComponentState } from '@/ui/layout/selectable-list/states/selectableItemIdsComponentState';
+import { selectedItemIdComponentState } from '@/ui/layout/selectable-list/states/selectedItemIdComponentState';
+import { isSelectedItemIdComponentFamilySelector } from '@/ui/layout/selectable-list/states/selectors/isSelectedItemIdComponentFamilySelector';
+import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
+import { getSnapshotValue } from '@/ui/utilities/state/utils/getSnapshotValue';
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 
 export const useSelectableListHotKeys = (
-  scopeId: string,
-  hotkeyScope: string,
+  instanceId: string,
+  focusId: string,
+  onSelect?: (itemId: string) => void,
 ) => {
   const findPosition = (
     selectableItemIds: string[][],
@@ -28,22 +31,20 @@ export const useSelectableListHotKeys = (
     }
   };
 
-  const {
-    selectedItemIdState,
-    selectableItemIdsState,
-    isSelectedItemIdSelector,
-    selectableListOnEnterState,
-  } = useSelectableListStates({
-    selectableListScopeId: scopeId,
-  });
-
   const handleSelect = useRecoilCallback(
     ({ snapshot, set }) =>
       (direction: Direction) => {
-        const selectedItemId = getSnapshotValue(snapshot, selectedItemIdState);
+        const selectedItemId = getSnapshotValue(
+          snapshot,
+          selectedItemIdComponentState.atomFamily({
+            instanceId: instanceId,
+          }),
+        );
         const selectableItemIds = getSnapshotValue(
           snapshot,
-          selectableItemIdsState,
+          selectableItemIdsComponentState.atomFamily({
+            instanceId: instanceId,
+          }),
         );
 
         const currentPosition = findPosition(selectableItemIds, selectedItemId);
@@ -103,52 +104,61 @@ export const useSelectableListHotKeys = (
 
         if (selectedItemId !== nextId) {
           if (isNonEmptyString(nextId)) {
-            set(isSelectedItemIdSelector(nextId), true);
-            set(selectedItemIdState, nextId);
+            set(
+              isSelectedItemIdComponentFamilySelector.selectorFamily({
+                instanceId: instanceId,
+                familyKey: nextId,
+              }),
+              true,
+            );
+            set(
+              selectedItemIdComponentState.atomFamily({
+                instanceId: instanceId,
+              }),
+              nextId,
+            );
+            onSelect?.(nextId);
           }
 
           if (isNonEmptyString(selectedItemId)) {
-            set(isSelectedItemIdSelector(selectedItemId), false);
+            set(
+              isSelectedItemIdComponentFamilySelector.selectorFamily({
+                instanceId: instanceId,
+                familyKey: selectedItemId,
+              }),
+              false,
+            );
           }
         }
       },
-    [isSelectedItemIdSelector, selectableItemIdsState, selectedItemIdState],
+    [instanceId, onSelect],
   );
 
-  useScopedHotkeys(Key.ArrowUp, () => handleSelect('up'), hotkeyScope, []);
+  useHotkeysOnFocusedElement({
+    keys: Key.ArrowUp,
+    callback: () => handleSelect('up'),
+    focusId,
+    dependencies: [handleSelect],
+  });
 
-  useScopedHotkeys(Key.ArrowDown, () => handleSelect('down'), hotkeyScope, []);
+  useHotkeysOnFocusedElement({
+    keys: Key.ArrowDown,
+    callback: () => handleSelect('down'),
+    focusId,
+    dependencies: [handleSelect],
+  });
 
-  useScopedHotkeys(Key.ArrowLeft, () => handleSelect('left'), hotkeyScope, []);
+  useHotkeysOnFocusedElement({
+    keys: Key.ArrowLeft,
+    callback: () => handleSelect('left'),
+    focusId,
+    dependencies: [handleSelect],
+  });
 
-  useScopedHotkeys(
-    Key.ArrowRight,
-    () => handleSelect('right'),
-    hotkeyScope,
-    [],
-  );
-
-  useScopedHotkeys(
-    Key.Enter,
-    useRecoilCallback(
-      ({ snapshot }) =>
-        () => {
-          const selectedItemId = getSnapshotValue(
-            snapshot,
-            selectedItemIdState,
-          );
-          const onEnter = getSnapshotValue(
-            snapshot,
-            selectableListOnEnterState,
-          );
-
-          if (isNonEmptyString(selectedItemId)) {
-            onEnter?.(selectedItemId);
-          }
-        },
-      [selectableListOnEnterState, selectedItemIdState],
-    ),
-    hotkeyScope,
-    [],
-  );
+  useHotkeysOnFocusedElement({
+    keys: Key.ArrowRight,
+    callback: () => handleSelect('right'),
+    focusId,
+    dependencies: [handleSelect],
+  });
 };

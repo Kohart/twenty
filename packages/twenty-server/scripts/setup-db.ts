@@ -1,5 +1,3 @@
-import console from 'console';
-
 import { rawDataSource } from 'src/database/typeorm/raw/raw.datasource';
 
 import { camelToSnakeCase, performQuery } from './utils';
@@ -8,17 +6,8 @@ rawDataSource
   .initialize()
   .then(async () => {
     await performQuery(
-      'CREATE EXTENSION IF NOT EXISTS "vector"',
-      'create extension "vector (pgvector)"',
-    );
-
-    await performQuery(
       'CREATE SCHEMA IF NOT EXISTS "public"',
       'create schema "public"',
-    );
-    await performQuery(
-      'CREATE SCHEMA IF NOT EXISTS "metadata"',
-      'create schema "metadata"',
     );
     await performQuery(
       'CREATE SCHEMA IF NOT EXISTS "core"',
@@ -29,6 +18,27 @@ rawDataSource
       'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"',
       'create extension "uuid-ossp"',
     );
+
+    await performQuery(
+      'CREATE EXTENSION IF NOT EXISTS "unaccent"',
+      'create extension "unaccent"',
+    );
+
+    await performQuery(
+      `CREATE OR REPLACE FUNCTION public.unaccent_immutable(input text)
+    RETURNS text
+    LANGUAGE sql
+    IMMUTABLE
+AS $$
+SELECT public.unaccent('public.unaccent'::regdictionary, input)
+$$;`,
+      'create immutable unaccent wrapper function',
+    );
+
+    // We paused the work on FDW
+    if (process.env.IS_FDW_ENABLED !== 'true') {
+      return;
+    }
 
     await performQuery(
       'CREATE EXTENSION IF NOT EXISTS "postgres_fdw"',
@@ -56,7 +66,7 @@ rawDataSource
     ]; // See https://supabase.github.io/wrappers/
 
     for (const wrapper of supabaseWrappers) {
-      if (await checkForeignDataWrapperExists(wrapper)) {
+      if (await checkForeignDataWrapperExists(`${wrapper.toLowerCase()}_fdw`)) {
         continue;
       }
       await performQuery(
@@ -72,6 +82,7 @@ rawDataSource
     }
   })
   .catch((err) => {
+    // eslint-disable-next-line no-console
     console.error('Error during Data Source initialization:', err);
   });
 

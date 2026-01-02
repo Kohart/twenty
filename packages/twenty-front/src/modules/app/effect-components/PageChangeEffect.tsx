@@ -1,192 +1,346 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  matchPath,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
 import { useRecoilValue } from 'recoil';
 
-import { useOpenCreateActivityDrawer } from '@/activities/hooks/useOpenCreateActivityDrawer';
 import {
   setSessionId,
   useEventTracker,
 } from '@/analytics/hooks/useEventTracker';
+import { useExecuteTasksOnAnyLocationChange } from '@/app/hooks/useExecuteTasksOnAnyLocationChange';
+import { isAppEffectRedirectEnabledState } from '@/app/states/isAppEffectRedirectEnabledState';
 import { useRequestFreshCaptchaToken } from '@/captcha/hooks/useRequestFreshCaptchaToken';
 import { isCaptchaScriptLoadedState } from '@/captcha/states/isCaptchaScriptLoadedState';
+import { isCaptchaRequiredForPath } from '@/captcha/utils/isCaptchaRequiredForPath';
 import { useCommandMenu } from '@/command-menu/hooks/useCommandMenu';
-import { CommandType } from '@/command-menu/types/Command';
-import { useNonSystemActiveObjectMetadataItems } from '@/object-metadata/hooks/useNonSystemActiveObjectMetadataItems';
-import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { TableHotkeyScope } from '@/object-record/record-table/types/TableHotkeyScope';
-import { AppBasePath } from '@/types/AppBasePath';
-import { AppPath } from '@/types/AppPath';
-import { PageHotkeyScope } from '@/types/PageHotkeyScope';
-import { SettingsPath } from '@/types/SettingsPath';
-import { useSetHotkeyScope } from '@/ui/utilities/hotkey/hooks/useSetHotkeyScope';
-import { IconCheckbox } from 'twenty-ui';
-import { useCleanRecoilState } from '~/hooks/useCleanRecoilState';
-import { useIsMatchingLocation } from '~/hooks/useIsMatchingLocation';
+import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainContextStoreInstanceId';
+import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
+import { contextStoreCurrentViewTypeComponentState } from '@/context-store/states/contextStoreCurrentViewTypeComponentState';
+import { ContextStoreViewType } from '@/context-store/types/ContextStoreViewType';
+import { CoreObjectNamePlural } from '@/object-metadata/types/CoreObjectNamePlural';
+import { useActiveRecordBoardCard } from '@/object-record/record-board/hooks/useActiveRecordBoardCard';
+import { useFocusedRecordBoardCard } from '@/object-record/record-board/hooks/useFocusedRecordBoardCard';
+import { useResetRecordBoardSelection } from '@/object-record/record-board/hooks/useResetRecordBoardSelection';
+import { useResetFocusStackToRecordIndex } from '@/object-record/record-index/hooks/useResetFocusStackToRecordIndex';
+import { useResetTableRowSelection } from '@/object-record/record-table/hooks/internal/useResetTableRowSelection';
+import { useActiveRecordTableRow } from '@/object-record/record-table/hooks/useActiveRecordTableRow';
+import { useFocusedRecordTableRow } from '@/object-record/record-table/hooks/useFocusedRecordTableRow';
+import { useOpenNewRecordTitleCell } from '@/object-record/record-title-cell/hooks/useOpenNewRecordTitleCell';
+import { getRecordIndexIdFromObjectNamePluralAndViewId } from '@/object-record/utils/getRecordIndexIdFromObjectNamePluralAndViewId';
+import { PageFocusId } from '@/types/PageFocusId';
+import { useResetFocusStackToFocusItem } from '@/ui/utilities/focus/hooks/useResetFocusStackToFocusItem';
+import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { AppBasePath, AppPath } from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
+import { AnalyticsType } from '~/generated/graphql';
 import { usePageChangeEffectNavigateLocation } from '~/hooks/usePageChangeEffectNavigateLocation';
-import { isDefined } from '~/utils/isDefined';
+import { useInitializeQueryParamState } from '~/modules/app/hooks/useInitializeQueryParamState';
+import { isMatchingLocation } from '~/utils/isMatchingLocation';
+import { getPageTitleFromPath } from '~/utils/title-utils';
 
 // TODO: break down into smaller functions and / or hooks
 //  - moved usePageChangeEffectNavigateLocation into dedicated hook
 export const PageChangeEffect = () => {
   const navigate = useNavigate();
-  const isMatchingLocation = useIsMatchingLocation();
 
   const [previousLocation, setPreviousLocation] = useState('');
-
-  const setHotkeyScope = useSetHotkeyScope();
 
   const location = useLocation();
 
   const pageChangeEffectNavigateLocation =
     usePageChangeEffectNavigateLocation();
 
-  const { cleanRecoilState } = useCleanRecoilState();
-
   const eventTracker = useEventTracker();
 
-  const { addToCommandMenu, setObjectsInCommandMenu } = useCommandMenu();
+  const { initializeQueryParamState } = useInitializeQueryParamState();
 
-  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
+  //TODO: refactor useResetTableRowSelection hook to not throw when the argument `recordTableId` is an empty string
+  // - replace CoreObjectNamePlural.Person
+  const objectNamePlural =
+    useParams().objectNamePlural ?? CoreObjectNamePlural.Person;
 
-  const openCreateActivity = useOpenCreateActivityDrawer({
-    activityObjectNameSingular: CoreObjectNameSingular.Task,
-  });
+  const contextStoreCurrentViewId = useRecoilComponentValue(
+    contextStoreCurrentViewIdComponentState,
+    MAIN_CONTEXT_STORE_INSTANCE_ID,
+  );
+
+  const contextStoreCurrentViewType = useRecoilComponentValue(
+    contextStoreCurrentViewTypeComponentState,
+    MAIN_CONTEXT_STORE_INSTANCE_ID,
+  );
+
+  const recordIndexId = getRecordIndexIdFromObjectNamePluralAndViewId(
+    objectNamePlural,
+    contextStoreCurrentViewId || '',
+  );
+
+  const { resetTableRowSelection } = useResetTableRowSelection(recordIndexId);
+  const { unfocusRecordTableRow } = useFocusedRecordTableRow(recordIndexId);
+  const { deactivateRecordTableRow } = useActiveRecordTableRow(recordIndexId);
+
+  const { resetRecordBoardSelection } =
+    useResetRecordBoardSelection(recordIndexId);
+  const { deactivateBoardCard } = useActiveRecordBoardCard(recordIndexId);
+  const { unfocusBoardCard } = useFocusedRecordBoardCard(recordIndexId);
+
+  const { executeTasksOnAnyLocationChange } =
+    useExecuteTasksOnAnyLocationChange();
+
+  const isAppEffectRedirectEnabled = useRecoilValue(
+    isAppEffectRedirectEnabledState,
+  );
+
+  const { closeCommandMenu } = useCommandMenu();
+
+  const { resetFocusStackToFocusItem } = useResetFocusStackToFocusItem();
+
+  const { resetFocusStackToRecordIndex } = useResetFocusStackToRecordIndex();
+
+  const { openNewRecordTitleCell } = useOpenNewRecordTitleCell();
 
   useEffect(() => {
-    cleanRecoilState();
-  }, [cleanRecoilState]);
+    closeCommandMenu();
+  }, [location.pathname, closeCommandMenu]);
 
   useEffect(() => {
     if (!previousLocation || previousLocation !== location.pathname) {
       setPreviousLocation(location.pathname);
+      executeTasksOnAnyLocationChange();
     } else {
       return;
     }
-  }, [location, previousLocation]);
+  }, [location, previousLocation, executeTasksOnAnyLocationChange]);
 
   useEffect(() => {
-    if (isDefined(pageChangeEffectNavigateLocation)) {
+    initializeQueryParamState();
+
+    if (
+      isDefined(pageChangeEffectNavigateLocation) &&
+      isAppEffectRedirectEnabled
+    ) {
       navigate(pageChangeEffectNavigateLocation);
     }
-  }, [navigate, pageChangeEffectNavigateLocation]);
+  }, [
+    navigate,
+    pageChangeEffectNavigateLocation,
+    initializeQueryParamState,
+    isAppEffectRedirectEnabled,
+  ]);
 
   useEffect(() => {
-    switch (true) {
-      case isMatchingLocation(AppPath.RecordIndexPage): {
-        setHotkeyScope(TableHotkeyScope.Table, {
-          goto: true,
-          keyboardShortcutMenu: true,
-        });
-        break;
-      }
-      case isMatchingLocation(AppPath.RecordShowPage): {
-        setHotkeyScope(PageHotkeyScope.CompanyShowPage, {
-          goto: true,
-          keyboardShortcutMenu: true,
-        });
-        break;
-      }
-      case isMatchingLocation(AppPath.OpportunitiesPage): {
-        setHotkeyScope(PageHotkeyScope.OpportunitiesPage, {
-          goto: true,
-          keyboardShortcutMenu: true,
-        });
-        break;
-      }
-      case isMatchingLocation(AppPath.TasksPage): {
-        setHotkeyScope(PageHotkeyScope.TaskPage, {
-          goto: true,
-          keyboardShortcutMenu: true,
-        });
-        break;
-      }
+    const isLeavingRecordIndexPage = !!matchPath(
+      AppPath.RecordIndexPage,
+      previousLocation,
+    );
 
-      case isMatchingLocation(AppPath.SignInUp): {
-        setHotkeyScope(PageHotkeyScope.SignInUp);
+    if (isLeavingRecordIndexPage) {
+      if (contextStoreCurrentViewType === ContextStoreViewType.Table) {
+        resetTableRowSelection();
+        unfocusRecordTableRow();
+        deactivateRecordTableRow();
+      }
+      if (contextStoreCurrentViewType === ContextStoreViewType.Kanban) {
+        resetRecordBoardSelection();
+        deactivateBoardCard();
+        unfocusBoardCard();
+      }
+    }
+
+    switch (true) {
+      case isMatchingLocation(location, AppPath.RecordIndexPage): {
+        resetFocusStackToRecordIndex();
         break;
       }
-      case isMatchingLocation(AppPath.Invite): {
-        setHotkeyScope(PageHotkeyScope.SignInUp);
+      case isMatchingLocation(location, AppPath.RecordShowPage): {
+        resetFocusStackToFocusItem({
+          focusStackItem: {
+            focusId: PageFocusId.RecordShowPage,
+            componentInstance: {
+              componentType: FocusComponentType.PAGE,
+              componentInstanceId: PageFocusId.RecordShowPage,
+            },
+            globalHotkeysConfig: {
+              enableGlobalHotkeysWithModifiers: true,
+              enableGlobalHotkeysConflictingWithKeyboard: true,
+            },
+          },
+        });
+
+        const isNewRecord = location.state?.isNewRecord === true;
+
+        if (
+          isNewRecord &&
+          isDefined(location.state?.labelIdentifierFieldName)
+        ) {
+          openNewRecordTitleCell({
+            recordId: location.state.objectRecordId,
+            fieldName: location.state.labelIdentifierFieldName,
+          });
+        }
         break;
       }
-      case isMatchingLocation(AppPath.CreateProfile): {
-        setHotkeyScope(PageHotkeyScope.CreateProfile);
-        break;
-      }
-      case isMatchingLocation(AppPath.CreateWorkspace): {
-        setHotkeyScope(PageHotkeyScope.CreateWorkspace);
-        break;
-      }
-      case isMatchingLocation(AppPath.SyncEmails): {
-        setHotkeyScope(PageHotkeyScope.SyncEmail);
-        break;
-      }
-      case isMatchingLocation(AppPath.InviteTeam): {
-        setHotkeyScope(PageHotkeyScope.InviteTeam);
-        break;
-      }
-      case isMatchingLocation(AppPath.PlanRequired): {
-        setHotkeyScope(PageHotkeyScope.PlanRequired);
-        break;
-      }
-      case isMatchingLocation(SettingsPath.ProfilePage, AppBasePath.Settings): {
-        setHotkeyScope(PageHotkeyScope.ProfilePage, {
-          goto: true,
-          keyboardShortcutMenu: true,
+      case isMatchingLocation(location, AppPath.SignInUp): {
+        resetFocusStackToFocusItem({
+          focusStackItem: {
+            focusId: PageFocusId.SignInUp,
+            componentInstance: {
+              componentType: FocusComponentType.PAGE,
+              componentInstanceId: PageFocusId.SignInUp,
+            },
+            globalHotkeysConfig: {
+              enableGlobalHotkeysWithModifiers: false,
+              enableGlobalHotkeysConflictingWithKeyboard: false,
+            },
+          },
         });
         break;
       }
-      case isMatchingLocation(
-        SettingsPath.WorkspaceMembersPage,
-        AppBasePath.Settings,
-      ): {
-        setHotkeyScope(PageHotkeyScope.WorkspaceMemberPage, {
-          goto: true,
-          keyboardShortcutMenu: true,
+      case isMatchingLocation(location, AppPath.Invite): {
+        resetFocusStackToFocusItem({
+          focusStackItem: {
+            focusId: PageFocusId.InviteTeam,
+            componentInstance: {
+              componentType: FocusComponentType.PAGE,
+              componentInstanceId: PageFocusId.InviteTeam,
+            },
+            globalHotkeysConfig: {
+              enableGlobalHotkeysWithModifiers: false,
+              enableGlobalHotkeysConflictingWithKeyboard: false,
+            },
+          },
+        });
+        break;
+      }
+      case isMatchingLocation(location, AppPath.CreateProfile): {
+        resetFocusStackToFocusItem({
+          focusStackItem: {
+            focusId: PageFocusId.CreateProfile,
+            componentInstance: {
+              componentType: FocusComponentType.PAGE,
+              componentInstanceId: PageFocusId.CreateProfile,
+            },
+            globalHotkeysConfig: {
+              enableGlobalHotkeysWithModifiers: false,
+              enableGlobalHotkeysConflictingWithKeyboard: false,
+            },
+          },
+        });
+        break;
+      }
+      case isMatchingLocation(location, AppPath.CreateWorkspace): {
+        resetFocusStackToFocusItem({
+          focusStackItem: {
+            focusId: PageFocusId.CreateWorkspace,
+            componentInstance: {
+              componentType: FocusComponentType.PAGE,
+              componentInstanceId: PageFocusId.CreateWorkspace,
+            },
+            globalHotkeysConfig: {
+              enableGlobalHotkeysWithModifiers: false,
+              enableGlobalHotkeysConflictingWithKeyboard: false,
+            },
+          },
+        });
+        break;
+      }
+      case isMatchingLocation(location, AppPath.SyncEmails): {
+        resetFocusStackToFocusItem({
+          focusStackItem: {
+            focusId: PageFocusId.SyncEmail,
+            componentInstance: {
+              componentType: FocusComponentType.PAGE,
+              componentInstanceId: PageFocusId.SyncEmail,
+            },
+            globalHotkeysConfig: {
+              enableGlobalHotkeysWithModifiers: false,
+              enableGlobalHotkeysConflictingWithKeyboard: false,
+            },
+          },
+        });
+        break;
+      }
+      case isMatchingLocation(location, AppPath.InviteTeam): {
+        resetFocusStackToFocusItem({
+          focusStackItem: {
+            focusId: PageFocusId.InviteTeam,
+            componentInstance: {
+              componentType: FocusComponentType.PAGE,
+              componentInstanceId: PageFocusId.InviteTeam,
+            },
+            globalHotkeysConfig: {
+              enableGlobalHotkeysWithModifiers: false,
+              enableGlobalHotkeysConflictingWithKeyboard: false,
+            },
+          },
+        });
+        break;
+      }
+      case isMatchingLocation(location, AppPath.PlanRequired): {
+        resetFocusStackToFocusItem({
+          focusStackItem: {
+            focusId: PageFocusId.PlanRequired,
+            componentInstance: {
+              componentType: FocusComponentType.PAGE,
+              componentInstanceId: PageFocusId.PlanRequired,
+            },
+            globalHotkeysConfig: {
+              enableGlobalHotkeysWithModifiers: false,
+              enableGlobalHotkeysConflictingWithKeyboard: false,
+            },
+          },
+        });
+        break;
+      }
+      case location.pathname.startsWith(AppBasePath.Settings): {
+        resetFocusStackToFocusItem({
+          focusStackItem: {
+            focusId: PageFocusId.Settings,
+            componentInstance: {
+              componentType: FocusComponentType.PAGE,
+              componentInstanceId: PageFocusId.Settings,
+            },
+            globalHotkeysConfig: {
+              enableGlobalHotkeysWithModifiers: false,
+              enableGlobalHotkeysConflictingWithKeyboard: false,
+            },
+          },
         });
         break;
       }
     }
-  }, [isMatchingLocation, setHotkeyScope]);
-
-  const { nonSystemActiveObjectMetadataItems } =
-    useNonSystemActiveObjectMetadataItems();
-
-  useEffect(() => {
-    setObjectsInCommandMenu(nonSystemActiveObjectMetadataItems);
-
-    addToCommandMenu([
-      {
-        id: 'create-task',
-        to: '',
-        label: 'Create Task',
-        type: CommandType.Create,
-        Icon: IconCheckbox,
-        onCommandClick: () =>
-          openCreateActivity({
-            targetableObjects: [],
-          }),
-      },
-    ]);
   }, [
-    nonSystemActiveObjectMetadataItems,
-    addToCommandMenu,
-    setObjectsInCommandMenu,
-    openCreateActivity,
-    objectMetadataItems,
+    location,
+    previousLocation,
+    contextStoreCurrentViewType,
+    resetTableRowSelection,
+    unfocusRecordTableRow,
+    deactivateRecordTableRow,
+    resetRecordBoardSelection,
+    deactivateBoardCard,
+    unfocusBoardCard,
+    resetFocusStackToRecordIndex,
+    resetFocusStackToFocusItem,
+    openNewRecordTitleCell,
   ]);
 
   useEffect(() => {
     setTimeout(() => {
       setSessionId();
-      eventTracker('pageview', {
-        pathname: location.pathname,
-        locale: navigator.language,
-        userAgent: window.navigator.userAgent,
-        href: window.location.href,
-        referrer: document.referrer,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      eventTracker(AnalyticsType['PAGEVIEW'], {
+        name: getPageTitleFromPath(location.pathname),
+        properties: {
+          pathname: location.pathname,
+          locale: navigator.language,
+          userAgent: window.navigator.userAgent,
+          href: window.location.href,
+          referrer: document.referrer,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
       });
     }, 500);
   }, [eventTracker, location.pathname]);
@@ -195,15 +349,10 @@ export const PageChangeEffect = () => {
   const isCaptchaScriptLoaded = useRecoilValue(isCaptchaScriptLoadedState);
 
   useEffect(() => {
-    if (
-      isCaptchaScriptLoaded &&
-      (isMatchingLocation(AppPath.SignInUp) ||
-        isMatchingLocation(AppPath.Invite) ||
-        isMatchingLocation(AppPath.ResetPassword))
-    ) {
+    if (isCaptchaScriptLoaded && isCaptchaRequiredForPath(location.pathname)) {
       requestFreshCaptchaToken();
     }
-  }, [isCaptchaScriptLoaded, isMatchingLocation, requestFreshCaptchaToken]);
+  }, [isCaptchaScriptLoaded, location.pathname, requestFreshCaptchaToken]);
 
   return <></>;
 };

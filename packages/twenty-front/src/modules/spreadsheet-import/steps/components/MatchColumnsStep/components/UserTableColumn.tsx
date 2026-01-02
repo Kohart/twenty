@@ -1,9 +1,9 @@
 import styled from '@emotion/styled';
 
-import { ImportedRow } from '@/spreadsheet-import/types';
-import { isDefined } from '~/utils/isDefined';
+import { type ImportedRow } from '@/spreadsheet-import/types';
 
-import { Column } from '../MatchColumnsStep';
+import { type SpreadsheetColumn } from '@/spreadsheet-import/types/SpreadsheetColumn';
+import { isDefined } from 'twenty-shared/utils';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -13,7 +13,7 @@ const StyledContainer = styled.div`
 
 const StyledValue = styled.span`
   color: ${({ theme }) => theme.font.color.primary};
-  font-size: ${({ theme }) => theme.font.size.sm};
+  font-size: ${({ theme }) => theme.font.size.md};
   font-weight: ${({ theme }) => theme.font.weight.medium};
   overflow: hidden;
   text-overflow: ellipsis;
@@ -29,15 +29,15 @@ const StyledExample = styled.span`
   white-space: nowrap;
 `;
 
-type UserTableColumnProps<T extends string> = {
-  column: Column<T>;
+type UserTableColumnProps = {
+  column: SpreadsheetColumn;
   importedRow: ImportedRow;
 };
 
-export const UserTableColumn = <T extends string>({
+export const UserTableColumn = ({
   column,
   importedRow,
-}: UserTableColumnProps<T>) => {
+}: UserTableColumnProps) => {
   const { header } = column;
   const firstDefinedValue = importedRow.find(isDefined);
 

@@ -1,135 +1,159 @@
-import { useObjectMetadataItemById } from '@/object-metadata/hooks/useObjectMetadataItemById';
-import { useUpsertCombinedViewFilterGroup } from '@/object-record/advanced-filter/hooks/useUpsertCombinedViewFilterGroup';
-import { getOperandsForFilterDefinition } from '@/object-record/object-filter-dropdown/utils/getOperandsForFilterType';
+import { ActionButton } from '@/action-menu/actions/display/components/ActionButton';
+import { useChildRecordFiltersAndRecordFilterGroups } from '@/object-record/advanced-filter/hooks/useChildRecordFiltersAndRecordFilterGroups';
+import { useGetDefaultFieldMetadataItemForFilter } from '@/object-record/advanced-filter/hooks/useGetDefaultFieldMetadataItemForFilter';
+import { useSetRecordFilterUsedInAdvancedFilterDropdownRow } from '@/object-record/advanced-filter/hooks/useSetRecordFilterUsedInAdvancedFilterDropdownRow';
+import { AdvancedFilterContext } from '@/object-record/advanced-filter/states/context/AdvancedFilterContext';
+import { getAdvancedFilterAddFilterRuleSelectDropdownId } from '@/object-record/advanced-filter/utils/getAdvancedFilterAddFilterRuleSelectDropdownId';
+import { useUpsertRecordFilterGroup } from '@/object-record/record-filter-group/hooks/useUpsertRecordFilterGroup';
+import { type RecordFilterGroup } from '@/object-record/record-filter-group/types/RecordFilterGroup';
+import { useUpsertRecordFilter } from '@/object-record/record-filter/hooks/useUpsertRecordFilter';
+import { type RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
+import { getDefaultSubFieldNameForCompositeFilterableFieldType } from '@/object-record/record-filter/utils/getDefaultSubFieldNameForCompositeFilterableFieldType';
+import { getRecordFilterOperands } from '@/object-record/record-filter/utils/getRecordFilterOperands';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
+import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
-import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { ADVANCED_FILTER_DROPDOWN_ID } from '@/views/constants/AdvancedFilterDropdownId';
-import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
-import { useUpsertCombinedViewFilters } from '@/views/hooks/useUpsertCombinedViewFilters';
-import { availableFilterDefinitionsComponentState } from '@/views/states/availableFilterDefinitionsComponentState';
-import { ViewFilterGroup } from '@/views/types/ViewFilterGroup';
-import { ViewFilterGroupLogicalOperator } from '@/views/types/ViewFilterGroupLogicalOperator';
-import { useCallback } from 'react';
-import {
-  IconLibraryPlus,
-  IconPlus,
-  isDefined,
-  LightButton,
-  MenuItem,
-} from 'twenty-ui';
+import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
+import { useGetCurrentViewOnly } from '@/views/hooks/useGetCurrentViewOnly';
+import { useContext } from 'react';
+import { RecordFilterGroupLogicalOperator } from 'twenty-shared/types';
+import { t } from '@lingui/core/macro';
+import { getFilterTypeFromFieldType, isDefined } from 'twenty-shared/utils';
+import { IconLibraryPlus, IconPlus } from 'twenty-ui/display';
+import { MenuItem } from 'twenty-ui/navigation';
 import { v4 } from 'uuid';
 
 type AdvancedFilterAddFilterRuleSelectProps = {
-  viewFilterGroup: ViewFilterGroup;
-  lastChildPosition?: number;
+  recordFilterGroup: RecordFilterGroup;
 };
 
 export const AdvancedFilterAddFilterRuleSelect = ({
-  viewFilterGroup,
-  lastChildPosition = 0,
+  recordFilterGroup,
 }: AdvancedFilterAddFilterRuleSelectProps) => {
-  const dropdownId = `advanced-filter-add-filter-rule-${viewFilterGroup.id}`;
-
-  const { currentViewId } = useGetCurrentView();
-
-  const { upsertCombinedViewFilterGroup } = useUpsertCombinedViewFilterGroup();
-  const { upsertCombinedViewFilter } = useUpsertCombinedViewFilters();
-
-  const newPositionInViewFilterGroup = lastChildPosition + 1;
-
-  const { closeDropdown } = useDropdown(dropdownId);
-
-  const { currentViewWithCombinedFiltersAndSorts } = useGetCurrentView();
-
-  const objectMetadataId =
-    currentViewWithCombinedFiltersAndSorts?.objectMetadataId;
-
-  if (!objectMetadataId) {
-    throw new Error('Object metadata id is missing from current view');
-  }
-
-  const { objectMetadataItem } = useObjectMetadataItemById({
-    objectId: objectMetadataId,
-  });
-
-  const availableFilterDefinitions = useRecoilComponentValueV2(
-    availableFilterDefinitionsComponentState,
+  const dropdownId = getAdvancedFilterAddFilterRuleSelectDropdownId(
+    recordFilterGroup.id,
   );
 
-  const getDefaultFilterDefinition = useCallback(() => {
-    const defaultFilterDefinition =
-      availableFilterDefinitions.find(
-        (filterDefinition) =>
-          filterDefinition.fieldMetadataId ===
-          objectMetadataItem?.labelIdentifierFieldMetadataId,
-      ) ?? availableFilterDefinitions?.[0];
+  const { currentView } = useGetCurrentViewOnly();
 
-    if (!defaultFilterDefinition) {
-      throw new Error('Missing default filter definition');
-    }
+  const { upsertRecordFilterGroup } = useUpsertRecordFilterGroup();
 
-    return defaultFilterDefinition;
-  }, [availableFilterDefinitions, objectMetadataItem]);
+  const { upsertRecordFilter } = useUpsertRecordFilter();
+
+  const { lastChildPosition } = useChildRecordFiltersAndRecordFilterGroups({
+    recordFilterGroupId: recordFilterGroup.id,
+  });
+
+  const newPositionInRecordFilterGroup = lastChildPosition + 1;
+
+  const { closeDropdown } = useCloseDropdown();
+
+  const { getDefaultFieldMetadataItemForFilter } =
+    useGetDefaultFieldMetadataItemForFilter();
+
+  const { setRecordFilterUsedInAdvancedFilterDropdownRow } =
+    useSetRecordFilterUsedInAdvancedFilterDropdownRow();
+
+  const { objectMetadataItem } = useContext(AdvancedFilterContext);
 
   const handleAddFilter = () => {
-    closeDropdown();
+    const { defaultFieldMetadataItemForFilter } =
+      getDefaultFieldMetadataItemForFilter(objectMetadataItem);
 
-    const defaultFilterDefinition = getDefaultFilterDefinition();
+    if (!isDefined(defaultFieldMetadataItemForFilter)) {
+      throw new Error('Missing default field metadata item for filter');
+    }
 
-    upsertCombinedViewFilter({
+    closeDropdown(dropdownId);
+
+    const filterType = getFilterTypeFromFieldType(
+      defaultFieldMetadataItemForFilter.type,
+    );
+
+    const defaultSubFieldName =
+      getDefaultSubFieldNameForCompositeFilterableFieldType(filterType);
+
+    const newRecordFilter: RecordFilter = {
       id: v4(),
-      fieldMetadataId: defaultFilterDefinition.fieldMetadataId,
-      operand: getOperandsForFilterDefinition(defaultFilterDefinition)[0],
-      definition: defaultFilterDefinition,
+      fieldMetadataId: defaultFieldMetadataItemForFilter.id,
+      type: filterType,
+      operand: getRecordFilterOperands({
+        filterType,
+      })[0],
       value: '',
       displayValue: '',
-      viewFilterGroupId: viewFilterGroup.id,
-      positionInViewFilterGroup: newPositionInViewFilterGroup,
-    });
+      recordFilterGroupId: recordFilterGroup.id,
+      positionInRecordFilterGroup: newPositionInRecordFilterGroup,
+      label: defaultFieldMetadataItemForFilter.label,
+      subFieldName: defaultSubFieldName,
+    };
+
+    upsertRecordFilter(newRecordFilter);
+
+    setRecordFilterUsedInAdvancedFilterDropdownRow(newRecordFilter);
   };
 
   const handleAddFilterGroup = () => {
-    closeDropdown();
+    const { defaultFieldMetadataItemForFilter } =
+      getDefaultFieldMetadataItemForFilter(objectMetadataItem);
 
-    if (!currentViewId) {
-      throw new Error('Missing view id');
+    closeDropdown(dropdownId);
+
+    if (!isDefined(defaultFieldMetadataItemForFilter)) {
+      throw new Error('Missing default field metadata item for filter');
     }
 
-    const newViewFilterGroup = {
-      id: v4(),
-      viewId: currentViewId,
-      logicalOperator: ViewFilterGroupLogicalOperator.AND,
-      parentViewFilterGroupId: viewFilterGroup.id,
-      positionInViewFilterGroup: newPositionInViewFilterGroup,
+    if (!isDefined(currentView)) {
+      throw new Error('Missing view');
+    }
+
+    const newRecordFilterGroupId = v4();
+
+    const newRecordFilterGroup: RecordFilterGroup = {
+      id: newRecordFilterGroupId,
+      logicalOperator: RecordFilterGroupLogicalOperator.AND,
+      parentRecordFilterGroupId: recordFilterGroup.id,
+      positionInRecordFilterGroup: newPositionInRecordFilterGroup,
     };
 
-    upsertCombinedViewFilterGroup(newViewFilterGroup);
+    upsertRecordFilterGroup(newRecordFilterGroup);
 
-    const defaultFilterDefinition = getDefaultFilterDefinition();
+    const filterType = getFilterTypeFromFieldType(
+      defaultFieldMetadataItemForFilter.type,
+    );
 
-    upsertCombinedViewFilter({
+    const newRecordFilter: RecordFilter = {
       id: v4(),
-      fieldMetadataId: defaultFilterDefinition.fieldMetadataId,
-      operand: getOperandsForFilterDefinition(defaultFilterDefinition)[0],
-      definition: defaultFilterDefinition,
+      fieldMetadataId: defaultFieldMetadataItemForFilter.id,
+      type: filterType,
+      operand: getRecordFilterOperands({
+        filterType,
+      })[0],
       value: '',
       displayValue: '',
-      viewFilterGroupId: newViewFilterGroup.id,
-      positionInViewFilterGroup: newPositionInViewFilterGroup,
-    });
+      recordFilterGroupId: newRecordFilterGroupId,
+      positionInRecordFilterGroup: 1,
+      label: defaultFieldMetadataItemForFilter.label,
+    };
+
+    upsertRecordFilter(newRecordFilter);
+
+    setRecordFilterUsedInAdvancedFilterDropdownRow(newRecordFilter);
   };
 
   const isFilterRuleGroupOptionVisible = !isDefined(
-    viewFilterGroup.parentViewFilterGroupId,
+    recordFilterGroup.parentRecordFilterGroupId,
   );
 
   if (!isFilterRuleGroupOptionVisible) {
     return (
-      <LightButton
-        Icon={IconPlus}
-        title="Add filter rule"
+      <ActionButton
+        action={{
+          Icon: IconPlus,
+          label: t`Add rule`,
+          shortLabel: t`Add rule`,
+          key: 'add-rule',
+        }}
         onClick={handleAddFilter}
       />
     );
@@ -137,28 +161,35 @@ export const AdvancedFilterAddFilterRuleSelect = ({
 
   return (
     <Dropdown
-      disableBlur
       dropdownId={dropdownId}
       clickableComponent={
-        <LightButton Icon={IconPlus} title="Add filter rule" />
+        <ActionButton
+          action={{
+            Icon: IconPlus,
+            label: t`Add filter rule`,
+            shortLabel: t`Add filter rule`,
+            key: 'add-filter-rule',
+          }}
+        />
       }
       dropdownComponents={
-        <DropdownMenuItemsContainer>
-          <MenuItem
-            LeftIcon={IconPlus}
-            text="Add rule"
-            onClick={handleAddFilter}
-          />
-          {isFilterRuleGroupOptionVisible && (
+        <DropdownContent>
+          <DropdownMenuItemsContainer>
             <MenuItem
-              LeftIcon={IconLibraryPlus}
-              text="Add rule group"
-              onClick={handleAddFilterGroup}
+              LeftIcon={IconPlus}
+              text={t`Add rule`}
+              onClick={handleAddFilter}
             />
-          )}
-        </DropdownMenuItemsContainer>
+            {isFilterRuleGroupOptionVisible && (
+              <MenuItem
+                LeftIcon={IconLibraryPlus}
+                text={t`Add rule group`}
+                onClick={handleAddFilterGroup}
+              />
+            )}
+          </DropdownMenuItemsContainer>
+        </DropdownContent>
       }
-      dropdownHotkeyScope={{ scope: ADVANCED_FILTER_DROPDOWN_ID }}
       dropdownOffset={{ y: 8, x: 0 }}
       dropdownPlacement="bottom-start"
     />

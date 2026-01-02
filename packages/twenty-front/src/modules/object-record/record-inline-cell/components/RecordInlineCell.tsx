@@ -1,48 +1,107 @@
-import { useContext } from 'react';
-import { useIcons } from 'twenty-ui';
+import { useCallback, useContext } from 'react';
 
-import { FieldDisplay } from '@/object-record/record-field/components/FieldDisplay';
-import { FieldInput } from '@/object-record/record-field/components/FieldInput';
-import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
-import { FieldFocusContextProvider } from '@/object-record/record-field/contexts/FieldFocusContextProvider';
-import { useGetButtonIcon } from '@/object-record/record-field/hooks/useGetButtonIcon';
-import { useIsFieldInputOnly } from '@/object-record/record-field/hooks/useIsFieldInputOnly';
-import { FieldInputEvent } from '@/object-record/record-field/types/FieldInputEvent';
-import { isFieldRelation } from '@/object-record/record-field/types/guards/isFieldRelation';
-import { RelationPickerHotkeyScope } from '@/object-record/relation-picker/types/RelationPickerHotkeyScope';
+import { FieldDisplay } from '@/object-record/record-field/ui/components/FieldDisplay';
+import { FieldInput } from '@/object-record/record-field/ui/components/FieldInput';
+import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
+import { FieldFocusContextProvider } from '@/object-record/record-field/ui/contexts/FieldFocusContextProvider';
+import { useGetButtonIcon } from '@/object-record/record-field/ui/hooks/useGetButtonIcon';
 
-import { useInlineCell } from '../hooks/useInlineCell';
+import { useIsFieldInputOnly } from '@/object-record/record-field/ui/hooks/useIsFieldInputOnly';
+import { useOpenFieldInputEditMode } from '@/object-record/record-field/ui/hooks/useOpenFieldInputEditMode';
 
-import { useIsFieldValueReadOnly } from '@/object-record/record-field/hooks/useIsFieldValueReadOnly';
-import { getRecordFieldInputId } from '@/object-record/utils/getRecordFieldInputId';
+import { useRecordFieldsScopeContextOrThrow } from '@/object-record/record-field-list/contexts/RecordFieldsScopeContext';
+import {
+  FieldInputEventContext,
+  type FieldInputClickOutsideEvent,
+  type FieldInputEvent,
+} from '@/object-record/record-field/ui/contexts/FieldInputEventContext';
+import { usePersistFieldFromFieldInputContext } from '@/object-record/record-field/ui/hooks/usePersistFieldFromFieldInputContext';
+import { getDropdownFocusIdForRecordField } from '@/object-record/utils/getDropdownFocusIdForRecordField';
+import { useGoBackToPreviousDropdownFocusId } from '@/ui/layout/dropdown/hooks/useGoBackToPreviousDropdownFocusId';
+import { activeDropdownFocusIdState } from '@/ui/layout/dropdown/states/activeDropdownFocusIdState';
+import { useRecoilCallback } from 'recoil';
+import { useIcons } from 'twenty-ui/display';
 import { RecordInlineCellContainer } from './RecordInlineCellContainer';
 import {
   RecordInlineCellContext,
-  RecordInlineCellContextProps,
+  type RecordInlineCellContextProps,
 } from './RecordInlineCellContext';
 
 type RecordInlineCellProps = {
-  readonly?: boolean;
   loading?: boolean;
+  instanceIdPrefix?: string;
 };
 
-export const RecordInlineCell = ({ loading }: RecordInlineCellProps) => {
-  const { fieldDefinition, recordId, isCentered } = useContext(FieldContext);
+export const RecordInlineCell = ({
+  loading,
+  instanceIdPrefix,
+}: RecordInlineCellProps) => {
+  const {
+    fieldDefinition,
+    recordId,
+    isCentered,
+    isDisplayModeFixHeight,
+    onOpenEditMode: onOpenEditModeFromContext,
+    onCloseEditMode: onCloseEditModeFromContext,
+    isRecordFieldReadOnly: isReadOnly,
+  } = useContext(FieldContext);
+  const { scopeInstanceId } = useRecordFieldsScopeContextOrThrow();
+
+  const { openFieldInput, closeFieldInput } = useOpenFieldInputEditMode();
+
+  const onOpenEditMode = onOpenEditModeFromContext
+    ? onOpenEditModeFromContext
+    : () =>
+        openFieldInput({
+          fieldDefinition,
+          recordId,
+          prefix: instanceIdPrefix,
+        });
+
+  const onCloseEditMode = useCallback(() => {
+    onCloseEditModeFromContext
+      ? onCloseEditModeFromContext()
+      : closeFieldInput({
+          fieldDefinition,
+          recordId,
+          prefix: instanceIdPrefix,
+        });
+  }, [
+    onCloseEditModeFromContext,
+    closeFieldInput,
+    fieldDefinition,
+    recordId,
+    instanceIdPrefix,
+  ]);
+
   const buttonIcon = useGetButtonIcon();
 
   const isFieldInputOnly = useIsFieldInputOnly();
 
-  const isFieldReadOnly = useIsFieldValueReadOnly();
+  const { goBackToPreviousDropdownFocusId } =
+    useGoBackToPreviousDropdownFocusId();
 
-  const { closeInlineCell } = useInlineCell();
+  const closeInlineCell = useCallback(() => {
+    onCloseEditMode();
+    goBackToPreviousDropdownFocusId();
+  }, [onCloseEditMode, goBackToPreviousDropdownFocusId]);
 
-  const handleEnter: FieldInputEvent = (persistField) => {
-    persistField();
+  const { persistFieldFromFieldInputContext } =
+    usePersistFieldFromFieldInputContext();
+
+  const handleEnter: FieldInputEvent = ({ newValue, skipPersist }) => {
+    if (skipPersist !== true) {
+      persistFieldFromFieldInputContext(newValue);
+    }
+
     closeInlineCell();
   };
 
-  const handleSubmit: FieldInputEvent = (persistField) => {
-    persistField();
+  const handleSubmit: FieldInputEvent = ({ newValue, skipPersist }) => {
+    if (skipPersist !== true) {
+      persistFieldFromFieldInputContext(newValue);
+    }
+
     closeInlineCell();
   };
 
@@ -50,33 +109,75 @@ export const RecordInlineCell = ({ loading }: RecordInlineCellProps) => {
     closeInlineCell();
   };
 
-  const handleEscape = () => {
+  const handleEscape: FieldInputEvent = ({ newValue, skipPersist }) => {
+    if (skipPersist !== true) {
+      persistFieldFromFieldInputContext(newValue);
+    }
+
     closeInlineCell();
   };
 
-  const handleTab: FieldInputEvent = (persistField) => {
-    persistField();
+  const handleTab: FieldInputEvent = ({ newValue, skipPersist }) => {
+    if (skipPersist !== true) {
+      persistFieldFromFieldInputContext(newValue);
+    }
+
     closeInlineCell();
   };
 
-  const handleShiftTab: FieldInputEvent = (persistField) => {
-    persistField();
+  const handleShiftTab: FieldInputEvent = ({ newValue, skipPersist }) => {
+    if (skipPersist !== true) {
+      persistFieldFromFieldInputContext(newValue);
+    }
+
     closeInlineCell();
   };
 
-  const handleClickOutside: FieldInputEvent = (persistField) => {
-    persistField();
-    closeInlineCell();
-  };
+  const handleClickOutside = useRecoilCallback(
+    ({ snapshot }) =>
+      ({
+        event,
+        newValue,
+        skipPersist,
+      }: Parameters<FieldInputClickOutsideEvent>[0]) => {
+        const currentDropdownFocusId = snapshot
+          .getLoadable(activeDropdownFocusIdState)
+          .getValue();
+
+        const expectedDropdownFocusId = getDropdownFocusIdForRecordField({
+          recordId,
+          fieldMetadataId: fieldDefinition.fieldMetadataId,
+          componentType: 'inline-cell',
+          instanceId: scopeInstanceId,
+        });
+
+        if (currentDropdownFocusId !== expectedDropdownFocusId) {
+          return;
+        }
+
+        event?.preventDefault();
+        event?.stopImmediatePropagation();
+
+        if (skipPersist !== true) {
+          persistFieldFromFieldInputContext(newValue);
+        }
+
+        closeInlineCell();
+      },
+    [
+      recordId,
+      fieldDefinition.fieldMetadataId,
+      scopeInstanceId,
+      closeInlineCell,
+      persistFieldFromFieldInputContext,
+    ],
+  );
 
   const { getIcon } = useIcons();
 
   const RecordInlineCellContextValue: RecordInlineCellContextProps = {
-    readonly: isFieldReadOnly,
+    readonly: isReadOnly,
     buttonIcon: buttonIcon,
-    customEditHotkeyScope: isFieldRelation(fieldDefinition)
-      ? { scope: RelationPickerHotkeyScope.RelationPicker }
-      : undefined,
     IconLabel: fieldDefinition.iconName
       ? getIcon(fieldDefinition.iconName)
       : undefined,
@@ -84,33 +185,32 @@ export const RecordInlineCell = ({ loading }: RecordInlineCellProps) => {
     labelWidth: fieldDefinition.labelWidth,
     showLabel: fieldDefinition.showLabel,
     isCentered,
-    editModeContent: (
-      <FieldInput
-        recordFieldInputdId={getRecordFieldInputId(
-          recordId,
-          fieldDefinition?.metadata?.fieldName,
-        )}
-        onEnter={handleEnter}
-        onCancel={handleCancel}
-        onEscape={handleEscape}
-        onSubmit={handleSubmit}
-        onTab={handleTab}
-        onShiftTab={handleShiftTab}
-        onClickOutside={handleClickOutside}
-        isReadOnly={isFieldReadOnly}
-      />
-    ),
+    editModeContent: <FieldInput />,
     displayModeContent: <FieldDisplay />,
-    isDisplayModeFixHeight: undefined,
+    isDisplayModeFixHeight: isDisplayModeFixHeight,
     editModeContentOnly: isFieldInputOnly,
     loading: loading,
+    onOpenEditMode,
+    onCloseEditMode,
   };
 
   return (
-    <FieldFocusContextProvider>
-      <RecordInlineCellContext.Provider value={RecordInlineCellContextValue}>
-        <RecordInlineCellContainer />
-      </RecordInlineCellContext.Provider>
-    </FieldFocusContextProvider>
+    <FieldInputEventContext.Provider
+      value={{
+        onCancel: handleCancel,
+        onEnter: handleEnter,
+        onEscape: handleEscape,
+        onClickOutside: handleClickOutside,
+        onShiftTab: handleShiftTab,
+        onSubmit: handleSubmit,
+        onTab: handleTab,
+      }}
+    >
+      <FieldFocusContextProvider>
+        <RecordInlineCellContext.Provider value={RecordInlineCellContextValue}>
+          <RecordInlineCellContainer />
+        </RecordInlineCellContext.Provider>
+      </FieldFocusContextProvider>
+    </FieldInputEventContext.Provider>
   );
 };

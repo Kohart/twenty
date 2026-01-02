@@ -1,117 +1,73 @@
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
-import { RecordTableContext } from '@/object-record/record-table/contexts/RecordTableContext';
-import { useHandleContainerMouseEnter } from '@/object-record/record-table/hooks/internal/useHandleContainerMouseEnter';
-import { useRecordTableMoveFocus } from '@/object-record/record-table/hooks/useRecordTableMoveFocus';
-import { useCloseRecordTableCellV2 } from '@/object-record/record-table/record-table-cell/hooks/useCloseRecordTableCellV2';
-import { useMoveSoftFocusToCellOnHoverV2 } from '@/object-record/record-table/record-table-cell/hooks/useMoveSoftFocusToCellOnHoverV2';
-import {
-  OpenTableCellArgs,
-  useOpenRecordTableCellV2,
-} from '@/object-record/record-table/record-table-cell/hooks/useOpenRecordTableCellV2';
-import { useTriggerActionMenuDropdown } from '@/object-record/record-table/record-table-cell/hooks/useTriggerActionMenuDropdown';
-import { useUpsertRecord } from '@/object-record/record-table/record-table-cell/hooks/useUpsertRecord';
-import { visibleTableColumnsComponentSelector } from '@/object-record/record-table/states/selectors/visibleTableColumnsComponentSelector';
-import { MoveFocusDirection } from '@/object-record/record-table/types/MoveFocusDirection';
-import { TableCellPosition } from '@/object-record/record-table/types/TableCellPosition';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { RecordTableContextProvider as RecordTableContextInternalProvider } from '@/object-record/record-table/contexts/RecordTableContext';
+
+import { useObjectPermissionsForObject } from '@/object-record/hooks/useObjectPermissionsForObject';
+import { RecordFieldsScopeContextProvider } from '@/object-record/record-field-list/contexts/RecordFieldsScopeContext';
+import { visibleRecordFieldsComponentSelector } from '@/object-record/record-field/states/visibleRecordFieldsComponentSelector';
+import { recordIndexOpenRecordInState } from '@/object-record/record-index/states/recordIndexOpenRecordInState';
+import { RECORD_TABLE_CELL_INPUT_ID_PREFIX } from '@/object-record/record-table/constants/RecordTableCellInputIdPrefix';
+import { RECORD_TABLE_COLUMN_MIN_WIDTH } from '@/object-record/record-table/constants/RecordTableColumnMinWidth';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { ViewOpenRecordInType } from '@/views/types/ViewOpenRecordInType';
+import { useRecoilValue } from 'recoil';
+
+type RecordTableContextProviderProps = {
+  viewBarId: string;
+  recordTableId: string;
+  objectNameSingular: string;
+  onRecordIdentifierClick?: (rowIndex: number, recordId: string) => void;
+  children: ReactNode;
+};
 
 export const RecordTableContextProvider = ({
   viewBarId,
   recordTableId,
   objectNameSingular,
+  onRecordIdentifierClick,
   children,
-}: {
-  viewBarId: string;
-  recordTableId: string;
-  objectNameSingular: string;
-  children: ReactNode;
-}) => {
+}: RecordTableContextProviderProps) => {
   const { objectMetadataItem } = useObjectMetadataItem({
     objectNameSingular,
   });
 
-  const { upsertRecord } = useUpsertRecord({
-    objectNameSingular,
-    recordTableId,
-  });
+  const objectPermissions = useObjectPermissionsForObject(
+    objectMetadataItem.id,
+  );
 
-  const handleUpsertRecord = ({
-    persistField,
-    recordId,
-    fieldName,
-  }: {
-    persistField: () => void;
-    recordId: string;
-    fieldName: string;
-  }) => {
-    upsertRecord(persistField, recordId, fieldName);
-  };
-
-  const { openTableCell } = useOpenRecordTableCellV2(recordTableId);
-
-  const handleOpenTableCell = (args: OpenTableCellArgs) => {
-    openTableCell(args);
-  };
-
-  const { moveFocus } = useRecordTableMoveFocus(recordTableId);
-
-  const handleMoveFocus = (direction: MoveFocusDirection) => {
-    moveFocus(direction);
-  };
-
-  const { closeTableCell } = useCloseRecordTableCellV2(recordTableId);
-
-  const handleCloseTableCell = () => {
-    closeTableCell();
-  };
-
-  const { moveSoftFocusToCell } =
-    useMoveSoftFocusToCellOnHoverV2(recordTableId);
-
-  const handleMoveSoftFocusToCell = (cellPosition: TableCellPosition) => {
-    moveSoftFocusToCell(cellPosition);
-  };
-
-  const { triggerActionMenuDropdown } = useTriggerActionMenuDropdown({
-    recordTableId,
-  });
-
-  const handleActionMenuDropdown = (
-    event: React.MouseEvent,
-    recordId: string,
-  ) => {
-    triggerActionMenuDropdown(event, recordId);
-  };
-
-  const { handleContainerMouseEnter } = useHandleContainerMouseEnter({
-    recordTableId,
-  });
-
-  const visibleTableColumns = useRecoilComponentValueV2(
-    visibleTableColumnsComponentSelector,
+  const visibleRecordFields = useRecoilComponentValue(
+    visibleRecordFieldsComponentSelector,
     recordTableId,
   );
 
+  const recordIndexOpenRecordIn = useRecoilValue(recordIndexOpenRecordInState);
+  const triggerEvent =
+    recordIndexOpenRecordIn === ViewOpenRecordInType.SIDE_PANEL
+      ? 'CLICK'
+      : 'MOUSE_DOWN';
+
   return (
-    <RecordTableContext.Provider
-      value={{
-        viewBarId,
-        objectMetadataItem,
-        onUpsertRecord: handleUpsertRecord,
-        onOpenTableCell: handleOpenTableCell,
-        onMoveFocus: handleMoveFocus,
-        onCloseTableCell: handleCloseTableCell,
-        onMoveSoftFocusToCell: handleMoveSoftFocusToCell,
-        onActionMenuDropdownOpened: handleActionMenuDropdown,
-        onCellMouseEnter: handleContainerMouseEnter,
-        visibleTableColumns,
-        recordTableId,
-        objectNameSingular,
-      }}
+    <RecordFieldsScopeContextProvider
+      value={{ scopeInstanceId: RECORD_TABLE_CELL_INPUT_ID_PREFIX }}
     >
-      {children}
-    </RecordTableContext.Provider>
+      <RecordTableContextInternalProvider
+        value={{
+          viewBarId,
+          objectMetadataItem,
+          recordTableId,
+          objectNameSingular,
+          objectPermissions,
+          visibleRecordFields: visibleRecordFields.map((field) => ({
+            ...field,
+            size: Math.max(field.size, RECORD_TABLE_COLUMN_MIN_WIDTH),
+          })),
+          onRecordIdentifierClick,
+          triggerEvent,
+        }}
+      >
+        {children}
+      </RecordTableContextInternalProvider>
+    </RecordFieldsScopeContextProvider>
   );
 };

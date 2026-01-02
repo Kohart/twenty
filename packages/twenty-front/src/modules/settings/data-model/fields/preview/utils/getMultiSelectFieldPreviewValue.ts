@@ -1,11 +1,11 @@
 import { isNonEmptyArray } from '@apollo/client/utilities';
 import { isNonEmptyString } from '@sniptt/guards';
 
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { FieldMultiSelectValue } from '@/object-record/record-field/types/FieldMetadata';
-import { multiSelectFieldDefaultValueSchema } from '@/object-record/record-field/validation-schemas/multiSelectFieldDefaultValueSchema';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type FieldMultiSelectValue } from '@/object-record/record-field/ui/types/FieldMetadata';
+import { multiSelectFieldDefaultValueSchema } from '@/object-record/record-field/ui/validation-schemas/multiSelectFieldDefaultValueSchema';
+import { isDefined } from 'twenty-shared/utils';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
-import { isDefined } from '~/utils/isDefined';
 import { stripSimpleQuotesFromString } from '~/utils/string/stripSimpleQuotesFromString';
 
 export const getMultiSelectFieldPreviewValue = ({
@@ -17,7 +17,7 @@ export const getMultiSelectFieldPreviewValue = ({
   >;
 }): FieldMultiSelectValue => {
   if (
-    fieldMetadataItem.type !== FieldMetadataType.MultiSelect ||
+    fieldMetadataItem.type !== FieldMetadataType.MULTI_SELECT ||
     !fieldMetadataItem.options?.length
   ) {
     return null;
@@ -27,8 +27,9 @@ export const getMultiSelectFieldPreviewValue = ({
 
   return multiSelectFieldDefaultValueSchema(fieldMetadataItem.options)
     .refine(isDefined)
-    .transform((value) =>
-      value.map(stripSimpleQuotesFromString).filter(isNonEmptyString),
+    .transform(
+      (value) =>
+        value?.map(stripSimpleQuotesFromString).filter(isNonEmptyString) ?? [],
     )
     .refine(isNonEmptyArray)
     .catch(allOptionValues)

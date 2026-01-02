@@ -1,8 +1,9 @@
-import { Decorator, Meta, StoryObj } from '@storybook/react';
+import { type Decorator, type Meta, type StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from '@storybook/test';
-import { ComponentDecorator } from 'twenty-ui';
 
 import { SettingsAccountsBlocklistInput } from '@/settings/accounts/components/SettingsAccountsBlocklistInput';
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
+import { ComponentDecorator } from 'twenty-ui/testing';
 
 const updateBlockedEmailListJestFn = fn();
 
@@ -16,7 +17,7 @@ const ClearMocksDecorator: Decorator = (Story, context) => {
 const meta: Meta<typeof SettingsAccountsBlocklistInput> = {
   title: 'Modules/Settings/Accounts/Blocklist/SettingsAccountsBlocklistInput',
   component: SettingsAccountsBlocklistInput,
-  decorators: [ComponentDecorator, ClearMocksDecorator],
+  decorators: [ComponentDecorator, ClearMocksDecorator, I18nFrontDecorator],
   args: {
     updateBlockedEmailList: updateBlockedEmailListJestFn,
     blockedEmailOrDomainList: [],

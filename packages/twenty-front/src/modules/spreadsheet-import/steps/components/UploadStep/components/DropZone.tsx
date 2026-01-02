@@ -1,13 +1,16 @@
 import styled from '@emotion/styled';
 import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import * as XLSX from 'xlsx-ugnis';
+import { read, type WorkBook } from 'xlsx-ugnis';
 
+import { useNumberFormat } from '@/localization/hooks/useNumberFormat';
+import { SPREADSHEET_MAX_RECORD_IMPORT_CAPACITY } from '@/spreadsheet-import/constants/SpreadsheetMaxRecordImportCapacity';
 import { useSpreadsheetImportInternal } from '@/spreadsheet-import/hooks/useSpreadsheetImportInternal';
+import { useDownloadFakeRecords } from '@/spreadsheet-import/steps/components/UploadStep/hooks/useDownloadFakeRecords';
 import { readFileAsync } from '@/spreadsheet-import/utils/readFilesAsync';
-import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import { MainButton } from 'twenty-ui';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { MainButton } from 'twenty-ui/input';
 
 const StyledContainer = styled.div`
   align-items: center;
@@ -82,17 +85,41 @@ const StyledText = styled.span`
   padding: 16px;
 `;
 
+const StyledFooterText = styled.span`
+  color: ${({ theme }) => theme.font.color.tertiary};
+  font-size: ${({ theme }) => theme.font.size.xs};
+  font-weight: ${({ theme }) => theme.font.weight.regular};
+  text-align: center;
+  position: absolute;
+  bottom: ${({ theme }) => theme.spacing(4)};
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+`;
+
+const StyledButtonsContainer = styled.div`
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.spacing(2)};
+  max-width: 200px;
+  width: 100%;
+`;
+
 type DropZoneProps = {
-  onContinue: (data: XLSX.WorkBook, file: File) => void;
+  onContinue: (data: WorkBook, file: File) => void;
   isLoading: boolean;
 };
 
 export const DropZone = ({ onContinue, isLoading }: DropZoneProps) => {
   const { maxFileSize, dateFormat, parseRaw } = useSpreadsheetImportInternal();
+  const { formatNumber } = useNumberFormat();
 
   const [loading, setLoading] = useState(false);
 
-  const { enqueueSnackBar } = useSnackBar();
+  const { enqueueErrorSnackBar } = useSnackBar();
+
+  const { downloadSample } = useDownloadFakeRecords();
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     noClick: true,
@@ -109,16 +136,19 @@ export const DropZone = ({ onContinue, isLoading }: DropZoneProps) => {
     onDropRejected: (fileRejections) => {
       setLoading(false);
       fileRejections.forEach((fileRejection) => {
-        enqueueSnackBar(fileRejection.errors[0].message, {
-          title: `${fileRejection.file.name} upload rejected`,
-          variant: SnackBarVariant.Error,
+        const fileName = fileRejection.file.name;
+        enqueueErrorSnackBar({
+          message: t`${fileName} upload rejected`,
+          options: {
+            detailedMessage: fileRejection.errors[0].message,
+          },
         });
       });
     },
     onDropAccepted: async ([file]) => {
       setLoading(true);
       const arrayBuffer = await readFileAsync(file);
-      const workbook = XLSX.read(arrayBuffer, {
+      const workbook = read(arrayBuffer, {
         cellDates: true,
         codepage: 65001, // UTF-8 codepage
         dateNF: dateFormat,
@@ -129,6 +159,12 @@ export const DropZone = ({ onContinue, isLoading }: DropZoneProps) => {
       onContinue(workbook, file);
     },
   });
+
+  const { t } = useLingui();
+
+  const formatSpreadsheetMaxRecordImportCapacity = formatNumber(
+    SPREADSHEET_MAX_RECORD_IMPORT_CAPACITY,
+  );
 
   return (
     <StyledContainer
@@ -141,13 +177,30 @@ export const DropZone = ({ onContinue, isLoading }: DropZoneProps) => {
         {...getInputProps()}
       />
       {isDragActive ? (
-        <StyledText>Drop file here...</StyledText>
+        <StyledText>
+          <Trans>Drop file here...</Trans>
+        </StyledText>
       ) : loading || isLoading ? (
-        <StyledText>Processing...</StyledText>
+        <StyledText>
+          <Trans>Processing...</Trans>
+        </StyledText>
       ) : (
         <>
-          <StyledText>Upload .xlsx, .xls or .csv file</StyledText>
-          <MainButton onClick={open} title="Select file" />
+          <StyledText>
+            <Trans>Upload .xlsx, .xls or .csv file</Trans>
+          </StyledText>
+          <StyledButtonsContainer>
+            <MainButton onClick={open} title={t`Select file`} fullWidth />
+            <MainButton
+              onClick={downloadSample}
+              title={t`Download sample`}
+              variant="secondary"
+              fullWidth
+            />
+          </StyledButtonsContainer>
+          <StyledFooterText>
+            {t`Max import capacity: ${formatSpreadsheetMaxRecordImportCapacity} records. Otherwise, consider splitting your file or using the API.`}
+          </StyledFooterText>
         </>
       )}
     </StyledContainer>

@@ -1,46 +1,64 @@
-import { useNavigate } from 'react-router-dom';
-import { IconComponent, IconGoogle, IconMicrosoft } from 'twenty-ui';
-
-import { ConnectedAccount } from '@/accounts/types/ConnectedAccount';
+import { type ConnectedAccount } from '@/accounts/types/ConnectedAccount';
 import { SettingsAccountsListEmptyStateCard } from '@/settings/accounts/components/SettingsAccountsListEmptyStateCard';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
-import { SettingsPath } from '@/types/SettingsPath';
+import { SettingsConnectedAccountsTableHeader } from '@/settings/accounts/components/SettingsConnectedAccountsTableHeader';
+import { SettingsConnectedAccountsTableRow } from '@/settings/components/SettingsConnectedAccountsTableRow';
+import { Table } from '@/ui/layout/table/components/Table';
+import styled from '@emotion/styled';
+import { SettingsPath } from 'twenty-shared/types';
 
-import { SettingsAccountsConnectedAccountsRowRightContainer } from '@/settings/accounts/components/SettingsAccountsConnectedAccountsRowRightContainer';
-import { SettingsListCard } from '../../components/SettingsListCard';
+import { useLingui } from '@lingui/react/macro';
+import { IconPlus } from 'twenty-ui/display';
 
-const ProviderIcons: { [k: string]: IconComponent } = {
-  google: IconGoogle,
-  microsoft: IconMicrosoft,
-};
+import { Button } from 'twenty-ui/input';
+import { Section } from 'twenty-ui/layout';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
+
+const StyledTableRows = styled.div`
+  padding-bottom: ${({ theme }) => theme.spacing(2)};
+  padding-top: ${({ theme }) => theme.spacing(2)};
+`;
+
+const StyledAddAccountSection = styled(Section)`
+  border-top: 1px solid ${({ theme }) => theme.border.color.light};
+  display: flex;
+  justify-content: flex-end;
+  padding-top: ${({ theme }) => theme.spacing(2)};
+`;
 
 export const SettingsAccountsConnectedAccountsListCard = ({
   accounts,
-  loading,
 }: {
   accounts: ConnectedAccount[];
-  loading?: boolean;
 }) => {
-  const navigate = useNavigate();
+  const { t } = useLingui();
+  const navigateSettings = useNavigateSettings();
 
   if (!accounts.length) {
     return <SettingsAccountsListEmptyStateCard />;
   }
 
   return (
-    <SettingsListCard
-      items={accounts}
-      getItemLabel={(account) => account.handle}
-      isLoading={loading}
-      RowIconFn={(row) => ProviderIcons[row.provider]}
-      RowRightComponent={({ item: account }) => (
-        <SettingsAccountsConnectedAccountsRowRightContainer account={account} />
-      )}
-      hasFooter
-      footerButtonLabel="Add account"
-      onFooterButtonClick={() =>
-        navigate(getSettingsPagePath(SettingsPath.NewAccount))
-      }
-    />
+    <Section>
+      <Table>
+        <SettingsConnectedAccountsTableHeader />
+        <StyledTableRows>
+          {accounts.map((account) => (
+            <SettingsConnectedAccountsTableRow
+              key={account.id}
+              account={account}
+            />
+          ))}
+        </StyledTableRows>
+      </Table>
+      <StyledAddAccountSection>
+        <Button
+          Icon={IconPlus}
+          title={t`Add account`}
+          variant="secondary"
+          size="small"
+          onClick={() => navigateSettings(SettingsPath.NewAccount)}
+        />
+      </StyledAddAccountSection>
+    </Section>
   );
 };

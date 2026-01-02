@@ -1,30 +1,28 @@
 import { useTheme } from '@emotion/react';
-import { styled } from '@linaria/react';
 
-import { FieldCurrencyValue } from '@/object-record/record-field/types/FieldMetadata';
+import { useNumberFormat } from '@/localization/hooks/useNumberFormat';
+import { type FieldDefinition } from '@/object-record/record-field/ui/types/FieldDefinition';
+import {
+  type FieldCurrencyMetadata,
+  type FieldCurrencyValue,
+} from '@/object-record/record-field/ui/types/FieldMetadata';
 import { SETTINGS_FIELD_CURRENCY_CODES } from '@/settings/data-model/constants/SettingsFieldCurrencyCodes';
-import { formatAmount } from '~/utils/format/formatAmount';
-import { isDefined } from '~/utils/isDefined';
+import { EllipsisDisplay } from '@/ui/field/display/components/EllipsisDisplay';
+import { isDefined } from 'twenty-shared/utils';
+import { DEFAULT_DECIMAL_VALUE } from '~/utils/format/formatNumber';
+import { formatToShortNumber } from '~/utils/format/formatToShortNumber';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 type CurrencyDisplayProps = {
   currencyValue: FieldCurrencyValue | null | undefined;
+  fieldDefinition: FieldDefinition<FieldCurrencyMetadata>;
 };
 
-const StyledEllipsisDisplay = styled.div`
-  align-items: center;
-  display: flex;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  width: 100%;
-`;
-
-export const CurrencyDisplay = ({ currencyValue }: CurrencyDisplayProps) => {
+export const CurrencyDisplay = ({
+  currencyValue,
+  fieldDefinition,
+}: CurrencyDisplayProps) => {
   const theme = useTheme();
-
-  const shouldDisplayCurrency = isDefined(currencyValue?.currencyCode);
 
   const CurrencyIcon = isDefined(currencyValue?.currencyCode)
     ? SETTINGS_FIELD_CURRENCY_CODES[currencyValue?.currencyCode]?.Icon
@@ -34,12 +32,14 @@ export const CurrencyDisplay = ({ currencyValue }: CurrencyDisplayProps) => {
     ? null
     : currencyValue?.amountMicros / 1000000;
 
-  if (!shouldDisplayCurrency) {
-    return <StyledEllipsisDisplay>{0}</StyledEllipsisDisplay>;
-  }
+  const format = fieldDefinition.metadata.settings?.format;
+  const decimals = fieldDefinition.metadata.settings?.decimals;
+  const decimalsToUse = decimals ?? DEFAULT_DECIMAL_VALUE;
+
+  const { formatNumber } = useNumberFormat();
 
   return (
-    <StyledEllipsisDisplay>
+    <EllipsisDisplay>
       {isDefined(CurrencyIcon) && amountToDisplay !== null && (
         <>
           <CurrencyIcon
@@ -49,7 +49,11 @@ export const CurrencyDisplay = ({ currencyValue }: CurrencyDisplayProps) => {
           />{' '}
         </>
       )}
-      {amountToDisplay !== null ? formatAmount(amountToDisplay) : ''}
-    </StyledEllipsisDisplay>
+      {amountToDisplay !== null
+        ? !isDefined(format) || format === 'short'
+          ? formatToShortNumber(amountToDisplay)
+          : formatNumber(amountToDisplay, { decimals: decimalsToUse })
+        : null}
+    </EllipsisDisplay>
   );
 };

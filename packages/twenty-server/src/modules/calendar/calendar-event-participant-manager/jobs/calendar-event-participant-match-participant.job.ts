@@ -3,18 +3,20 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
 
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
-import { CalendarEventParticipantWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-event-participant.workspace-entity';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { type CalendarEventParticipantWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-event-participant.workspace-entity';
 import { MatchParticipantService } from 'src/modules/match-participant/match-participant.service';
 
 export type CalendarEventParticipantMatchParticipantJobData = {
   workspaceId: string;
-  email: string;
-  personId?: string;
-  workspaceMemberId?: string;
+  participantMatching: {
+    personIds: string[];
+    personEmails: string[];
+    workspaceMemberIds: string[];
+  };
 };
 
 @Processor({
@@ -23,8 +25,8 @@ export type CalendarEventParticipantMatchParticipantJobData = {
 })
 export class CalendarEventParticipantMatchParticipantJob {
   constructor(
-    @InjectRepository(Workspace, 'core')
-    private readonly workspaceRepository: Repository<Workspace>,
+    @InjectRepository(WorkspaceEntity)
+    private readonly workspaceRepository: Repository<WorkspaceEntity>,
     private readonly matchParticipantService: MatchParticipantService<CalendarEventParticipantWorkspaceEntity>,
   ) {}
 
@@ -32,7 +34,7 @@ export class CalendarEventParticipantMatchParticipantJob {
   async handle(
     data: CalendarEventParticipantMatchParticipantJobData,
   ): Promise<void> {
-    const { workspaceId, email, personId, workspaceMemberId } = data;
+    const { workspaceId, participantMatching } = data;
 
     const workspace = await this.workspaceRepository.findOne({
       where: {
@@ -44,11 +46,23 @@ export class CalendarEventParticipantMatchParticipantJob {
       return;
     }
 
-    await this.matchParticipantService.matchParticipantsAfterPersonOrWorkspaceMemberCreation(
-      email,
-      'calendarEventParticipant',
-      personId,
-      workspaceMemberId,
-    );
+    if (
+      participantMatching.personIds.length > 0 ||
+      participantMatching.personEmails.length > 0
+    ) {
+      await this.matchParticipantService.matchParticipantsForPeople({
+        objectMetadataName: 'calendarEventParticipant',
+        participantMatching,
+        workspaceId,
+      });
+    }
+
+    if (participantMatching.workspaceMemberIds.length > 0) {
+      await this.matchParticipantService.matchParticipantsForWorkspaceMembers({
+        objectMetadataName: 'calendarEventParticipant',
+        participantMatching,
+        workspaceId,
+      });
+    }
   }
 }

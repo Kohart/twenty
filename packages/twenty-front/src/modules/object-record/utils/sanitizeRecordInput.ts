@@ -1,11 +1,9 @@
-import { isString } from '@sniptt/guards';
-
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { RelationDefinitionType } from '~/generated-metadata/graphql';
-import { FieldMetadataType } from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
-import { getUrlHostName } from '~/utils/url/getUrlHostName';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { isFieldMorphRelation } from '@/object-record/record-field/ui/types/guards/isFieldMorphRelation';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { isSystemSearchVectorField } from '@/object-record/utils/isSystemSearchVectorField';
+import { computeMorphRelationFieldName, isDefined } from 'twenty-shared/utils';
+import { FieldMetadataType, RelationType } from '~/generated-metadata/graphql';
 
 export const sanitizeRecordInput = ({
   objectMetadataItem,
@@ -17,35 +15,60 @@ export const sanitizeRecordInput = ({
   const filteredResultRecord = Object.fromEntries(
     Object.entries(recordInput)
       .map<[string, unknown] | undefined>(([fieldName, fieldValue]) => {
+        if (isSystemSearchVectorField(fieldName)) {
+          return undefined;
+        }
+
         const fieldMetadataItem = objectMetadataItem.fields.find(
           (field) => field.name === fieldName,
         );
+        const potentialJoinColumnNameFieldMetadataItem =
+          objectMetadataItem.fields.find(
+            (field) =>
+              field.type === FieldMetadataType.RELATION &&
+              field.settings?.joinColumnName === fieldName,
+          );
+        const potentialMorphRelationJoinColumnNameFieldMetadataItem =
+          objectMetadataItem.fields.find((field) => {
+            if (!isFieldMorphRelation(field)) return false;
+            return field.morphRelations?.some((morphRelation) => {
+              const computedFieldName = computeMorphRelationFieldName({
+                fieldName: field.name,
+                relationType: morphRelation.type,
+                targetObjectMetadataNameSingular:
+                  morphRelation.targetObjectMetadata.nameSingular,
+                targetObjectMetadataNamePlural:
+                  morphRelation.targetObjectMetadata.namePlural,
+              });
+              return computedFieldName === fieldName.replace('Id', '');
+            });
+          });
 
-        if (!fieldMetadataItem) return undefined;
+        if (
+          !isDefined(fieldMetadataItem) &&
+          !isDefined(potentialJoinColumnNameFieldMetadataItem) &&
+          !isDefined(potentialMorphRelationJoinColumnNameFieldMetadataItem)
+        ) {
+          return undefined;
+        }
 
-        if (!fieldMetadataItem.isNullable && fieldValue == null) {
+        if (fieldMetadataItem?.isNullable === false && fieldValue == null) {
           return undefined;
         }
 
         if (
-          fieldMetadataItem.type === FieldMetadataType.Relation &&
-          fieldMetadataItem.relationDefinition?.direction ===
-            RelationDefinitionType.ManyToOne
+          isDefined(fieldMetadataItem) &&
+          fieldMetadataItem.type === FieldMetadataType.RELATION &&
+          fieldMetadataItem.relation?.type === RelationType.MANY_TO_ONE &&
+          !isDefined(recordInput[fieldMetadataItem.name]?.connect?.where)
         ) {
-          const relationIdFieldName = `${fieldMetadataItem.name}Id`;
-          const relationIdFieldMetadataItem = objectMetadataItem.fields.find(
-            (field) => field.name === relationIdFieldName,
-          );
-
-          return relationIdFieldMetadataItem
-            ? [relationIdFieldName, fieldValue?.id ?? null]
-            : undefined;
+          return undefined;
         }
 
         if (
-          fieldMetadataItem.type === FieldMetadataType.Relation &&
-          fieldMetadataItem.relationDefinition?.direction ===
-            RelationDefinitionType.OneToMany
+          isDefined(fieldMetadataItem) &&
+          fieldMetadataItem.type === FieldMetadataType.RELATION &&
+          fieldMetadataItem.relation?.type === RelationType.ONE_TO_MANY
         ) {
           return undefined;
         }
@@ -56,15 +79,5 @@ export const sanitizeRecordInput = ({
       })
       .filter(isDefined),
   );
-  if (
-    !(
-      isDefined(filteredResultRecord.domainName) &&
-      isString(filteredResultRecord.domainName)
-    )
-  )
-    return filteredResultRecord;
-  return {
-    ...filteredResultRecord,
-    domainName: getUrlHostName(filteredResultRecord.domainName as string),
-  };
+  return filteredResultRecord;
 };

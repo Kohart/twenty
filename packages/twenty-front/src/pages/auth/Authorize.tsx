@@ -1,11 +1,15 @@
-import { AppPath } from '@/types/AppPath';
 import styled from '@emotion/styled';
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { AppPath } from 'twenty-shared/types';
 
-import { MainButton, UndecoratedLink } from 'twenty-ui';
-import { useAuthorizeAppMutation } from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
+import { useRedirect } from '@/domain-manager/hooks/useRedirect';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { isDefined } from 'twenty-shared/utils';
+import { MainButton } from 'twenty-ui/input';
+import { UndecoratedLink } from 'twenty-ui/navigation';
+import { useAuthorizeAppMutation } from '~/generated-metadata/graphql';
+import { useNavigateApp } from '~/hooks/useNavigateApp';
 
 type App = { id: string; name: string; logo: string };
 
@@ -53,8 +57,10 @@ const StyledButtonContainer = styled.div`
   width: 100%;
 `;
 export const Authorize = () => {
-  const navigate = useNavigate();
+  const { t } = useLingui();
+  const navigate = useNavigateApp();
   const [searchParam] = useSearchParams();
+  const { redirect } = useRedirect();
   //TODO: Replace with db call for registered third party apps
   const [apps] = useState<App[]>([
     {
@@ -89,11 +95,13 @@ export const Authorize = () => {
           redirectUrl,
         },
         onCompleted: (data) => {
-          window.location.href = data.authorizeApp.redirectUrl;
+          redirect(data.authorizeApp.redirectUrl);
         },
       });
     }
   };
+
+  const appName = app?.name;
 
   return (
     <StyledContainer>
@@ -113,12 +121,18 @@ export const Authorize = () => {
           />
           <img src={app?.logo} alt="app-icon" height={40} width={40} />
         </StyledAppsContainer>
-        <StyledText>{app?.name} wants to access your account</StyledText>
+        <StyledText>
+          <Trans>{appName} wants to access your account</Trans>
+        </StyledText>
         <StyledButtonContainer>
           <UndecoratedLink to={AppPath.Index}>
-            <MainButton title="Cancel" variant="secondary" fullWidth />
+            <MainButton title={t`Cancel`} variant="secondary" fullWidth />
           </UndecoratedLink>
-          <MainButton title="Authorize" onClick={handleAuthorize} fullWidth />
+          <MainButton
+            title={t`Authorize`}
+            onClick={handleAuthorize}
+            fullWidth
+          />
         </StyledButtonContainer>
       </StyledCardWrapper>
     </StyledContainer>

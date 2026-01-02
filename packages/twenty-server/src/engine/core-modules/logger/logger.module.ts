@@ -1,11 +1,16 @@
-import { ConsoleLogger, DynamicModule, Global, Module } from '@nestjs/common';
+import {
+  ConsoleLogger,
+  type DynamicModule,
+  Global,
+  Module,
+} from '@nestjs/common';
 
 import { LoggerDriverType } from 'src/engine/core-modules/logger/interfaces';
 import { LOGGER_DRIVER } from 'src/engine/core-modules/logger/logger.constants';
 import {
-  ASYNC_OPTIONS_TYPE,
+  type ASYNC_OPTIONS_TYPE,
   ConfigurableModuleClass,
-  OPTIONS_TYPE,
+  type OPTIONS_TYPE,
 } from 'src/engine/core-modules/logger/logger.module-definition';
 import { LoggerService } from 'src/engine/core-modules/logger/logger.service';
 
@@ -19,7 +24,7 @@ export class LoggerModule extends ConfigurableModuleClass {
     const provider = {
       provide: LOGGER_DRIVER,
       useValue:
-        options.type === LoggerDriverType.Console
+        options.type === LoggerDriverType.CONSOLE
           ? new ConsoleLogger()
           : undefined,
     };
@@ -34,6 +39,7 @@ export class LoggerModule extends ConfigurableModuleClass {
   static forRootAsync(options: typeof ASYNC_OPTIONS_TYPE): DynamicModule {
     const provider = {
       provide: LOGGER_DRIVER,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       useFactory: async (...args: any[]) => {
         const config = await options?.useFactory?.(...args);
 
@@ -44,7 +50,7 @@ export class LoggerModule extends ConfigurableModuleClass {
         const logLevels = config.logLevels ?? [];
 
         const logger =
-          config?.type === LoggerDriverType.Console
+          config?.type === LoggerDriverType.CONSOLE
             ? new ConsoleLogger()
             : undefined;
 

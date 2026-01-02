@@ -2,13 +2,15 @@ import styled from '@emotion/styled';
 import {
   DragDropContext,
   Droppable,
-  OnDragEndResponder,
+  type OnDragEndResponder,
+  type OnDragStartResponder,
 } from '@hello-pangea/dnd';
 import { useState } from 'react';
 import { v4 } from 'uuid';
 type DraggableListProps = {
   draggableItems: React.ReactNode;
   onDragEnd: OnDragEndResponder;
+  onDragStart?: OnDragStartResponder;
 };
 
 const StyledDragDropItemsWrapper = styled.div`
@@ -18,11 +20,12 @@ const StyledDragDropItemsWrapper = styled.div`
 export const DraggableList = ({
   draggableItems,
   onDragEnd,
+  onDragStart,
 }: DraggableListProps) => {
   const [v4Persistable] = useState(v4());
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
+    <DragDropContext onDragEnd={onDragEnd} onDragStart={onDragStart}>
       <StyledDragDropItemsWrapper>
         <Droppable droppableId={v4Persistable}>
           {(provided) => (

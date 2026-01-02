@@ -1,35 +1,40 @@
 import { useRecoilCallback } from 'recoil';
 
-import { currentTableCellInEditModePositionComponentState } from '@/object-record/record-table/states/currentTableCellInEditModePositionComponentState';
-import { isTableCellInEditModeComponentFamilyState } from '@/object-record/record-table/states/isTableCellInEditModeComponentFamilyState';
-import { getSnapshotValue } from '@/ui/utilities/recoil-scope/utils/getSnapshotValue';
-import { useRecoilComponentCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackStateV2';
+import { recordTableCellEditModePositionComponentState } from '@/object-record/record-table/states/recordTableCellEditModePositionComponentState';
+import { useGoBackToPreviousDropdownFocusId } from '@/ui/layout/dropdown/hooks/useGoBackToPreviousDropdownFocusId';
+import { useRemoveLastFocusItemFromFocusStackByComponentType } from '@/ui/utilities/focus/hooks/useRemoveFocusItemFromFocusStackByComponentType';
+import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
+import { useRecoilComponentCallbackState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackState';
 
 export const useCloseCurrentTableCellInEditMode = (recordTableId?: string) => {
   const currentTableCellInEditModePositionState =
-    useRecoilComponentCallbackStateV2(
-      currentTableCellInEditModePositionComponentState,
+    useRecoilComponentCallbackState(
+      recordTableCellEditModePositionComponentState,
       recordTableId,
     );
-  const isTableCellInEditModeFamilyState = useRecoilComponentCallbackStateV2(
-    isTableCellInEditModeComponentFamilyState,
-    recordTableId,
-  );
+
+  const { goBackToPreviousDropdownFocusId } =
+    useGoBackToPreviousDropdownFocusId();
+
+  const { removeLastFocusItemFromFocusStackByComponentType } =
+    useRemoveLastFocusItemFromFocusStackByComponentType();
 
   return useRecoilCallback(
-    ({ set, snapshot }) => {
-      return async () => {
-        const currentTableCellInEditModePosition = getSnapshotValue(
-          snapshot,
-          currentTableCellInEditModePositionState,
-        );
+    ({ set }) => {
+      return () => {
+        set(currentTableCellInEditModePositionState, null);
 
-        set(
-          isTableCellInEditModeFamilyState(currentTableCellInEditModePosition),
-          false,
-        );
+        goBackToPreviousDropdownFocusId();
+
+        removeLastFocusItemFromFocusStackByComponentType({
+          componentType: FocusComponentType.OPENED_FIELD_INPUT,
+        });
       };
     },
-    [currentTableCellInEditModePositionState, isTableCellInEditModeFamilyState],
+    [
+      currentTableCellInEditModePositionState,
+      goBackToPreviousDropdownFocusId,
+      removeLastFocusItemFromFocusStackByComponentType,
+    ],
   );
 };

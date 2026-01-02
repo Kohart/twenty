@@ -1,4 +1,4 @@
-import { getActivitySummary } from '../getActivitySummary';
+import { getActivitySummary } from '@/activities/utils/getActivitySummary';
 
 describe('getActivitySummary', () => {
   it('should work for empty body ""', () => {
@@ -75,7 +75,7 @@ describe('getActivitySummary', () => {
         props: {
           backgroundColor: 'default',
           textAlignment: 'left',
-          url: 'https://favicon.twenty.com/qonto.com',
+          url: 'https://twenty-icons.com/anthropic.com',
           caption: '',
           width: 230,
         },

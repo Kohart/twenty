@@ -1,12 +1,8 @@
-import { GlobalActionMenuEntriesSetter } from '@/action-menu/actions/global-actions/components/GlobalActionMenuEntriesSetter';
-import { RecordActionMenuEntriesSetter } from '@/action-menu/actions/record-actions/components/RecordActionMenuEntriesSetter';
-import { ActionMenuConfirmationModals } from '@/action-menu/components/ActionMenuConfirmationModals';
-import { ActionMenuComponentInstanceContext } from '@/action-menu/states/contexts/ActionMenuComponentInstanceContext';
 import { AuthModal } from '@/auth/components/AuthModal';
-import { CommandMenu } from '@/command-menu/components/CommandMenu';
-import { CommandMenuCommandsEffect } from '@/command-menu/components/CommandMenuCommandsEffect';
-import { ContextStoreComponentInstanceContext } from '@/context-store/states/contexts/ContextStoreComponentInstanceContext';
 import { AppErrorBoundary } from '@/error-handler/components/AppErrorBoundary';
+import { AppFullScreenErrorFallback } from '@/error-handler/components/AppFullScreenErrorFallback';
+import { AppPageErrorFallback } from '@/error-handler/components/AppPageErrorFallback';
+import { InformationBannerIsImpersonating } from '@/information-banner/components/impersonate/InformationBannerIsImpersonating';
 import { KeyboardShortcutMenu } from '@/keyboard-shortcut-menu/components/KeyboardShortcutMenu';
 import { AppNavigationDrawer } from '@/navigation/components/AppNavigationDrawer';
 import { MobileNavigationBar } from '@/navigation/components/MobileNavigationBar';
@@ -14,14 +10,15 @@ import { useIsSettingsPage } from '@/navigation/hooks/useIsSettingsPage';
 import { OBJECT_SETTINGS_WIDTH } from '@/settings/data-model/constants/ObjectSettings';
 import { SignInAppNavigationDrawerMock } from '@/sign-in-background-mock/components/SignInAppNavigationDrawerMock';
 import { SignInBackgroundMockPage } from '@/sign-in-background-mock/components/SignInBackgroundMockPage';
+import { useShowFullscreen } from '@/ui/layout/fullscreen/hooks/useShowFullscreen';
 import { useShowAuthModal } from '@/ui/layout/hooks/useShowAuthModal';
-import { NAV_DRAWER_WIDTHS } from '@/ui/navigation/navigation-drawer/constants/NavDrawerWidths';
+import { NAVIGATION_DRAWER_CONSTRAINTS } from '@/ui/layout/resizable-panel/constants/NavigationDrawerConstraints';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
-import { css, Global, useTheme } from '@emotion/react';
+import { Global, css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { Outlet } from 'react-router-dom';
-import { useScreenSize } from 'twenty-ui';
+import { useScreenSize } from 'twenty-ui/utilities';
 
 const StyledLayout = styled.div`
   background: ${({ theme }) => theme.background.noisy};
@@ -29,21 +26,11 @@ const StyledLayout = styled.div`
   flex-direction: column;
   height: 100dvh;
   position: relative;
-  scrollbar-color: ${({ theme }) => theme.border.color.medium};
+  scrollbar-color: ${({ theme }) => theme.border.color.medium} transparent;
   scrollbar-width: 4px;
   width: 100%;
 
-  *::-webkit-scrollbar {
-    height: 4px;
-    width: 4px;
-  }
-
-  *::-webkit-scrollbar-corner {
-    background-color: transparent;
-  }
-
   *::-webkit-scrollbar-thumb {
-    background-color: transparent;
     border-radius: ${({ theme }) => theme.border.radius.sm};
   }
 `;
@@ -75,6 +62,7 @@ export const DefaultLayout = () => {
   const theme = useTheme();
   const windowsWidth = useScreenSize().width;
   const showAuthModal = useShowAuthModal();
+  const useShowFullScreen = useShowFullscreen();
 
   return (
     <>
@@ -86,45 +74,34 @@ export const DefaultLayout = () => {
         `}
       />
       <StyledLayout>
-        <ContextStoreComponentInstanceContext.Provider
-          value={{ instanceId: 'command-menu' }}
-        >
-          <ActionMenuComponentInstanceContext.Provider
-            value={{ instanceId: 'command-menu' }}
+        <AppErrorBoundary FallbackComponent={AppFullScreenErrorFallback}>
+          <InformationBannerIsImpersonating />
+          <StyledPageContainer
+            animate={{
+              marginLeft:
+                isSettingsPage && !isMobile && !useShowFullScreen
+                  ? (windowsWidth -
+                      (OBJECT_SETTINGS_WIDTH +
+                        NAVIGATION_DRAWER_CONSTRAINTS.default +
+                        76)) /
+                    2
+                  : 0,
+            }}
+            transition={{
+              duration: theme.animation.duration.normal,
+            }}
           >
-            <RecordActionMenuEntriesSetter />
-            <GlobalActionMenuEntriesSetter />
-            <ActionMenuConfirmationModals />
-            <CommandMenuCommandsEffect />
-            <CommandMenu />
-          </ActionMenuComponentInstanceContext.Provider>
-        </ContextStoreComponentInstanceContext.Provider>
-        <KeyboardShortcutMenu />
-
-        <StyledPageContainer
-          animate={{
-            marginLeft:
-              isSettingsPage && !isMobile
-                ? (windowsWidth -
-                    (OBJECT_SETTINGS_WIDTH +
-                      NAV_DRAWER_WIDTHS.menu.desktop.expanded +
-                      64)) /
-                  2
-                : 0,
-          }}
-          transition={{
-            duration: theme.animation.duration.normal,
-          }}
-        >
-          {showAuthModal ? (
-            <StyledAppNavigationDrawerMock />
-          ) : (
-            <StyledAppNavigationDrawer />
-          )}
-          <StyledMainContainer>
+            {!showAuthModal && <KeyboardShortcutMenu />}
+            {showAuthModal ? (
+              <StyledAppNavigationDrawerMock />
+            ) : useShowFullScreen ? null : (
+              <StyledAppNavigationDrawer />
+            )}
             {showAuthModal ? (
               <>
-                <SignInBackgroundMockPage />
+                <StyledMainContainer>
+                  <SignInBackgroundMockPage />
+                </StyledMainContainer>
                 <AnimatePresence mode="wait">
                   <LayoutGroup>
                     <AuthModal>
@@ -134,13 +111,15 @@ export const DefaultLayout = () => {
                 </AnimatePresence>
               </>
             ) : (
-              <AppErrorBoundary>
-                <Outlet />
-              </AppErrorBoundary>
+              <StyledMainContainer>
+                <AppErrorBoundary FallbackComponent={AppPageErrorFallback}>
+                  <Outlet />
+                </AppErrorBoundary>
+              </StyledMainContainer>
             )}
-          </StyledMainContainer>
-        </StyledPageContainer>
-        {isMobile && <MobileNavigationBar />}
+          </StyledPageContainer>
+          {isMobile && !showAuthModal && <MobileNavigationBar />}
+        </AppErrorBoundary>
       </StyledLayout>
     </>
   );

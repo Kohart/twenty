@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-import { IndexFieldMetadataItem } from '@/object-metadata/types/IndexFieldMetadataItem';
+import { type IndexFieldMetadataItem } from '@/object-metadata/types/IndexFieldMetadataItem';
 
 export const indexFieldMetadataItemSchema = z.object({
-  __typename: z.literal('indexField'),
-  fieldMetadataId: z.string().uuid(),
+  __typename: z.literal('IndexField'),
+  fieldMetadataId: z.uuid(),
   id: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),

@@ -1,7 +1,7 @@
-import { QueryResultGetterHandlerInterface } from 'src/engine/api/graphql/workspace-query-runner/factories/query-result-getters/interfaces/query-result-getter-handler.interface';
+import { type QueryResultGetterHandlerInterface } from 'src/engine/api/graphql/workspace-query-runner/factories/query-result-getters/interfaces/query-result-getter-handler.interface';
 
-import { FileService } from 'src/engine/core-modules/file/services/file.service';
-import { AttachmentWorkspaceEntity } from 'src/modules/attachment/standard-objects/attachment.workspace-entity';
+import { type FileService } from 'src/engine/core-modules/file/services/file.service';
+import { type AttachmentWorkspaceEntity } from 'src/modules/attachment/standard-objects/attachment.workspace-entity';
 
 export class AttachmentQueryResultGetterHandler
   implements QueryResultGetterHandlerInterface
@@ -16,14 +16,16 @@ export class AttachmentQueryResultGetterHandler
       return attachment;
     }
 
-    const signedPayload = await this.fileService.encodeFileToken({
-      attachmentId: attachment.id,
-      workspaceId: workspaceId,
+    const signedPath = this.fileService.signFileUrl({
+      url: attachment.fullPath,
+      workspaceId,
     });
+
+    const fullPath = `${process.env.SERVER_URL}/files/${signedPath}`;
 
     return {
       ...attachment,
-      fullPath: `${attachment.fullPath}?token=${signedPayload}`,
+      fullPath,
     };
   }
 }

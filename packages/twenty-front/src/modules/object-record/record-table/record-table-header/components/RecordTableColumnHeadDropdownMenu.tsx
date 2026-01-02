@@ -1,133 +1,180 @@
+import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
+import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
+
+import { isFieldMetadataItemFilterableAndSortableSelector } from '@/object-metadata/states/isFieldMetadataItemFilterableAndSortableSelector';
+import { isFieldMetadataItemLabelIdentifierSelector } from '@/object-metadata/states/isFieldMetadataItemLabelIdentifierSelector';
+import { useChangeRecordFieldVisibility } from '@/object-record/record-field/hooks/useChangeRecordFieldVisibility';
+import { type RecordField } from '@/object-record/record-field/types/RecordField';
+import { useHandleToggleColumnSort } from '@/object-record/record-index/hooks/useHandleToggleColumnSort';
+import { useRecordTableContextOrThrow } from '@/object-record/record-table/contexts/RecordTableContext';
+import { useMoveTableColumn } from '@/object-record/record-table/hooks/useMoveTableColumn';
+import { useOpenRecordFilterChipFromTableHeader } from '@/object-record/record-table/record-table-header/hooks/useOpenRecordFilterChipFromTableHeader';
+import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
+import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
+import { useToggleScrollWrapper } from '@/ui/utilities/scroll/hooks/useToggleScrollWrapper';
+import styled from '@emotion/styled';
+import { useLingui } from '@lingui/react/macro';
+import { useRecoilValue } from 'recoil';
 import {
   IconArrowLeft,
   IconArrowRight,
   IconEyeOff,
   IconFilter,
   IconSortDescending,
-  MenuItem,
-} from 'twenty-ui';
-
-import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
-import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
-import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
-import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
-
-import { onToggleColumnFilterComponentState } from '@/object-record/record-table/states/onToggleColumnFilterComponentState';
-import { onToggleColumnSortComponentState } from '@/object-record/record-table/states/onToggleColumnSortComponentState';
-import { visibleTableColumnsComponentSelector } from '@/object-record/record-table/states/selectors/visibleTableColumnsComponentSelector';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { useTableColumns } from '../../hooks/useTableColumns';
-import { ColumnDefinition } from '../../types/ColumnDefinition';
+} from 'twenty-ui/display';
+import { MenuItem } from 'twenty-ui/navigation';
 
 export type RecordTableColumnHeadDropdownMenuProps = {
-  column: ColumnDefinition<FieldMetadata>;
+  recordField: RecordField;
+  objectMetadataId: string;
 };
 
+const StyledDropdownMenuItemsContainer = styled(DropdownMenuItemsContainer)`
+  z-index: ${({ theme }) => theme.lastLayerZIndex};
+`;
+
 export const RecordTableColumnHeadDropdownMenu = ({
-  column,
+  recordField,
+  objectMetadataId,
 }: RecordTableColumnHeadDropdownMenuProps) => {
-  const visibleTableColumns = useRecoilComponentValueV2(
-    visibleTableColumnsComponentSelector,
+  const { t } = useLingui();
+
+  const { toggleScrollXWrapper, toggleScrollYWrapper } =
+    useToggleScrollWrapper();
+
+  const { visibleRecordFields } = useRecordTableContextOrThrow();
+
+  const isLabelIdentifier = useRecoilValue(
+    isFieldMetadataItemLabelIdentifierSelector({
+      fieldMetadataItemId: recordField.fieldMetadataItemId,
+    }),
   );
 
-  const secondVisibleColumn = visibleTableColumns[1];
-  const canMove = column.isLabelIdentifier !== true;
+  const secondVisibleRecordField = visibleRecordFields[1];
+  const canMove = isLabelIdentifier !== true;
   const canMoveLeft =
-    column.fieldMetadataId !== secondVisibleColumn?.fieldMetadataId && canMove;
+    recordField.fieldMetadataItemId !==
+      secondVisibleRecordField?.fieldMetadataItemId && canMove;
 
-  const lastVisibleColumn = visibleTableColumns[visibleTableColumns.length - 1];
+  const lastVisibleRecordField =
+    visibleRecordFields[visibleRecordFields.length - 1];
+
   const canMoveRight =
-    column.fieldMetadataId !== lastVisibleColumn?.fieldMetadataId && canMove;
+    recordField.fieldMetadataItemId !==
+      lastVisibleRecordField?.fieldMetadataItemId && canMove;
 
-  const { handleColumnVisibilityChange, handleMoveTableColumn } =
-    useTableColumns();
+  const { recordTableId } = useRecordTableContextOrThrow();
 
-  const { closeDropdown } = useDropdown(column.fieldMetadataId + '-header');
+  const { moveTableColumn } = useMoveTableColumn({
+    recordTableId,
+  });
+
+  const { changeRecordFieldVisibility } =
+    useChangeRecordFieldVisibility(recordTableId);
+
+  const dropdownId = recordField.fieldMetadataItemId + '-header';
+
+  const { closeDropdown } = useCloseDropdown();
+
+  const closeDropdownAndToggleScroll = () => {
+    closeDropdown(dropdownId);
+    toggleScrollXWrapper(true);
+    toggleScrollYWrapper(false);
+  };
 
   const handleColumnMoveLeft = () => {
-    closeDropdown();
+    closeDropdownAndToggleScroll();
 
     if (!canMoveLeft) return;
 
-    handleMoveTableColumn('left', column);
+    moveTableColumn('left', recordField.fieldMetadataItemId);
   };
 
   const handleColumnMoveRight = () => {
-    closeDropdown();
+    closeDropdownAndToggleScroll();
 
     if (!canMoveRight) return;
 
-    handleMoveTableColumn('right', column);
+    moveTableColumn('right', recordField.fieldMetadataItemId);
   };
 
-  const handleColumnVisibility = () => {
-    closeDropdown();
-    handleColumnVisibilityChange(column);
+  const handleColumnVisibility = async () => {
+    closeDropdownAndToggleScroll();
+    await changeRecordFieldVisibility({
+      fieldMetadataId: recordField.fieldMetadataItemId,
+      isVisible: false,
+    });
   };
 
-  const onToggleColumnFilter = useRecoilComponentValueV2(
-    onToggleColumnFilterComponentState,
-  );
-  const onToggleColumnSort = useRecoilComponentValueV2(
-    onToggleColumnSortComponentState,
-  );
+  const handleToggleColumnSort = useHandleToggleColumnSort({
+    objectMetadataItemId: objectMetadataId,
+  });
 
   const handleSortClick = () => {
-    closeDropdown();
+    closeDropdownAndToggleScroll();
 
-    onToggleColumnSort?.(column.fieldMetadataId);
+    handleToggleColumnSort(recordField.fieldMetadataItemId);
   };
+
+  const { openRecordFilterChipFromTableHeader } =
+    useOpenRecordFilterChipFromTableHeader();
 
   const handleFilterClick = () => {
-    closeDropdown();
+    closeDropdownAndToggleScroll();
 
-    onToggleColumnFilter?.(column.fieldMetadataId);
+    openRecordFilterChipFromTableHeader(recordField.fieldMetadataItemId);
   };
 
-  const isSortable = column.isSortable === true;
-  const isFilterable = column.isFilterable === true;
+  const { isFilterable, isSortable } = useRecoilValue(
+    isFieldMetadataItemFilterableAndSortableSelector({
+      fieldMetadataItemId: recordField.fieldMetadataItemId,
+    }),
+  );
+
   const showSeparator =
-    (isFilterable || isSortable) && column.isLabelIdentifier !== true;
-  const canHide = column.isLabelIdentifier !== true;
+    (isFilterable || isSortable) && isLabelIdentifier !== true;
+  const canHide = isLabelIdentifier !== true;
 
   return (
-    <DropdownMenuItemsContainer>
-      {isFilterable && (
-        <MenuItem
-          LeftIcon={IconFilter}
-          onClick={handleFilterClick}
-          text="Filter"
-        />
-      )}
-      {isSortable && (
-        <MenuItem
-          LeftIcon={IconSortDescending}
-          onClick={handleSortClick}
-          text="Sort"
-        />
-      )}
-      {showSeparator && <DropdownMenuSeparator />}
-      {canMoveLeft && (
-        <MenuItem
-          LeftIcon={IconArrowLeft}
-          onClick={handleColumnMoveLeft}
-          text="Move left"
-        />
-      )}
-      {canMoveRight && (
-        <MenuItem
-          LeftIcon={IconArrowRight}
-          onClick={handleColumnMoveRight}
-          text="Move right"
-        />
-      )}
-      {canHide && (
-        <MenuItem
-          LeftIcon={IconEyeOff}
-          onClick={handleColumnVisibility}
-          text="Hide"
-        />
-      )}
-    </DropdownMenuItemsContainer>
+    <DropdownContent>
+      <StyledDropdownMenuItemsContainer>
+        {isFilterable && (
+          <MenuItem
+            LeftIcon={IconFilter}
+            onClick={handleFilterClick}
+            text={t`Filter`}
+          />
+        )}
+        {isSortable && (
+          <MenuItem
+            LeftIcon={IconSortDescending}
+            onClick={handleSortClick}
+            text={t`Sort`}
+          />
+        )}
+        {showSeparator && <DropdownMenuSeparator />}
+        {canMoveLeft && (
+          <MenuItem
+            LeftIcon={IconArrowLeft}
+            onClick={handleColumnMoveLeft}
+            text={t`Move left`}
+          />
+        )}
+        {canMoveRight && (
+          <MenuItem
+            LeftIcon={IconArrowRight}
+            onClick={handleColumnMoveRight}
+            text={t`Move right`}
+          />
+        )}
+        {canHide && (
+          <MenuItem
+            LeftIcon={IconEyeOff}
+            onClick={async () => await handleColumnVisibility()}
+            text={t`Hide`}
+          />
+        )}
+      </StyledDropdownMenuItemsContainer>
+    </DropdownContent>
   );
 };

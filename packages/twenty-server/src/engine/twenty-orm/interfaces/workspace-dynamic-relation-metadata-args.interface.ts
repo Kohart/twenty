@@ -1,12 +1,10 @@
-import { ObjectType } from 'typeorm';
+import { type ObjectType } from 'typeorm';
+import { type RelationOnDeleteAction } from 'twenty-shared/types';
 
-import { Gate } from 'src/engine/twenty-orm/interfaces/gate.interface';
+import { type RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
+import { type Gate } from 'src/engine/twenty-orm/interfaces/gate.interface';
 
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
-import {
-  RelationMetadataType,
-  RelationOnDeleteAction,
-} from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
+import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 
 export type WorkspaceDynamicRelationMetadataArgsFactory = (
   oppositeObjectMetadata: ObjectMetadataEntity,
@@ -46,7 +44,7 @@ export interface WorkspaceDynamicRelationMetadataArgs {
   /**
    * Class to which relation is applied.
    */
-  // eslint-disable-next-line @typescript-eslint/ban-types
+
   readonly target: Function;
 
   /**
@@ -57,7 +55,7 @@ export interface WorkspaceDynamicRelationMetadataArgs {
   /**
    * Relation type.
    */
-  readonly type: RelationMetadataType;
+  readonly type: RelationType;
 
   /**
    * Relation inverse side target.

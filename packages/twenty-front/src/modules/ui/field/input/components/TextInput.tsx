@@ -1,35 +1,49 @@
 import styled from '@emotion/styled';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
-import { TEXT_INPUT_STYLE } from 'twenty-ui';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 
-import { LightCopyIconButton } from '@/object-record/record-field/components/LightCopyIconButton';
-import { useRegisterInputEvents } from '@/object-record/record-field/meta-types/input/hooks/useRegisterInputEvents';
+import { LightCopyIconButton } from '@/object-record/record-field/ui/components/LightCopyIconButton';
+import { useRegisterInputEvents } from '@/object-record/record-field/ui/meta-types/input/hooks/useRegisterInputEvents';
+import { TEXT_INPUT_STYLE } from 'twenty-ui/theme';
 
 export const StyledTextInput = styled.input`
   margin: 0;
   ${TEXT_INPUT_STYLE}
   width: 100%;
+
+  &:disabled {
+    color: ${({ theme }) => theme.font.color.tertiary};
+  }
 `;
 
 type TextInputProps = {
+  instanceId: string;
   placeholder?: string;
   autoFocus?: boolean;
   value: string;
-  onEnter: (newText: string) => void;
-  onEscape: (newText: string) => void;
+  onEnter?: (newText: string) => void;
+  onEscape?: (newText: string) => void;
   onTab?: (newText: string) => void;
   onShiftTab?: (newText: string) => void;
-  onClickOutside: (event: MouseEvent | TouchEvent, inputValue: string) => void;
-  hotkeyScope: string;
+  onClickOutside?: (event: MouseEvent | TouchEvent, inputValue: string) => void;
   onChange?: (newText: string) => void;
   copyButton?: boolean;
+  shouldTrim?: boolean;
+  disabled?: boolean;
+};
+
+const getValue = (value: string, shouldTrim: boolean) => {
+  if (shouldTrim) {
+    return value.trim();
+  }
+
+  return value;
 };
 
 export const TextInput = ({
+  instanceId,
   placeholder,
   autoFocus,
   value,
-  hotkeyScope,
   onEnter,
   onEscape,
   onTab,
@@ -37,6 +51,8 @@ export const TextInput = ({
   onClickOutside,
   onChange,
   copyButton = true,
+  shouldTrim = true,
+  disabled,
 }: TextInputProps) => {
   const [internalText, setInternalText] = useState(value);
 
@@ -44,14 +60,15 @@ export const TextInput = ({
   const copyRef = useRef<HTMLDivElement>(null);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setInternalText(event.target.value.trim());
-    onChange?.(event.target.value.trim());
+    setInternalText(getValue(event.target.value, shouldTrim));
+    onChange?.(getValue(event.target.value, shouldTrim));
   };
   useEffect(() => {
-    setInternalText(value.trim());
-  }, [value]);
+    setInternalText(getValue(value, shouldTrim));
+  }, [value, shouldTrim]);
 
   useRegisterInputEvents({
+    focusId: instanceId,
     inputRef: wrapperRef,
     copyRef: copyRef,
     inputValue: internalText,
@@ -60,18 +77,19 @@ export const TextInput = ({
     onClickOutside,
     onTab,
     onShiftTab,
-    hotkeyScope,
   });
 
   return (
     <>
       <StyledTextInput
+        id={instanceId}
         autoComplete="off"
         ref={wrapperRef}
         placeholder={placeholder}
         onChange={handleChange}
         autoFocus={autoFocus}
         value={internalText}
+        disabled={disabled}
       />
       {copyButton && (
         <div ref={copyRef}>

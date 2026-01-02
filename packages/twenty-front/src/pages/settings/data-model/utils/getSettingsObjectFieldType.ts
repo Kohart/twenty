@@ -1,7 +1,7 @@
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { getFieldIdentifierType } from '@/settings/data-model/utils/getFieldIdentifierType';
-import { isDefined } from 'twenty-ui';
+import { isDefined } from 'twenty-shared/utils';
 
 export const getSettingsObjectFieldType = (
   objectMetadataItem: ObjectMetadataItem,

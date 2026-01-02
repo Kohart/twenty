@@ -15,16 +15,78 @@ export class ThrottlerService {
     private readonly cacheStorage: CacheStorageService,
   ) {}
 
-  async throttle(key: string, limit: number, ttl: number): Promise<void> {
-    const currentCount = (await this.cacheStorage.get<number>(key)) ?? 0;
+  async tokenBucketThrottleOrThrow(
+    key: string,
+    tokensToConsume: number,
+    maxTokens: number,
+    timeWindow: number,
+  ): Promise<number> {
+    const now = Date.now();
+    const availableTokens = await this.getAvailableTokensCount(
+      key,
+      maxTokens,
+      timeWindow,
+      now,
+    );
 
-    if (currentCount >= limit) {
+    if (availableTokens < tokensToConsume) {
       throw new ThrottlerException(
-        'Too many requests',
-        ThrottlerExceptionCode.TOO_MANY_REQUESTS,
+        `Limit reached (${maxTokens} tokens per ${timeWindow} ms)`,
+        ThrottlerExceptionCode.LIMIT_REACHED,
       );
     }
 
-    await this.cacheStorage.set(key, currentCount + 1, ttl);
+    await this.cacheStorage.set(
+      key,
+      {
+        tokens: availableTokens - tokensToConsume,
+        lastRefillAt: now,
+      },
+      timeWindow * 2,
+    );
+
+    return availableTokens - tokensToConsume;
+  }
+
+  async consumeTokens(
+    key: string,
+    tokensToConsume: number,
+    maxTokens: number,
+    timeWindow: number,
+  ) {
+    const now = Date.now();
+    const availableTokens = await this.getAvailableTokensCount(
+      key,
+      maxTokens,
+      timeWindow,
+      now,
+    );
+
+    await this.cacheStorage.set(
+      key,
+      {
+        tokens: availableTokens - tokensToConsume,
+        lastRefillAt: now,
+      },
+      timeWindow * 2,
+    );
+  }
+
+  async getAvailableTokensCount(
+    key: string,
+    maxTokens: number,
+    timeWindow: number,
+    now = Date.now(),
+  ): Promise<number> {
+    const refillRate = maxTokens / timeWindow;
+
+    const { tokens, lastRefillAt } = (await this.cacheStorage.get<{
+      tokens: number;
+      lastRefillAt: number;
+    }>(key)) || { tokens: maxTokens, lastRefillAt: now };
+
+    const refillAmount = Math.floor((now - lastRefillAt) * refillRate);
+
+    return Math.min(tokens + refillAmount, maxTokens);
   }
 }

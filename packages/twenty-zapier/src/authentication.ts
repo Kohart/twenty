@@ -1,4 +1,4 @@
-import { Bundle, ZObject } from 'zapier-platform-core';
+import type { Bundle, ZObject } from 'zapier-platform-core';
 
 import requestDb from './utils/requestDb';
 
@@ -21,17 +21,16 @@ export default {
       label: 'Api Key',
       type: 'string',
       helpText:
-        'Create an API key in [your twenty workspace](https://app.twenty.com/settings/developers)',
+        'Create an API key in [your twenty workspace](https://app.twenty.com/settings/apis)',
     },
     {
       computed: false,
       key: 'apiUrl',
       required: false,
-      label: 'Api Url',
+      label: 'Self hosted instance url',
       type: 'string',
-      placeholder: 'https://api.twenty.com',
-      helpText:
-        'Set this only if you self-host Twenty. Use the same value as `REACT_APP_SERVER_BASE_URL` in https://docs.twenty.com/start/self-hosting/',
+      placeholder: 'https://crm.custom-url.com',
+      helpText: 'Set this only if you self-host Twenty',
     },
   ],
   connectionLabel: '{{data.currentWorkspace.displayName}}',

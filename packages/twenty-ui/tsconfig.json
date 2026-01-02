@@ -1,23 +1,26 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "target": "ES2020",
     "jsx": "react-jsx",
     "allowJs": false,
     "allowSyntheticDefaultImports": true,
     "strict": true,
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "noEmit": true,
     "types": ["node"],
     "outDir": "../../.cache/tsc",
     "paths": {
-      "@ui/*": ["packages/twenty-ui/src/*"]
+      "@ui/*": ["./src/*"],
+      "@assets/*": ["./src/assets/*"]
     }
   },
   "files": [],
   "include": [],
   "references": [
     {
-      "path": "./tsconfig.build.json"
+      "path": "./tsconfig.lib.json"
     },
     {
       "path": "./tsconfig.dev.json"

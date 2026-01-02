@@ -1,45 +1,41 @@
-import { useContext } from 'react';
+import { FieldInput } from '@/object-record/record-field/ui/components/FieldInput';
 
-import { FieldInput } from '@/object-record/record-field/components/FieldInput';
-import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
-import { useIsFieldValueReadOnly } from '@/object-record/record-field/hooks/useIsFieldValueReadOnly';
-import { FieldInputEvent } from '@/object-record/record-field/types/FieldInputEvent';
-import { RECORD_TABLE_CLICK_OUTSIDE_LISTENER_ID } from '@/object-record/record-table/constants/RecordTableClickOutsideListenerId';
-import { RecordTableContext } from '@/object-record/record-table/contexts/RecordTableContext';
-import { getRecordFieldInputId } from '@/object-record/utils/getRecordFieldInputId';
-import { useClickOustideListenerStates } from '@/ui/utilities/pointer-event/hooks/useClickOustideListenerStates';
-import { useSetRecoilState } from 'recoil';
+import { usePersistFieldFromFieldInputContext } from '@/object-record/record-field/ui/hooks/usePersistFieldFromFieldInputContext';
+import { RecordFieldComponentInstanceContext } from '@/object-record/record-field/ui/states/contexts/RecordFieldComponentInstanceContext';
+
+import {
+  FieldInputEventContext,
+  type FieldInputClickOutsideEvent,
+  type FieldInputEvent,
+} from '@/object-record/record-field/ui/contexts/FieldInputEventContext';
+import { useRecordTableBodyContextOrThrow } from '@/object-record/record-table/contexts/RecordTableBodyContext';
+import { currentFocusIdSelector } from '@/ui/utilities/focus/states/currentFocusIdSelector';
+import { useAvailableComponentInstanceId } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceId';
+import { useRecoilCallback } from 'recoil';
 
 export const RecordTableCellFieldInput = () => {
-  const { getClickOutsideListenerIsActivatedState } =
-    useClickOustideListenerStates(RECORD_TABLE_CLICK_OUTSIDE_LISTENER_ID);
-  const setClickOutsideListenerIsActivated = useSetRecoilState(
-    getClickOutsideListenerIsActivatedState,
+  const { onMoveFocus, onCloseTableCell } = useRecordTableBodyContextOrThrow();
+
+  const instanceId = useAvailableComponentInstanceId(
+    RecordFieldComponentInstanceContext,
   );
 
-  const { onUpsertRecord, onMoveFocus, onCloseTableCell } =
-    useContext(RecordTableContext);
+  const { persistFieldFromFieldInputContext } =
+    usePersistFieldFromFieldInputContext();
 
-  const { recordId, fieldDefinition } = useContext(FieldContext);
-  const isFieldReadOnly = useIsFieldValueReadOnly();
-
-  const handleEnter: FieldInputEvent = (persistField) => {
-    onUpsertRecord({
-      persistField,
-      recordId,
-      fieldName: fieldDefinition.metadata.fieldName,
-    });
+  const handleEnter: FieldInputEvent = ({ newValue, skipPersist }) => {
+    if (skipPersist !== true) {
+      persistFieldFromFieldInputContext(newValue);
+    }
 
     onCloseTableCell();
     onMoveFocus('down');
   };
 
-  const handleSubmit: FieldInputEvent = (persistField) => {
-    onUpsertRecord({
-      persistField,
-      recordId,
-      fieldName: fieldDefinition.metadata.fieldName,
-    });
+  const handleSubmit: FieldInputEvent = ({ newValue, skipPersist }) => {
+    if (skipPersist !== true) {
+      persistFieldFromFieldInputContext(newValue);
+    }
 
     onCloseTableCell();
   };
@@ -48,64 +44,67 @@ export const RecordTableCellFieldInput = () => {
     onCloseTableCell();
   };
 
-  const handleClickOutside: FieldInputEvent = (persistField) => {
-    setClickOutsideListenerIsActivated(false);
+  const handleClickOutside: FieldInputClickOutsideEvent = useRecoilCallback(
+    ({ snapshot }) =>
+      ({ newValue, event, skipPersist }) => {
+        const currentFocusId = snapshot
+          .getLoadable(currentFocusIdSelector)
+          .getValue();
 
-    onUpsertRecord({
-      persistField,
-      recordId,
-      fieldName: fieldDefinition.metadata.fieldName,
-    });
+        if (currentFocusId !== instanceId) {
+          return;
+        }
+        event?.preventDefault();
+        event?.stopImmediatePropagation();
+
+        if (skipPersist !== true) {
+          persistFieldFromFieldInputContext(newValue);
+        }
+
+        onCloseTableCell();
+      },
+    [onCloseTableCell, instanceId, persistFieldFromFieldInputContext],
+  );
+
+  const handleEscape: FieldInputEvent = ({ newValue, skipPersist }) => {
+    if (skipPersist !== true) {
+      persistFieldFromFieldInputContext(newValue);
+    }
 
     onCloseTableCell();
   };
 
-  const handleEscape: FieldInputEvent = (persistField) => {
-    onUpsertRecord({
-      persistField,
-      recordId,
-      fieldName: fieldDefinition.metadata.fieldName,
-    });
-
-    onCloseTableCell();
-  };
-
-  const handleTab: FieldInputEvent = (persistField) => {
-    onUpsertRecord({
-      persistField,
-      recordId,
-      fieldName: fieldDefinition.metadata.fieldName,
-    });
+  const handleTab: FieldInputEvent = ({ newValue, skipPersist }) => {
+    if (skipPersist !== true) {
+      persistFieldFromFieldInputContext(newValue);
+    }
 
     onCloseTableCell();
     onMoveFocus('right');
   };
 
-  const handleShiftTab: FieldInputEvent = (persistField) => {
-    onUpsertRecord({
-      persistField,
-      recordId,
-      fieldName: fieldDefinition.metadata.fieldName,
-    });
+  const handleShiftTab: FieldInputEvent = ({ newValue, skipPersist }) => {
+    if (skipPersist !== true) {
+      persistFieldFromFieldInputContext(newValue);
+    }
 
     onCloseTableCell();
     onMoveFocus('left');
   };
 
   return (
-    <FieldInput
-      recordFieldInputdId={getRecordFieldInputId(
-        recordId,
-        fieldDefinition?.metadata?.fieldName,
-      )}
-      onCancel={handleCancel}
-      onClickOutside={handleClickOutside}
-      onEnter={handleEnter}
-      onEscape={handleEscape}
-      onShiftTab={handleShiftTab}
-      onSubmit={handleSubmit}
-      onTab={handleTab}
-      isReadOnly={isFieldReadOnly}
-    />
+    <FieldInputEventContext.Provider
+      value={{
+        onCancel: handleCancel,
+        onEnter: handleEnter,
+        onEscape: handleEscape,
+        onClickOutside: handleClickOutside,
+        onShiftTab: handleShiftTab,
+        onSubmit: handleSubmit,
+        onTab: handleTab,
+      }}
+    >
+      <FieldInput />
+    </FieldInputEventContext.Provider>
   );
 };

@@ -1,22 +1,24 @@
-import { Meta, StoryObj } from '@storybook/react';
-import { within } from '@storybook/test';
+import { type Meta, type StoryObj } from '@storybook/react';
+import { expect, within } from '@storybook/test';
 
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
-import { SettingsPath } from '@/types/SettingsPath';
+import { SettingsPath } from 'twenty-shared/types';
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 import { sleep } from '~/utils/sleep';
 
-import { SettingsBilling } from '../SettingsBilling';
+import { getSettingsPath } from 'twenty-shared/utils';
+
+import { SettingsBilling } from '~/pages/settings/SettingsBilling';
+import { WorkspaceDecorator } from '~/testing/decorators/WorkspaceDecorator';
 
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/Settings/SettingsBilling',
   component: SettingsBilling,
-  decorators: [PageDecorator],
-  args: { routePath: getSettingsPagePath(SettingsPath.Billing) },
+  decorators: [WorkspaceDecorator, PageDecorator],
+  args: { routePath: getSettingsPath(SettingsPath.Billing) },
   parameters: {
     msw: graphqlMocks,
   },
@@ -29,8 +31,15 @@ export type Story = StoryObj<typeof SettingsBilling>;
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    sleep(1000);
 
-    await canvas.findByRole('button', { name: 'View billing details' });
+    await sleep(1000);
+
+    const buttons = await canvas.findAllByRole('button');
+
+    expect(
+      buttons.findIndex((button) =>
+        button.outerHTML.includes('View billing details'),
+      ),
+    ).toBeGreaterThan(-1);
   },
 };

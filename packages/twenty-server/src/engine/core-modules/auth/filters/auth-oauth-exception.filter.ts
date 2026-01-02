@@ -1,21 +1,24 @@
 import {
-  ArgumentsHost,
+  type ArgumentsHost,
   Catch,
-  ExceptionFilter,
-  InternalServerErrorException,
+  type ExceptionFilter,
 } from '@nestjs/common';
 
-import { Response } from 'express';
+import { type Response } from 'express';
 
 import {
   AuthException,
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import { DomainServerConfigService } from 'src/engine/core-modules/domain/domain-server-config/services/domain-server-config.service';
+import { HttpExceptionHandlerService } from 'src/engine/core-modules/exception-handler/http-exception-handler.service';
 
 @Catch(AuthException)
 export class AuthOAuthExceptionFilter implements ExceptionFilter {
-  constructor(private readonly environmentService: EnvironmentService) {}
+  constructor(
+    private readonly domainServerConfigService: DomainServerConfigService,
+    private readonly httpExceptionHandlerService: HttpExceptionHandlerService,
+  ) {}
 
   catch(exception: AuthException, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -25,10 +28,14 @@ export class AuthOAuthExceptionFilter implements ExceptionFilter {
       case AuthExceptionCode.OAUTH_ACCESS_DENIED:
         response
           .status(403)
-          .redirect(this.environmentService.get('FRONT_BASE_URL'));
+          .redirect(this.domainServerConfigService.getBaseUrl().toString());
         break;
       default:
-        throw new InternalServerErrorException(exception.message);
+        return this.httpExceptionHandlerService.handleError(
+          exception,
+          response,
+          500,
+        );
     }
   }
 }

@@ -1,44 +1,36 @@
-import { useRecoilState } from 'recoil';
-
-import { isRemoveSortingModalOpenState } from '@/object-record/record-table/states/isRemoveSortingModalOpenState';
+import { RECORD_INDEX_REMOVE_SORTING_MODAL_ID } from '@/object-record/record-index/constants/RecordIndexRemoveSortingModalId';
+import { useRemoveRecordSort } from '@/object-record/record-sort/hooks/useRemoveRecordSort';
+import { currentRecordSortsComponentState } from '@/object-record/record-sort/states/currentRecordSortsComponentState';
 import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
-import { useDeleteCombinedViewSorts } from '@/views/hooks/useDeleteCombinedViewSorts';
-import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { useLingui } from '@lingui/react/macro';
 
-export const RecordIndexRemoveSortingModal = ({
-  recordTableId,
-}: {
-  recordTableId: string;
-}) => {
-  const { currentViewWithCombinedFiltersAndSorts } =
-    useGetCurrentView(recordTableId);
+export const RecordIndexRemoveSortingModal = () => {
+  const { t } = useLingui();
 
-  const viewSorts = currentViewWithCombinedFiltersAndSorts?.viewSorts || [];
-  const fieldMetadataIds = viewSorts.map(
+  const currentRecordSorts = useRecoilComponentValue(
+    currentRecordSortsComponentState,
+  );
+
+  const fieldMetadataIds = currentRecordSorts.map(
     (viewSort) => viewSort.fieldMetadataId,
   );
-  const isRemoveSortingModalOpen = useRecoilState(
-    isRemoveSortingModalOpenState,
-  );
 
-  const { deleteCombinedViewSort } = useDeleteCombinedViewSorts(recordTableId);
+  const { removeRecordSort } = useRemoveRecordSort();
 
   const handleRemoveClick = () => {
     fieldMetadataIds.forEach((id) => {
-      deleteCombinedViewSort(id);
+      removeRecordSort(id);
     });
   };
 
   return (
-    <>
-      <ConfirmationModal
-        isOpen={isRemoveSortingModalOpen[0]}
-        setIsOpen={isRemoveSortingModalOpen[1]}
-        title={'Remove sorting?'}
-        subtitle={<>This is required to enable manual row reordering.</>}
-        onConfirmClick={() => handleRemoveClick()}
-        deleteButtonText={'Remove Sorting'}
-      />
-    </>
+    <ConfirmationModal
+      modalId={RECORD_INDEX_REMOVE_SORTING_MODAL_ID}
+      title={t`Remove sorting?`}
+      subtitle={t`This is required to enable manual row reordering.`}
+      onConfirmClick={handleRemoveClick}
+      confirmButtonText={t`Remove Sorting`}
+    />
   );
 };

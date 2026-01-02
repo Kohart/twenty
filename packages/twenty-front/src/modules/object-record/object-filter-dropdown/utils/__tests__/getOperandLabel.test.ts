@@ -1,17 +1,20 @@
-import { ViewFilterOperand } from '@/views/types/ViewFilterOperand';
-import { capitalize } from '~/utils/string/capitalize';
+import { ViewFilterOperand } from 'twenty-shared/types';
 
-import { getOperandLabel, getOperandLabelShort } from '../getOperandLabel';
+import { capitalize } from 'twenty-shared/utils';
+import {
+  getOperandLabel,
+  getOperandLabelShort,
+} from '@/object-record/object-filter-dropdown/utils/getOperandLabel';
 
 describe('getOperandLabel', () => {
   const testCases = [
-    [ViewFilterOperand.Contains, 'Contains'],
-    [ViewFilterOperand.DoesNotContain, "Doesn't contain"],
-    [ViewFilterOperand.GreaterThan, 'Greater than'],
-    [ViewFilterOperand.LessThan, 'Less than'],
-    [ViewFilterOperand.Is, 'Is'],
-    [ViewFilterOperand.IsNot, 'Is not'],
-    [ViewFilterOperand.IsNotNull, 'Is not null'],
+    [ViewFilterOperand.CONTAINS, 'Contains'],
+    [ViewFilterOperand.DOES_NOT_CONTAIN, "Doesn't contain"],
+    [ViewFilterOperand.GREATER_THAN_OR_EQUAL, 'Greater than or equal'],
+    [ViewFilterOperand.LESS_THAN_OR_EQUAL, 'Less than or equal'],
+    [ViewFilterOperand.IS, 'Is'],
+    [ViewFilterOperand.IS_NOT, 'Is not'],
+    [ViewFilterOperand.IS_NOT_NULL, 'Is not null'],
     [undefined, ''], // undefined operand
   ];
 
@@ -27,13 +30,13 @@ describe('getOperandLabel', () => {
 
 describe('getOperandLabelShort', () => {
   const testCases = [
-    [ViewFilterOperand.Is, ': '],
-    [ViewFilterOperand.Contains, ': '],
-    [ViewFilterOperand.IsNot, ': Not'],
-    [ViewFilterOperand.DoesNotContain, ': Not'],
-    [ViewFilterOperand.IsNotNull, ': NotNull'],
-    [ViewFilterOperand.GreaterThan, '\u00A0> '],
-    [ViewFilterOperand.LessThan, '\u00A0< '],
+    [ViewFilterOperand.IS, ': '],
+    [ViewFilterOperand.CONTAINS, ': '],
+    [ViewFilterOperand.IS_NOT, ': Not'],
+    [ViewFilterOperand.DOES_NOT_CONTAIN, ': Not'],
+    [ViewFilterOperand.IS_NOT_NULL, ': NotNull'],
+    [ViewFilterOperand.GREATER_THAN_OR_EQUAL, '\u00A0≥ '],
+    [ViewFilterOperand.LESS_THAN_OR_EQUAL, '\u00A0≤ '],
     [undefined, ': '], // undefined operand
   ];
 

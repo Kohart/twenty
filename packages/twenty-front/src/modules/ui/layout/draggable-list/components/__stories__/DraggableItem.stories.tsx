@@ -1,15 +1,18 @@
 import { DragDropContext, Droppable } from '@hello-pangea/dnd';
-import { Meta, StoryObj } from '@storybook/react';
-import { ComponentDecorator, IconBell, MenuItemDraggable } from 'twenty-ui';
+import { type Meta, type StoryObj } from '@storybook/react';
+import { fn } from '@storybook/test';
 
 import { DraggableItem } from '@/ui/layout/draggable-list/components/DraggableItem';
+import { IconBell } from 'twenty-ui/display';
+import { MenuItemDraggable } from 'twenty-ui/navigation';
+import { ComponentDecorator } from 'twenty-ui/testing';
 
 const meta: Meta<typeof DraggableItem> = {
   title: 'UI/Layout/DraggableList/DraggableItem',
   component: DraggableItem,
   decorators: [
     (Story) => (
-      <DragDropContext onDragEnd={() => jest.fn()}>
+      <DragDropContext onDragEnd={fn()}>
         <Droppable droppableId="droppable-id">
           {(_provided) => <Story />}
         </Droppable>

@@ -1,74 +1,66 @@
-import { useRecoilValue } from 'recoil';
-import { v4 } from 'uuid';
-
-import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
-import { RATING_VALUES } from '@/object-record/record-field/meta-types/constants/RatingValues';
-import { FieldRatingValue } from '@/object-record/record-field/types/FieldMetadata';
+import { useApplyObjectFilterDropdownFilterValue } from '@/object-record/object-filter-dropdown/hooks/useApplyObjectFilterDropdownFilterValue';
+import { useObjectFilterDropdownFilterValue } from '@/object-record/object-filter-dropdown/hooks/useObjectFilterDropdownFilterValue';
 import { RatingInput } from '@/ui/field/input/components/RatingInput';
-import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
+import styled from '@emotion/styled';
+import { RATING_VALUES } from 'twenty-shared/constants';
+import { type FieldRatingValue } from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
+
+const StyledRatingInputContainer = styled.div`
+  padding: ${({ theme }) => theme.spacing(2)};
+`;
 
 const convertFieldRatingValueToNumber = (
   rating: Exclude<FieldRatingValue, null>,
-): string => {
-  return rating.split('_')[1];
-};
+): string => rating.split('_')[1];
 
-export const convertGreaterThanRatingToArrayOfRatingValues = (
+export const convertGreaterThanOrEqualRatingToArrayOfRatingValues = (
   greaterThanValue: number,
-) => {
-  return RATING_VALUES.filter((_, index) => index + 1 > greaterThanValue);
-};
+) =>
+  RATING_VALUES.filter(
+    (ratingValue) => +ratingValue.split('_')[1] >= greaterThanValue,
+  );
 
-export const convertLessThanRatingToArrayOfRatingValues = (
+export const convertLessThanOrEqualRatingToArrayOfRatingValues = (
   lessThanValue: number,
-) => {
-  return RATING_VALUES.filter((_, index) => index + 1 <= lessThanValue);
-};
+) =>
+  RATING_VALUES.filter(
+    (ratingValue) => +ratingValue.split('_')[1] <= lessThanValue,
+  );
 
-export const convertRatingToRatingValue = (rating: number) => {
-  return `RATING_${rating}`;
-};
+export const convertRatingToRatingValue = (rating: number) =>
+  `RATING_${rating}` as FieldRatingValue;
 
 export const ObjectFilterDropdownRatingInput = () => {
-  const {
-    selectedOperandInDropdownState,
-    filterDefinitionUsedInDropdownState,
-    selectedFilterState,
-    selectFilter,
-  } = useFilterDropdown();
+  const { applyObjectFilterDropdownFilterValue } =
+    useApplyObjectFilterDropdownFilterValue();
 
-  const filterDefinitionUsedInDropdown = useRecoilValue(
-    filterDefinitionUsedInDropdownState,
-  );
-  const selectedOperandInDropdown = useRecoilValue(
-    selectedOperandInDropdownState,
-  );
+  const { objectFilterDropdownFilterValue } =
+    useObjectFilterDropdownFilterValue();
 
-  const selectedFilter = useRecoilValue(selectedFilterState);
+  const handleInputChange = (newRatingValue: FieldRatingValue) => {
+    if (!newRatingValue) {
+      return;
+    }
+
+    const ratingValueConverted =
+      convertFieldRatingValueToNumber(newRatingValue);
+
+    applyObjectFilterDropdownFilterValue(ratingValueConverted);
+  };
+
+  const currentFilterValueConvertedToRatingValue = isDefined(
+    objectFilterDropdownFilterValue,
+  )
+    ? convertRatingToRatingValue(Number(objectFilterDropdownFilterValue))
+    : null;
 
   return (
-    filterDefinitionUsedInDropdown &&
-    selectedOperandInDropdown && (
-      <DropdownMenuItemsContainer>
-        <RatingInput
-          value={selectedFilter?.value as FieldRatingValue}
-          onChange={(newValue: FieldRatingValue) => {
-            if (!newValue) {
-              return;
-            }
-
-            selectFilter?.({
-              id: selectedFilter?.id ? selectedFilter.id : v4(),
-              fieldMetadataId: filterDefinitionUsedInDropdown.fieldMetadataId,
-              value: convertFieldRatingValueToNumber(newValue),
-              operand: selectedOperandInDropdown,
-              displayValue: convertFieldRatingValueToNumber(newValue),
-              definition: filterDefinitionUsedInDropdown,
-              viewFilterGroupId: selectedFilter?.viewFilterGroupId,
-            });
-          }}
-        />
-      </DropdownMenuItemsContainer>
-    )
+    <StyledRatingInputContainer>
+      <RatingInput
+        value={currentFilterValueConvertedToRatingValue}
+        onChange={handleInputChange}
+      />
+    </StyledRatingInputContainer>
   );
 };

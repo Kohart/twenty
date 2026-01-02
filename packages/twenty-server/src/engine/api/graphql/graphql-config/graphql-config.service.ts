@@ -1,33 +1,53 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ContextIdFactory, ModuleRef } from '@nestjs/core';
-import { GqlOptionsFactory } from '@nestjs/graphql';
+import { type GqlOptionsFactory } from '@nestjs/graphql';
 
 import {
-  YogaDriverConfig,
-  YogaDriverServerContext,
+  type YogaDriverConfig,
+  type YogaDriverServerContext,
 } from '@graphql-yoga/nestjs';
 import * as Sentry from '@sentry/node';
 import { GraphQLError, GraphQLSchema } from 'graphql';
 import GraphQLJSON from 'graphql-type-json';
-import { GraphQLSchemaWithContext, YogaInitialContext } from 'graphql-yoga';
+import {
+  type GraphQLSchemaWithContext,
+  type YogaInitialContext,
+} from 'graphql-yoga';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { isDefined } from 'twenty-shared/utils';
 
-import { useThrottler } from 'src/engine/api/graphql/graphql-config/hooks/use-throttler';
+import { NodeEnvironment } from 'src/engine/core-modules/twenty-config/interfaces/node-environment.interface';
+
 import { WorkspaceSchemaFactory } from 'src/engine/api/graphql/workspace-schema.factory';
-import { AuthContext } from 'src/engine/core-modules/auth/types/auth-context.type';
+import {
+  ApiConfig,
+  Billing,
+  Captcha,
+  ClientAIModelConfig,
+  NativeModelCapabilities,
+  PublicFeatureFlag,
+  PublicFeatureFlagMetadata,
+  Sentry as SentryConfig,
+  Support,
+} from 'src/engine/core-modules/client-config/client-config.entity';
 import { CoreEngineModule } from 'src/engine/core-modules/core-engine.module';
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
 import { useSentryTracing } from 'src/engine/core-modules/exception-handler/hooks/use-sentry-tracing';
+import { useDisableIntrospectionAndSuggestionsForUnauthenticatedUsers } from 'src/engine/core-modules/graphql/hooks/use-disable-introspection-and-suggestions-for-unauthenticated-users.hook';
 import { useGraphQLErrorHandlerHook } from 'src/engine/core-modules/graphql/hooks/use-graphql-error-handler.hook';
-import { User } from 'src/engine/core-modules/user/user.entity';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { useValidateGraphqlQueryComplexity } from 'src/engine/core-modules/graphql/hooks/use-validate-graphql-query-complexity.hook';
+import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
+import { MetricsService } from 'src/engine/core-modules/metrics/metrics.service';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { UserEntity } from 'src/engine/core-modules/user/user.entity';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { DataloaderService } from 'src/engine/dataloaders/dataloader.service';
 import { handleExceptionAndConvertToGraphQLError } from 'src/engine/utils/global-exception-handler.util';
 import { renderApolloPlayground } from 'src/engine/utils/render-apollo-playground.util';
 
 export interface GraphQLContext extends YogaDriverServerContext<'express'> {
-  user?: User;
-  workspace?: Workspace;
+  user?: UserEntity;
+  workspace?: WorkspaceEntity;
 }
 
 @Injectable()
@@ -36,22 +56,33 @@ export class GraphQLConfigService
 {
   constructor(
     private readonly exceptionHandlerService: ExceptionHandlerService,
-    private readonly environmentService: EnvironmentService,
+    private readonly twentyConfigService: TwentyConfigService,
     private readonly moduleRef: ModuleRef,
+    private readonly metricsService: MetricsService,
+    private readonly dataloaderService: DataloaderService,
+    private readonly i18nService: I18nService,
   ) {}
 
   createGqlOptions(): YogaDriverConfig {
-    const isDebugMode = this.environmentService.get('DEBUG_MODE');
+    const isDebugMode =
+      this.twentyConfigService.get('NODE_ENV') === NodeEnvironment.DEVELOPMENT;
     const plugins = [
-      useThrottler({
-        ttl: this.environmentService.get('API_RATE_LIMITING_TTL'),
-        limit: this.environmentService.get('API_RATE_LIMITING_LIMIT'),
-        identifyFn: (context) => {
-          return context.req.user?.id ?? context.req.ip ?? 'anonymous';
-        },
-      }),
       useGraphQLErrorHandlerHook({
+        metricsService: this.metricsService,
         exceptionHandlerService: this.exceptionHandlerService,
+        i18nService: this.i18nService,
+        twentyConfigService: this.twentyConfigService,
+      }),
+      useDisableIntrospectionAndSuggestionsForUnauthenticatedUsers(
+        this.twentyConfigService.get('NODE_ENV') === NodeEnvironment.PRODUCTION,
+      ),
+      useValidateGraphqlQueryComplexity({
+        maximumAllowedFields:
+          this.twentyConfigService.get('GRAPHQL_MAX_FIELDS'),
+        maximumAllowedRootResolvers: this.twentyConfigService.get(
+          'GRAPHQL_MAX_ROOT_RESOLVERS',
+        ),
+        checkDuplicateRootResolvers: true,
       }),
     ];
 
@@ -62,23 +93,28 @@ export class GraphQLConfigService
     const config: YogaDriverConfig = {
       autoSchemaFile: true,
       include: [CoreEngineModule],
+      buildSchemaOptions: {
+        orphanedTypes: [
+          ApiConfig,
+          Billing,
+          Captcha,
+          ClientAIModelConfig,
+          NativeModelCapabilities,
+          PublicFeatureFlag,
+          PublicFeatureFlagMetadata,
+          SentryConfig,
+          Support,
+        ],
+      },
       conditionalSchema: async (context) => {
-        let user: User | null | undefined;
-        let workspace: Workspace | undefined;
+        const { workspace, user } = context.req;
 
         try {
-          const { user, workspace, apiKey, workspaceMemberId } = context.req;
-
-          if (!workspace) {
+          if (!isDefined(workspace)) {
             return new GraphQLSchema({});
           }
 
-          return await this.createSchema(context, {
-            user,
-            workspace,
-            apiKey,
-            workspaceMemberId,
-          });
+          return await this.createSchema(context, workspace);
         } catch (error) {
           if (error instanceof UnauthorizedException) {
             throw new GraphQLError('Unauthenticated', {
@@ -108,14 +144,19 @@ export class GraphQLConfigService
           throw handleExceptionAndConvertToGraphQLError(
             error,
             this.exceptionHandlerService,
-            user
+            isDefined(user)
               ? {
                   id: user.id,
                   email: user.email,
                   firstName: user.firstName,
                   lastName: user.lastName,
-                  workspaceId: workspace?.id,
-                  workspaceDisplayName: workspace?.displayName,
+                }
+              : undefined,
+            isDefined(workspace)
+              ? {
+                  id: workspace.id,
+                  displayName: workspace.displayName,
+                  activationStatus: workspace.activationStatus,
                 }
               : undefined,
           );
@@ -123,6 +164,9 @@ export class GraphQLConfigService
       },
       resolvers: { JSON: GraphQLJSON },
       plugins: plugins,
+      context: () => ({
+        loaders: this.dataloaderService.createLoaders(),
+      }),
     };
 
     if (isDebugMode) {
@@ -136,7 +180,7 @@ export class GraphQLConfigService
 
   async createSchema(
     context: YogaDriverServerContext<'express'> & YogaInitialContext,
-    data: AuthContext,
+    workspace: WorkspaceEntity,
   ): Promise<GraphQLSchemaWithContext<YogaDriverServerContext<'express'>>> {
     // Create a new contextId for each request
     const contextId = ContextIdFactory.create();
@@ -155,6 +199,6 @@ export class GraphQLConfigService
       },
     );
 
-    return await workspaceFactory.createGraphQLSchema(data);
+    return await workspaceFactory.createGraphQLSchema(workspace);
   }
 }

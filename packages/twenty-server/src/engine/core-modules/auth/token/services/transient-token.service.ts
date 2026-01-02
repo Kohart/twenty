@@ -3,47 +3,43 @@ import { Injectable } from '@nestjs/common';
 import { addMilliseconds } from 'date-fns';
 import ms from 'ms';
 
-import {
-  AuthException,
-  AuthExceptionCode,
-} from 'src/engine/core-modules/auth/auth.exception';
-import { AuthToken } from 'src/engine/core-modules/auth/dto/token.entity';
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import { type AuthToken } from 'src/engine/core-modules/auth/dto/auth-token.dto';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import {
+  type TransientTokenJwtPayload,
+  JwtTokenTypeEnum,
+} from 'src/engine/core-modules/auth/types/auth-context.type';
 
 @Injectable()
 export class TransientTokenService {
   constructor(
     private readonly jwtWrapperService: JwtWrapperService,
-    private readonly environmentService: EnvironmentService,
+    private readonly twentyConfigService: TwentyConfigService,
   ) {}
 
-  async generateTransientToken(
-    workspaceMemberId: string,
-    userId: string,
-    workspaceId: string,
-  ): Promise<AuthToken> {
+  async generateTransientToken({
+    workspaceMemberId,
+    workspaceId,
+    userId,
+  }: Omit<TransientTokenJwtPayload, 'type' | 'sub'>): Promise<AuthToken> {
+    const jwtPayload: TransientTokenJwtPayload = {
+      sub: workspaceMemberId,
+      userId: userId,
+      workspaceId: workspaceId,
+      workspaceMemberId: workspaceMemberId,
+      type: JwtTokenTypeEnum.LOGIN,
+    };
+
     const secret = this.jwtWrapperService.generateAppSecret(
-      'LOGIN',
+      jwtPayload.type,
       workspaceId,
     );
-    const expiresIn = this.environmentService.get(
+    const expiresIn = this.twentyConfigService.get(
       'SHORT_TERM_TOKEN_EXPIRES_IN',
     );
 
-    if (!expiresIn) {
-      throw new AuthException(
-        'Expiration time for access token is not set',
-        AuthExceptionCode.INTERNAL_SERVER_ERROR,
-      );
-    }
-
     const expiresAt = addMilliseconds(new Date().getTime(), ms(expiresIn));
-    const jwtPayload = {
-      sub: workspaceMemberId,
-      userId,
-      workspaceId,
-    };
 
     return {
       token: this.jwtWrapperService.sign(jwtPayload, {
@@ -54,19 +50,14 @@ export class TransientTokenService {
     };
   }
 
-  async verifyTransientToken(transientToken: string): Promise<{
-    workspaceMemberId: string;
-    userId: string;
-    workspaceId: string;
-  }> {
-    await this.jwtWrapperService.verifyWorkspaceToken(transientToken, 'LOGIN');
+  async verifyTransientToken(
+    transientToken: string,
+  ): Promise<Omit<TransientTokenJwtPayload, 'type' | 'sub'>> {
+    await this.jwtWrapperService.verifyJwtToken(transientToken);
 
-    const payload = await this.jwtWrapperService.decode(transientToken);
+    const { type: _type, ...payload } =
+      this.jwtWrapperService.decode<TransientTokenJwtPayload>(transientToken);
 
-    return {
-      workspaceMemberId: payload.sub,
-      userId: payload.userId,
-      workspaceId: payload.workspaceId,
-    };
+    return payload;
   }
 }

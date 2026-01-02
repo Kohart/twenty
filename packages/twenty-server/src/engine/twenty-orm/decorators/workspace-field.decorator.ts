@@ -1,20 +1,28 @@
-import { FieldMetadataDefaultValue } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-default-value.interface';
-import { FieldMetadataOptions } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-options.interface';
-import { FieldMetadataSettings } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-settings.interface';
+import { type MessageDescriptor } from '@lingui/core';
+import { computeMetadataNameFromLabel } from 'twenty-shared/metadata';
+import {
+  type FieldMetadataOptions,
+  type FieldMetadataSettings,
+  type FieldMetadataType,
+} from 'twenty-shared/types';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { type FieldMetadataDefaultValue } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-default-value.interface';
+
 import { generateDefaultValue } from 'src/engine/metadata-modules/field-metadata/utils/generate-default-value';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { metadataArgsStorage } from 'src/engine/twenty-orm/storage/metadata-args.storage';
 import { TypedReflect } from 'src/utils/typed-reflect';
 
 export interface WorkspaceFieldOptions<
-  T extends FieldMetadataType | 'default',
+  T extends FieldMetadataType = Exclude<
+    FieldMetadataType,
+    // Use @WorkspaceRelation or @WorkspaceDynamicRelation for relation fields
+    FieldMetadataType.RELATION
+  >,
 > {
   standardId: string;
   type: T;
-  label: string | ((objectMetadata: ObjectMetadataEntity) => string);
-  description?: string | ((objectMetadata: ObjectMetadataEntity) => string);
+  label: MessageDescriptor;
+  description?: MessageDescriptor;
   icon?: string;
   defaultValue?: FieldMetadataDefaultValue<T>;
   options?: FieldMetadataOptions<T>;
@@ -46,6 +54,12 @@ export function WorkspaceField<T extends FieldMetadataType>(
         object,
         propertyKey.toString(),
       ) ?? false;
+    const isUIReadOnly =
+      TypedReflect.getMetadata(
+        'workspace:is-field-ui-readonly-metadata-args',
+        object,
+        propertyKey.toString(),
+      ) ?? false;
     const gate = TypedReflect.getMetadata(
       'workspace:gate-metadata-args',
       object,
@@ -66,14 +80,19 @@ export function WorkspaceField<T extends FieldMetadataType>(
 
     const defaultValue = (options.defaultValue ??
       generateDefaultValue(options.type)) as FieldMetadataDefaultValue | null;
+    const name = propertyKey.toString();
+    const label = options.label.message ?? '';
+    const isLabelSyncedWithName =
+      computeMetadataNameFromLabel({ label }) === name;
 
     metadataArgsStorage.addFields({
       target: object.constructor,
       standardId: options.standardId,
-      name: propertyKey.toString(),
-      label: options.label,
+      name,
+      label,
       type: options.type,
-      description: options.description,
+      isLabelSyncedWithName,
+      description: options.description?.message ?? '',
       icon: options.icon,
       defaultValue,
       options: options.options,
@@ -81,6 +100,7 @@ export function WorkspaceField<T extends FieldMetadataType>(
       isPrimary,
       isNullable,
       isSystem,
+      isUIReadOnly,
       gate,
       isDeprecated,
       isUnique,

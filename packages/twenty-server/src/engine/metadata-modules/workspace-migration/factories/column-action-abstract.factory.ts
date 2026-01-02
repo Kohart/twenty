@@ -1,25 +1,24 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Logger } from '@nestjs/common';
 
-import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
-import { WorkspaceColumnActionOptions } from 'src/engine/metadata-modules/workspace-migration/interfaces/workspace-column-action-options.interface';
-import { WorkspaceColumnActionFactory } from 'src/engine/metadata-modules/workspace-migration/interfaces/workspace-column-action-factory.interface';
+import { type FieldMetadataType } from 'twenty-shared/types';
 
+import { type WorkspaceColumnActionFactory } from 'src/engine/metadata-modules/workspace-migration/interfaces/workspace-column-action-factory.interface';
+import { type WorkspaceColumnActionOptions } from 'src/engine/metadata-modules/workspace-migration/interfaces/workspace-column-action-options.interface';
+
+import { type FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import {
+  type WorkspaceMigrationColumnAction,
   WorkspaceMigrationColumnActionType,
-  WorkspaceMigrationColumnAction,
-  WorkspaceMigrationColumnCreate,
-  WorkspaceMigrationColumnAlter,
+  type WorkspaceMigrationColumnAlter,
+  type WorkspaceMigrationColumnCreate,
 } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import {
   WorkspaceMigrationException,
   WorkspaceMigrationExceptionCode,
 } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.exception';
 
-export class ColumnActionAbstractFactory<
-  T extends FieldMetadataType | 'default',
-> implements WorkspaceColumnActionFactory<T>
+export class ColumnActionAbstractFactory<T extends FieldMetadataType>
+  implements WorkspaceColumnActionFactory<T>
 {
   protected readonly logger = new Logger(ColumnActionAbstractFactory.name);
 
@@ -27,8 +26,8 @@ export class ColumnActionAbstractFactory<
     action:
       | WorkspaceMigrationColumnActionType.CREATE
       | WorkspaceMigrationColumnActionType.ALTER,
-    currentFieldMetadata: FieldMetadataInterface<T> | undefined,
-    alteredFieldMetadata: FieldMetadataInterface<T>,
+    currentFieldMetadata: FieldMetadataEntity<T> | undefined,
+    alteredFieldMetadata: FieldMetadataEntity<T>,
     options?: WorkspaceColumnActionOptions,
   ): WorkspaceMigrationColumnAction[] {
     switch (action) {
@@ -59,7 +58,7 @@ export class ColumnActionAbstractFactory<
   }
 
   protected handleCreateAction(
-    _fieldMetadata: FieldMetadataInterface<T>,
+    _fieldMetadata: FieldMetadataEntity<T>,
     _options?: WorkspaceColumnActionOptions,
   ): WorkspaceMigrationColumnCreate[] {
     throw new WorkspaceMigrationException(
@@ -69,8 +68,8 @@ export class ColumnActionAbstractFactory<
   }
 
   protected handleAlterAction(
-    _currentFieldMetadata: FieldMetadataInterface<T>,
-    _alteredFieldMetadata: FieldMetadataInterface<T>,
+    _currentFieldMetadata: FieldMetadataEntity<T>,
+    _alteredFieldMetadata: FieldMetadataEntity<T>,
     _options?: WorkspaceColumnActionOptions,
   ): WorkspaceMigrationColumnAlter[] {
     throw new WorkspaceMigrationException(

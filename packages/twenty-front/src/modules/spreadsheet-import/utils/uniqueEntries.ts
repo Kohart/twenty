@@ -1,14 +1,12 @@
 import uniqBy from 'lodash.uniqby';
 
-import {
-  MatchColumnsStepProps,
-  MatchedOptions,
-} from '@/spreadsheet-import/steps/components/MatchColumnsStep/MatchColumnsStep';
+import { type MatchColumnsStepProps } from '@/spreadsheet-import/steps/components/MatchColumnsStep/MatchColumnsStep';
+import { type SpreadsheetMatchedOptions } from '@/spreadsheet-import/types/SpreadsheetMatchedOptions';
 
-export const uniqueEntries = <T extends string>(
+export const uniqueEntries = (
   data: MatchColumnsStepProps['data'],
   index: number,
-): Partial<MatchedOptions<T>>[] =>
+): Partial<SpreadsheetMatchedOptions>[] =>
   uniqBy(
     data.map((row) => ({ entry: row[index] })),
     'entry',

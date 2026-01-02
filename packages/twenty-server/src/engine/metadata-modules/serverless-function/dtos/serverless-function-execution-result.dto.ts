@@ -4,6 +4,7 @@ import { IsObject, IsOptional } from 'class-validator';
 import graphqlTypeJson from 'graphql-type-json';
 
 export enum ServerlessFunctionExecutionStatus {
+  IDLE = 'IDLE',
   SUCCESS = 'SUCCESS',
   ERROR = 'ERROR',
 }
@@ -21,6 +22,9 @@ export class ServerlessFunctionExecutionResultDTO {
     nullable: true,
   })
   data?: JSON;
+
+  @Field({ description: 'Execution Logs' })
+  logs: string;
 
   @Field({ description: 'Execution duration in milliseconds' })
   duration: number;

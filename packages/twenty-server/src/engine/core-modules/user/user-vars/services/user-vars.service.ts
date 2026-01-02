@@ -1,11 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
+import { type QueryRunner } from 'typeorm';
+
 import { KeyValuePairType } from 'src/engine/core-modules/key-value-pair/key-value-pair.entity';
 import { KeyValuePairService } from 'src/engine/core-modules/key-value-pair/key-value-pair.service';
 import { mergeUserVars } from 'src/engine/core-modules/user/user-vars/utils/merge-user-vars.util';
 
 @Injectable()
 export class UserVarsService<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   KeyValueTypesMap extends Record<string, any> = Record<string, any>,
 > {
   constructor(private readonly keyValuePairService: KeyValuePairService) {}
@@ -19,11 +22,12 @@ export class UserVarsService<
     workspaceId?: string;
     key: Extract<K, string>;
   }): Promise<KeyValueTypesMap[K]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let userVarWorkspaceLevel: any[] = [];
 
     if (workspaceId) {
       userVarWorkspaceLevel = await this.keyValuePairService.get({
-        type: KeyValuePairType.USER_VAR,
+        type: KeyValuePairType.USER_VARIABLE,
         userId: null,
         workspaceId,
         key,
@@ -36,11 +40,12 @@ export class UserVarsService<
       );
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let userVarUserLevel: any[] = [];
 
     if (userId) {
       userVarUserLevel = await this.keyValuePairService.get({
-        type: KeyValuePairType.USER_VAR,
+        type: KeyValuePairType.USER_VARIABLE,
         userId,
         workspaceId: null,
         key,
@@ -51,11 +56,12 @@ export class UserVarsService<
       throw new Error(`Multiple values found for key ${key} at user level`);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let userVarWorkspaceAndUserLevel: any[] = [];
 
     if (userId && workspaceId) {
       userVarWorkspaceAndUserLevel = await this.keyValuePairService.get({
-        type: KeyValuePairType.USER_VAR,
+        type: KeyValuePairType.USER_VARIABLE,
         userId,
         workspaceId,
         key,
@@ -81,14 +87,16 @@ export class UserVarsService<
   }: {
     userId?: string;
     workspaceId?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }): Promise<Map<Extract<keyof KeyValueTypesMap, string>, any>> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let result: any[] = [];
 
     if (userId) {
       result = [
         ...result,
         ...(await this.keyValuePairService.get({
-          type: KeyValuePairType.USER_VAR,
+          type: KeyValuePairType.USER_VARIABLE,
           userId,
           workspaceId: null,
         })),
@@ -99,7 +107,7 @@ export class UserVarsService<
       result = [
         ...result,
         ...(await this.keyValuePairService.get({
-          type: KeyValuePairType.USER_VAR,
+          type: KeyValuePairType.USER_VARIABLE,
           userId: null,
           workspaceId,
         })),
@@ -110,7 +118,7 @@ export class UserVarsService<
       result = [
         ...result,
         ...(await this.keyValuePairService.get({
-          type: KeyValuePairType.USER_VAR,
+          type: KeyValuePairType.USER_VARIABLE,
           userId,
           workspaceId,
         })),
@@ -120,40 +128,52 @@ export class UserVarsService<
     return mergeUserVars<Extract<keyof KeyValueTypesMap, string>>(result);
   }
 
-  set<K extends keyof KeyValueTypesMap>({
-    userId,
-    workspaceId,
-    key,
-    value,
-  }: {
-    userId?: string;
-    workspaceId?: string;
-    key: Extract<K, string>;
-    value: KeyValueTypesMap[K];
-  }) {
-    return this.keyValuePairService.set({
-      userId,
-      workspaceId,
-      key: key,
-      value,
-      type: KeyValuePairType.USER_VAR,
-    });
-  }
-
-  async delete({
-    userId,
-    workspaceId,
-    key,
-  }: {
-    userId?: string;
-    workspaceId?: string;
-    key: Extract<keyof KeyValueTypesMap, string>;
-  }) {
-    return this.keyValuePairService.delete({
+  set<K extends keyof KeyValueTypesMap>(
+    {
       userId,
       workspaceId,
       key,
-      type: KeyValuePairType.USER_VAR,
-    });
+      value,
+    }: {
+      userId?: string;
+      workspaceId?: string;
+      key: Extract<K, string>;
+      value: KeyValueTypesMap[K];
+    },
+    queryRunner?: QueryRunner,
+  ) {
+    return this.keyValuePairService.set(
+      {
+        userId,
+        workspaceId,
+        key: key,
+        value,
+        type: KeyValuePairType.USER_VARIABLE,
+      },
+      queryRunner,
+    );
+  }
+
+  async delete(
+    {
+      userId,
+      workspaceId,
+      key,
+    }: {
+      userId?: string;
+      workspaceId?: string;
+      key: Extract<keyof KeyValueTypesMap, string>;
+    },
+    queryRunner?: QueryRunner,
+  ) {
+    return this.keyValuePairService.delete(
+      {
+        userId,
+        workspaceId,
+        key,
+        type: KeyValuePairType.USER_VARIABLE,
+      },
+      queryRunner,
+    );
   }
 }

@@ -1,25 +1,25 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import {
   DiscoveryService,
   MetadataScanner,
   ModuleRef,
   createContextId,
 } from '@nestjs/core';
-import { Module } from '@nestjs/core/injector/module';
 import { Injector } from '@nestjs/core/injector/injector';
-import { InstanceWrapper } from '@nestjs/core/injector/instance-wrapper';
+import { type InstanceWrapper } from '@nestjs/core/injector/instance-wrapper';
+import { type Module } from '@nestjs/core/injector/module';
 
-import { MessageQueueWorkerOptions } from 'src/engine/core-modules/message-queue/interfaces/message-queue-worker-options.interface';
 import {
-  MessageQueueJob,
-  MessageQueueJobData,
+  type MessageQueueJob,
+  type MessageQueueJobData,
 } from 'src/engine/core-modules/message-queue/interfaces/message-queue-job.interface';
+import { type MessageQueueWorkerOptions } from 'src/engine/core-modules/message-queue/interfaces/message-queue-worker-options.interface';
 
-import { MessageQueueMetadataAccessor } from 'src/engine/core-modules/message-queue/message-queue-metadata.accessor';
-import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
-import { getQueueToken } from 'src/engine/core-modules/message-queue/utils/get-queue-token.util';
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
-import { shouldFilterException } from 'src/engine/utils/global-exception-handler.util';
+import { MessageQueueMetadataAccessor } from 'src/engine/core-modules/message-queue/message-queue-metadata.accessor';
+import { type MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
+import { getQueueToken } from 'src/engine/core-modules/message-queue/utils/get-queue-token.util';
+import { shouldCaptureException } from 'src/engine/utils/global-exception-handler.util';
 
 interface ProcessorGroup {
   instance: object;
@@ -148,6 +148,7 @@ export class MessageQueueExplorer implements OnModuleInit {
     const filteredProcessMethodNames = processMethodNames.filter(
       (processMethodName) => {
         const metadata = this.metadataAccessor.getProcessMetadata(
+          // @ts-expect-error legacy noImplicitAny
           instance[processMethodName],
         );
 
@@ -203,9 +204,10 @@ export class MessageQueueExplorer implements OnModuleInit {
   ) {
     for (const processMethodName of processMethodNames) {
       try {
+        // @ts-expect-error legacy noImplicitAny
         await instance[processMethodName].call(instance, job.data);
       } catch (err) {
-        if (!shouldFilterException(err)) {
+        if (shouldCaptureException(err)) {
           this.exceptionHandlerService.captureExceptions([err]);
         }
         throw err;

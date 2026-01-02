@@ -1,152 +1,158 @@
 import { RecordShowRightDrawerActionMenu } from '@/action-menu/components/RecordShowRightDrawerActionMenu';
-import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
-import { isNewViewableRecordLoadingState } from '@/object-record/record-right-drawer/states/isNewViewableRecordLoading';
-import { CardComponents } from '@/object-record/record-show/components/CardComponents';
+import { RecordShowRightDrawerOpenRecordButton } from '@/action-menu/components/RecordShowRightDrawerOpenRecordButton';
+import { CommandMenuPageComponentInstanceContext } from '@/command-menu/states/contexts/CommandMenuPageComponentInstanceContext';
 import { FieldsCard } from '@/object-record/record-show/components/FieldsCard';
 import { SummaryCard } from '@/object-record/record-show/components/SummaryCard';
-import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type RecordLayout } from '@/object-record/record-show/types/RecordLayout';
+import { getCardComponent } from '@/object-record/record-show/utils/getCardComponent';
+import { RightDrawerFooter } from '@/ui/layout/right-drawer/components/RightDrawerFooter';
 import { ShowPageLeftContainer } from '@/ui/layout/show-page/components/ShowPageLeftContainer';
-import { SingleTabProps, TabList } from '@/ui/layout/tab/components/TabList';
-import { useTabList } from '@/ui/layout/tab/hooks/useTabList';
-import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
-import styled from '@emotion/styled';
-import { useRecoilState, useRecoilValue } from 'recoil';
+import { getShowPageTabListComponentId } from '@/ui/layout/show-page/utils/getShowPageTabListComponentId';
+import { TabList } from '@/ui/layout/tab-list/components/TabList';
 
-const StyledShowPageRightContainer = styled.div<{ isMobile: boolean }>`
+import { type TargetRecordIdentifier } from '@/ui/layout/contexts/TargetRecordIdentifier';
+import { activeTabIdComponentState } from '@/ui/layout/tab-list/states/activeTabIdComponentState';
+import { TabListComponentInstanceContext } from '@/ui/layout/tab-list/states/contexts/TabListComponentInstanceContext';
+import { type SingleTabProps } from '@/ui/layout/tab-list/types/SingleTabProps';
+import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
+import { useComponentInstanceStateContext } from '@/ui/utilities/state/component-state/hooks/useComponentInstanceStateContext';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { css } from '@emotion/react';
+import styled from '@emotion/styled';
+import React from 'react';
+import { isDefined } from 'twenty-shared/utils';
+
+const StyledShowPageRightContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
   justify-content: start;
   width: 100%;
-  height: 100%;
   overflow: auto;
 `;
 
-const StyledTabListContainer = styled.div`
-  align-items: center;
-  padding-left: ${({ theme }) => theme.spacing(2)};
-  border-bottom: ${({ theme }) => `1px solid ${theme.border.color.light}`};
-  box-sizing: border-box;
-  display: flex;
-  gap: ${({ theme }) => theme.spacing(2)};
-  height: 40px;
+const StyledTabListContainer = styled.div<{ shouldDisplay: boolean }>`
+  ${({ shouldDisplay }) =>
+    !shouldDisplay &&
+    css`
+      height: 0;
+      overflow: hidden;
+      visibility: hidden;
+    `}
 `;
 
-const StyledButtonContainer = styled.div`
-  align-items: center;
-  background: ${({ theme }) => theme.background.secondary};
-  border-top: 1px solid ${({ theme }) => theme.border.color.light};
-  bottom: 0;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: flex-end;
-  padding: ${({ theme }) => theme.spacing(2)};
-  position: absolute;
-  width: 100%;
+const StyledTabList = styled(TabList)`
+  padding-left: ${({ theme }) => theme.spacing(2)};
 `;
 
 const StyledContentContainer = styled.div<{ isInRightDrawer: boolean }>`
   flex: 1;
   overflow-y: auto;
+  background: ${({ theme }) => theme.background.primary};
   padding-bottom: ${({ theme, isInRightDrawer }) =>
     isInRightDrawer ? theme.spacing(16) : 0};
 `;
 
-export const TAB_LIST_COMPONENT_ID = 'show-page-right-tab-list';
-
 type ShowPageSubContainerProps = {
+  layout?: RecordLayout;
   tabs: SingleTabProps[];
-  targetableObject: Pick<
-    ActivityTargetableObject,
-    'targetObjectNameSingular' | 'id'
-  >;
+  targetRecordIdentifier: TargetRecordIdentifier;
   isInRightDrawer?: boolean;
   loading: boolean;
-  isNewRightDrawerItemLoading?: boolean;
 };
 
 export const ShowPageSubContainer = ({
   tabs,
-  targetableObject,
+  layout,
+  targetRecordIdentifier,
   loading,
   isInRightDrawer = false,
-  isNewRightDrawerItemLoading = false,
 }: ShowPageSubContainerProps) => {
-  const { activeTabIdState } = useTabList(
-    `${TAB_LIST_COMPONENT_ID}-${isInRightDrawer}`,
+  const commandMenuPageComponentInstance = useComponentInstanceStateContext(
+    CommandMenuPageComponentInstanceContext,
   );
-  const activeTabId = useRecoilValue(activeTabIdState);
+
+  const tabListComponentId = getShowPageTabListComponentId({
+    pageId: commandMenuPageComponentInstance?.instanceId,
+    targetObjectId: targetRecordIdentifier.id,
+  });
+  const activeTabId = useRecoilComponentValue(
+    activeTabIdComponentState,
+    tabListComponentId,
+  );
 
   const isMobile = useIsMobile();
 
-  const isNewViewableRecordLoading = useRecoilValue(
-    isNewViewableRecordLoadingState,
-  );
-
   const summaryCard = (
     <SummaryCard
-      objectNameSingular={targetableObject.targetObjectNameSingular}
-      objectRecordId={targetableObject.id}
-      isNewRightDrawerItemLoading={isNewRightDrawerItemLoading}
+      objectNameSingular={targetRecordIdentifier.targetObjectNameSingular}
+      objectRecordId={targetRecordIdentifier.id}
       isInRightDrawer={isInRightDrawer}
     />
   );
 
-  const fieldsCard = (
-    <FieldsCard
-      objectNameSingular={targetableObject.targetObjectNameSingular}
-      objectRecordId={targetableObject.id}
-    />
-  );
+  const fieldsCard = <FieldsCard />;
 
   const renderActiveTabContent = () => {
     const activeTab = tabs.find((tab) => tab.id === activeTabId);
     if (!activeTab?.cards?.length) return null;
 
-    return activeTab.cards.map((card, index) => {
-      const CardComponent = CardComponents[card.type];
-      return CardComponent ? (
-        <CardComponent
-          key={`${activeTab.id}-card-${index}`}
-          targetableObject={targetableObject}
-          isInRightDrawer={isInRightDrawer}
-        />
-      ) : null;
-    });
+    return (
+      <>
+        {activeTab.cards.map((card, index) => (
+          <React.Fragment key={`${activeTab.id}-card-${index}`}>
+            {getCardComponent(card.type, card.configuration)}
+          </React.Fragment>
+        ))}
+      </>
+    );
   };
 
-  const [recordFromStore] = useRecoilState<ObjectRecord | null>(
-    recordStoreFamilyState(targetableObject.id),
-  );
+  const visibleTabs = tabs.filter((tab) => !tab.hide);
+
+  const isInCommandMenu = isDefined(commandMenuPageComponentInstance);
+
+  const displaySummaryAndFields =
+    layout && !layout.hideSummaryAndFields && !isMobile && !isInRightDrawer;
 
   return (
-    <>
-      {!isMobile && !isInRightDrawer && (
-        <ShowPageLeftContainer forceMobile={isMobile}>
+    <TabListComponentInstanceContext.Provider
+      value={{ instanceId: tabListComponentId }}
+    >
+      {displaySummaryAndFields && (
+        <ShowPageLeftContainer>
           {summaryCard}
           {fieldsCard}
         </ShowPageLeftContainer>
       )}
-      <StyledShowPageRightContainer isMobile={isMobile}>
-        <StyledTabListContainer>
-          <TabList
+      <StyledShowPageRightContainer>
+        <StyledTabListContainer shouldDisplay={visibleTabs.length > 1}>
+          <StyledTabList
             behaveAsLinks={!isInRightDrawer}
-            loading={loading || isNewViewableRecordLoading}
-            tabListInstanceId={`${TAB_LIST_COMPONENT_ID}-${isInRightDrawer}`}
+            loading={loading}
             tabs={tabs}
+            isInRightDrawer={isInRightDrawer}
+            componentInstanceId={tabListComponentId}
           />
         </StyledTabListContainer>
-        {(isMobile || isInRightDrawer) && summaryCard}
+        {(isMobile || isInRightDrawer) && !isInCommandMenu && summaryCard}
         <StyledContentContainer isInRightDrawer={isInRightDrawer}>
           {renderActiveTabContent()}
         </StyledContentContainer>
-        {isInRightDrawer && recordFromStore && !recordFromStore.deletedAt && (
-          <StyledButtonContainer>
-            <RecordShowRightDrawerActionMenu />
-          </StyledButtonContainer>
+        {isInRightDrawer && (
+          <RightDrawerFooter
+            actions={[
+              <RecordShowRightDrawerActionMenu />,
+              <RecordShowRightDrawerOpenRecordButton
+                objectNameSingular={
+                  targetRecordIdentifier.targetObjectNameSingular
+                }
+                recordId={targetRecordIdentifier.id}
+              />,
+            ]}
+          />
         )}
       </StyledShowPageRightContainer>
-    </>
+    </TabListComponentInstanceContext.Provider>
   );
 };

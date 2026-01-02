@@ -1,21 +1,19 @@
-import { Decorator } from '@storybook/react';
+import { type Decorator } from '@storybook/react';
 import { useEffect } from 'react';
 import { useRecoilCallback } from 'recoil';
 
 import { formatFieldMetadataItemAsColumnDefinition } from '@/object-metadata/utils/formatFieldMetadataItemAsColumnDefinition';
 import { isLabelIdentifierField } from '@/object-metadata/utils/isLabelIdentifierField';
-import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
-import {
-  RecordFieldValueSelectorContextProvider,
-  useSetRecordValue,
-} from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
+import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
+import { RecordFieldComponentInstanceContext } from '@/object-record/record-field/ui/states/contexts/RecordFieldComponentInstanceContext';
 import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { CustomError, isDefined } from 'twenty-shared/utils';
 import { getCompaniesMock } from '~/testing/mock-data/companies';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
-import { getPeopleMock } from '~/testing/mock-data/people';
+import { getPeopleRecordConnectionMock } from '~/testing/mock-data/people';
 import { mockedTasks } from '~/testing/mock-data/tasks';
-import { isDefined } from '~/utils/isDefined';
+import { getMockFieldMetadataItemOrThrow } from '~/testing/utils/getMockFieldMetadataItemOrThrow';
+import { getMockObjectMetadataItemOrThrow } from '~/testing/utils/getMockObjectMetadataItemOrThrow';
 
 const RecordMockSetterEffect = ({
   companies,
@@ -26,15 +24,12 @@ const RecordMockSetterEffect = ({
   people: ObjectRecord[];
   tasks: ObjectRecord[];
 }) => {
-  const setRecordValue = useSetRecordValue();
-
   const setRecordInStores = useRecoilCallback(
     ({ set }) =>
       (record: ObjectRecord) => {
         set(recordStoreFamilyState(record.id), record);
-        setRecordValue(record.id, record);
       },
-    [setRecordValue],
+    [],
   );
 
   useEffect(() => {
@@ -71,7 +66,7 @@ export const getFieldDecorator =
           ]
         : companiesMock;
 
-    const peopleMock = getPeopleMock();
+    const peopleMock = getPeopleRecordConnectionMock();
 
     const people =
       objectNameSingular === 'person' && isDefined(fieldValue)
@@ -99,17 +94,19 @@ export const getFieldDecorator =
       (record as any)[fieldName] = fieldValue;
     }
 
-    const objectMetadataItem = generatedMockObjectMetadataItems.find(
-      (objectMetadataItem) =>
-        objectMetadataItem.nameSingular === objectNameSingular,
-    );
+    const objectMetadataItem =
+      getMockObjectMetadataItemOrThrow(objectNameSingular);
 
-    const fieldMetadataItem = objectMetadataItem?.fields.find(
-      (field) => field.name === fieldName,
-    );
+    const fieldMetadataItem = getMockFieldMetadataItemOrThrow({
+      objectMetadataItem,
+      fieldName,
+    });
 
     if (!isDefined(objectMetadataItem)) {
-      throw new Error(`Object ${objectNameSingular} not found`);
+      throw new CustomError(
+        `Object ${objectNameSingular} not found`,
+        'OBJECT_NOT_FOUND',
+      );
     }
 
     if (!isDefined(fieldMetadataItem)) {
@@ -124,18 +121,22 @@ export const getFieldDecorator =
     });
 
     return (
-      <RecordFieldValueSelectorContextProvider>
+      <RecordFieldComponentInstanceContext.Provider
+        value={{
+          instanceId: 'record-field-component-instance-id',
+        }}
+      >
         <FieldContext.Provider
           value={{
+            fieldMetadataItemId: fieldMetadataItem.id,
             recordId: record.id,
-            basePathToShowPage: '/object-record/',
             isLabelIdentifier,
             fieldDefinition: formatFieldMetadataItemAsColumnDefinition({
               field: fieldMetadataItem,
               position: 0,
               objectMetadataItem,
             }),
-            hotkeyScope: 'hotkey-scope',
+            isRecordFieldReadOnly: false,
           }}
         >
           <RecordMockSetterEffect
@@ -145,6 +146,6 @@ export const getFieldDecorator =
           />
           <Story />
         </FieldContext.Provider>
-      </RecordFieldValueSelectorContextProvider>
+      </RecordFieldComponentInstanceContext.Provider>
     );
   };

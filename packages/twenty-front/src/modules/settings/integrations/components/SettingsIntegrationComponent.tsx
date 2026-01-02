@@ -1,18 +1,20 @@
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
+
+import { type SettingsIntegration } from '@/settings/integrations/types/SettingsIntegration';
+import { t } from '@lingui/core/macro';
+import { Link } from 'react-router-dom';
+import { isDefined } from 'twenty-shared/utils';
+import { Pill } from 'twenty-ui/components';
 import {
-  Button,
   IconArrowUpRight,
   IconBolt,
+  IconCopy,
   IconPlus,
-  Pill,
   Status,
-} from 'twenty-ui';
-
-import { SettingsIntegration } from '@/settings/integrations/types/SettingsIntegration';
-import { Link } from 'react-router-dom';
-
-import { isDefined } from '~/utils/isDefined';
+} from 'twenty-ui/display';
+import { Button } from 'twenty-ui/input';
+import { useCopyToClipboard } from '~/hooks/useCopyToClipboard';
 
 interface SettingsIntegrationComponentProps {
   integration: SettingsIntegration;
@@ -65,6 +67,7 @@ const StyledLogo = styled.img`
 export const SettingsIntegrationComponent = ({
   integration,
 }: SettingsIntegrationComponentProps) => {
+  const { copyToClipboard } = useCopyToClipboard();
   return (
     <StyledContainer
       to={integration.type === 'Active' ? integration.link : undefined}
@@ -83,14 +86,14 @@ export const SettingsIntegrationComponent = ({
         {integration.text}
       </StyledSection>
       {integration.type === 'Soon' ? (
-        <StyledSoonPill label="Soon" />
+        <StyledSoonPill label={t`Soon`} />
       ) : integration.type === 'Active' ? (
-        <Status color="green" text="Active" />
+        <Status color="green" text={t`Active`} />
       ) : integration.type === 'Add' ? (
         <Button
           to={integration.link}
           Icon={IconPlus}
-          title="Add"
+          title={t`Add`}
           size="small"
         />
       ) : integration.type === 'Use' ? (
@@ -98,7 +101,18 @@ export const SettingsIntegrationComponent = ({
           to={integration.link}
           target="_blank"
           Icon={IconBolt}
-          title="Use"
+          title={t`Use`}
+          size="small"
+        />
+      ) : integration.type === 'Copy' ? (
+        <Button
+          onClick={() => {
+            if (isDefined(integration.content)) {
+              copyToClipboard(integration.content);
+            }
+          }}
+          Icon={IconCopy}
+          title={integration.linkText}
           size="small"
         />
       ) : (

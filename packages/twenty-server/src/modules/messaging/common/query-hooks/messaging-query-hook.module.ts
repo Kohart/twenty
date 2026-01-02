@@ -1,19 +1,18 @@
 import { Module } from '@nestjs/common';
 
-import { ObjectMetadataRepositoryModule } from 'src/engine/object-metadata-repository/object-metadata-repository.module';
-import { CanAccessMessageThreadService } from 'src/modules/messaging/common/query-hooks/message/can-access-message-thread.service';
-import { MessageFindManyPreQueryHook } from 'src/modules/messaging/common/query-hooks/message/message-find-many.pre-query.hook';
-import { MessageFindOnePreQueryHook } from 'src/modules/messaging/common/query-hooks/message/message-find-one.pre-query-hook';
-import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
+import { ApplyMessagesVisibilityRestrictionsService } from 'src/modules/messaging/common/query-hooks/message/apply-messages-visibility-restrictions.service';
+import { MessageChannelUpdateOnePreQueryHook } from 'src/modules/messaging/common/query-hooks/message/message-channel-update-one.pre-query.hook';
+import { MessageFindManyPostQueryHook } from 'src/modules/messaging/common/query-hooks/message/message-find-many.post-query.hook';
+import { MessageFindOnePostQueryHook } from 'src/modules/messaging/common/query-hooks/message/message-find-one.post-query.hook';
+import { MessagingImportManagerModule } from 'src/modules/messaging/message-import-manager/messaging-import-manager.module';
 
 @Module({
-  imports: [
-    ObjectMetadataRepositoryModule.forFeature([WorkspaceMemberWorkspaceEntity]),
-  ],
+  imports: [MessagingImportManagerModule],
   providers: [
-    CanAccessMessageThreadService,
-    MessageFindOnePreQueryHook,
-    MessageFindManyPreQueryHook,
+    ApplyMessagesVisibilityRestrictionsService,
+    MessageFindOnePostQueryHook,
+    MessageFindManyPostQueryHook,
+    MessageChannelUpdateOnePreQueryHook,
   ],
 })
 export class MessagingQueryHookModule {}

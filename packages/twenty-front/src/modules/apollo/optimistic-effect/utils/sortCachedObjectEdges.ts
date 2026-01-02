@@ -1,11 +1,11 @@
-import { Reference, StoreObject } from '@apollo/client';
-import { ReadFieldFunction } from '@apollo/client/cache/core/types/common';
+import { type Reference, type StoreObject } from '@apollo/client';
+import { type ReadFieldFunction } from '@apollo/client/cache/core/types/common';
 
-import { RecordGqlRefEdge } from '@/object-record/cache/types/RecordGqlRefEdge';
-import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
-import { OrderBy } from '@/types/OrderBy';
-import { isDefined } from '~/utils/isDefined';
+import { type RecordGqlRefEdge } from '@/object-record/cache/types/RecordGqlRefEdge';
+import { type RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
+import { type OrderBy } from '@/types/OrderBy';
 import { sortAsc, sortDesc, sortNullsFirst, sortNullsLast } from '~/utils/sort';
+import { isDefined } from 'twenty-shared/utils';
 
 export const sortCachedObjectEdges = ({
   edges,

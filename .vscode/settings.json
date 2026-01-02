@@ -1,6 +1,8 @@
 {
   "editor.formatOnSave": false,
-  "files.eol": "auto",
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
   "[typescript]": {
     "editor.formatOnSave": false,
     "editor.codeActionsOnSave": {
@@ -29,6 +31,7 @@
     "editor.formatOnSave": true
   },
   "javascript.format.enable": false,
+  "javascript.preferences.importModuleSpecifier": "non-relative",
   "typescript.format.enable": false,
   "cSpell.enableFiletypes": [
     "!javascript",
@@ -43,7 +46,12 @@
   ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "search.exclude": {
-    "**/.yarn": true,
+    "**/.yarn": true
   },
   "eslint.debug": true,
+  "files.associations": {
+    ".cursorrules": "markdown"
+  },
+  "jestrunner.codeLensSelector": "**/*.{test,spec,integration-spec}.{js,jsx,ts,tsx}",
+  "typescript.tsdk": "node_modules/typescript/lib"
 }

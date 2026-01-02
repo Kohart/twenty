@@ -1,13 +1,13 @@
 /* eslint-disable no-console */
-import { ExceptionHandlerUser } from 'src/engine/core-modules/exception-handler/interfaces/exception-handler-user.interface';
-import { ExceptionHandlerOptions } from 'src/engine/core-modules/exception-handler/interfaces/exception-handler-options.interface';
+import { type ExceptionHandlerOptions } from 'src/engine/core-modules/exception-handler/interfaces/exception-handler-options.interface';
 
-import { ExceptionHandlerDriverInterface } from 'src/engine/core-modules/exception-handler/interfaces';
+import { type ExceptionHandlerDriverInterface } from 'src/engine/core-modules/exception-handler/interfaces';
 
 export class ExceptionHandlerConsoleDriver
   implements ExceptionHandlerDriverInterface
 {
   captureExceptions(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     exceptions: ReadonlyArray<any>,
     options?: ExceptionHandlerOptions,
   ) {
@@ -17,12 +17,5 @@ export class ExceptionHandlerConsoleDriver
     console.groupEnd();
 
     return [];
-  }
-
-  captureMessage(message: string, user?: ExceptionHandlerUser): void {
-    console.group('Message Captured');
-    console.info(user);
-    console.info(message);
-    console.groupEnd();
   }
 }

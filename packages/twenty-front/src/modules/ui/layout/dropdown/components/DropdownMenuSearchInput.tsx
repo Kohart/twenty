@@ -1,17 +1,16 @@
+import { msg } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react/macro';
 import { useInputFocusWithoutScrollOnMount } from '@/ui/input/hooks/useInputFocusWithoutScrollOnMount';
 import styled from '@emotion/styled';
-import { forwardRef, InputHTMLAttributes } from 'react';
-import { TEXT_INPUT_STYLE } from 'twenty-ui';
+import { forwardRef, type InputHTMLAttributes } from 'react';
+import { TEXT_INPUT_STYLE } from 'twenty-ui/theme';
 
 const StyledDropdownMenuSearchInputContainer = styled.div`
   align-items: center;
   --vertical-padding: ${({ theme }) => theme.spacing(2)};
-
   display: flex;
-  background: ${({ theme }) => theme.background.transparent.secondary};
-  backdrop-filter: ${({ theme }) => theme.blur.medium};
   flex-direction: row;
-  height: calc(36px - 2 * var(--vertical-padding));
+  min-height: calc(36px - 2 * var(--vertical-padding));
   padding: var(--vertical-padding) 0;
 
   width: 100%;
@@ -35,17 +34,21 @@ const StyledInput = styled.input`
   }
 `;
 
+const defaultSearchPlaceholder = msg`Search`;
+
 export const DropdownMenuSearchInput = forwardRef<
   HTMLInputElement,
   InputHTMLAttributes<HTMLInputElement>
->(({ value, onChange, placeholder = 'Search', type }, forwardedRef) => {
+>(({ value, onChange, placeholder, type }, forwardedRef) => {
+  const { i18n } = useLingui();
   const { inputRef } = useInputFocusWithoutScrollOnMount();
   const ref = forwardedRef ?? inputRef;
+  const translatedPlaceholder = placeholder ?? i18n._(defaultSearchPlaceholder);
   return (
     <StyledDropdownMenuSearchInputContainer>
       <StyledInput
         autoComplete="off"
-        {...{ onChange, placeholder, type, value }}
+        {...{ onChange, placeholder: translatedPlaceholder, type, value }}
         ref={ref}
       />
     </StyledDropdownMenuSearchInputContainer>

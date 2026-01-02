@@ -1,28 +1,39 @@
 name: CI Website
+
+permissions:
+  contents: read
+
 on:
   push:
     branches:
       - main
 
   pull_request:
-    
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  changed-files-check:
+    uses: ./.github/workflows/changed-files.yaml
+    with:
+      files: |
+        package.json
+        packages/twenty-website/**
   website-build:
-    timeout-minutes: 3
+    needs: changed-files-check
+    if: needs.changed-files-check.outputs.any_changed == 'true'
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     services:
       postgres:
         image: twentycrm/twenty-postgres-spilo
         env:
           PGUSER_SUPERUSER: postgres
-          PGPASSWORD_SUPERUSER: twenty
-          ALLOW_NOSSL: "true"
-          SPILO_PROVIDER: "local"
+          PGPASSWORD_SUPERUSER: postgres
+          ALLOW_NOSSL: 'true'
+          SPILO_PROVIDER: 'local'
         ports:
           - 5432:5432
         options: >-
@@ -34,31 +45,31 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Check for changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v11
-        with:
-          files: 'package.json, packages/twenty-website/**'
 
       - name: Install dependencies
-        if: steps.changed-files.outputs.changed == 'true' 
-        uses: ./.github/workflows/actions/yarn-install
+        uses: ./.github/actions/yarn-install
 
       - name: Server / Create DB
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: PGPASSWORD=twenty psql -h localhost -p 5432 -U postgres -d postgres -c 'CREATE DATABASE "default";'
+        run: PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d postgres -c 'CREATE DATABASE "default";'
 
       - name: Website / Run migrations
-        if: steps.changed-files.outputs.changed == 'true' 
-        run: npx nx database:migrate twenty-website 
+        run: npx nx database:migrate twenty-website
         env:
-          DATABASE_PG_URL: postgres://postgres:twenty@localhost:5432/default
+          DATABASE_PG_URL: postgres://postgres:postgres@localhost:5432/default
       - name: Website / Build Website
-        if: steps.changed-files.outputs.changed == 'true' 
         run: npx nx build twenty-website
         env:
-          DATABASE_PG_URL: postgres://postgres:twenty@localhost:5432/default
-
-      - name: Mark as VALID
-        if: steps.changed-files.outputs.changed != 'true'  # If no changes, mark as valid
-        run: echo "No relevant changes detected. CI is valid."    
+          DATABASE_PG_URL: postgres://postgres:postgres@localhost:5432/default
+          KEYSTATIC_GITHUB_CLIENT_ID: xxx
+          KEYSTATIC_GITHUB_CLIENT_SECRET: xxx
+          KEYSTATIC_SECRET: xxx
+          NEXT_PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: xxx
+  ci-website-status-check:
+    if: always() && !cancelled()
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    needs: [changed-files-check, website-build]
+    steps:
+      - name: Fail job if any needs failed
+        if: contains(needs.*.result, 'failure')
+        run: exit 1

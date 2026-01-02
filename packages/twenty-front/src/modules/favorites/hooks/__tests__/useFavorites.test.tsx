@@ -3,28 +3,28 @@ import { useSetRecoilState } from 'recoil';
 
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { useFavorites } from '@/favorites/hooks/useFavorites';
+
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
+import { prefetchFavoritesState } from '@/prefetch/states/prefetchFavoritesState';
 import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 import {
   initialFavorites,
-  mocks,
   mockWorkspaceMember,
   sortedFavorites,
-} from '../__mocks__/useFavorites';
-
-jest.mock('@/object-record/hooks/useFindManyRecords', () => ({
-  useFindManyRecords: () => ({ records: initialFavorites }),
-}));
+} from '@/favorites/hooks/__mocks__/useFavorites';
 
 const Wrapper = getJestMetadataAndApolloMocksWrapper({
-  apolloMocks: mocks,
+  apolloMocks: [],
 });
 
 describe('useFavorites', () => {
   it('should fetch and sort favorites successfully', () => {
     const { result } = renderHook(
       () => {
+        const setPrefetchFavorites = useSetRecoilState(prefetchFavoritesState);
+        setPrefetchFavorites(initialFavorites);
+
         const setCurrentWorkspaceMember = useSetRecoilState(
           currentWorkspaceMemberState,
         );

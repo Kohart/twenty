@@ -1,13 +1,15 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
-import { graphql, http, HttpResponse } from 'msw';
+import { HttpResponse, graphql, http } from 'msw';
+import { getImageAbsoluteURI } from 'twenty-shared/utils';
+import { REACT_APP_SERVER_BASE_URL } from '~/config';
 import { SettingsServerlessFunctionDetail } from '~/pages/settings/serverless-functions/SettingsServerlessFunctionDetail';
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
-import { getImageAbsoluteURI } from '~/utils/image/getImageAbsoluteURI';
 import { sleep } from '~/utils/sleep';
 
 const SOURCE_CODE_FULL_PATH =
@@ -16,7 +18,7 @@ const SOURCE_CODE_FULL_PATH =
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/Settings/ServerlessFunctions/SettingsServerlessFunctionDetail',
   component: SettingsServerlessFunctionDetail,
-  decorators: [PageDecorator],
+  decorators: [PageDecorator, I18nFrontDecorator],
   args: {
     routePath: '/settings/function/',
     routeParams: {
@@ -35,17 +37,22 @@ const meta: Meta<PageDecoratorArgs> = {
                 id: 'adb4bd21-7670-4c81-9f74-1fc196fe87ea',
                 name: 'Serverless Function Name',
                 description: '',
-                syncStatus: 'READY',
-                runtime: 'nodejs18.x',
+                runtime: 'nodejs22.x',
                 updatedAt: '2024-02-24T10:23:10.673Z',
                 createdAt: '2024-02-24T10:23:10.673Z',
               },
             },
           });
         }),
-        http.get(getImageAbsoluteURI(SOURCE_CODE_FULL_PATH) || '', () => {
-          return HttpResponse.text('export const handler = () => {}');
-        }),
+        http.get(
+          getImageAbsoluteURI({
+            imageUrl: SOURCE_CODE_FULL_PATH,
+            baseUrl: REACT_APP_SERVER_BASE_URL,
+          }) || '',
+          () => {
+            return HttpResponse.text('export const handler = () => {}');
+          },
+        ),
       ],
     },
   },
@@ -58,6 +65,8 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await sleep(100);
-    await canvas.findByText('Code your function');
+    await canvas.findByText('Code your function', undefined, {
+      timeout: 3000,
+    });
   },
 };

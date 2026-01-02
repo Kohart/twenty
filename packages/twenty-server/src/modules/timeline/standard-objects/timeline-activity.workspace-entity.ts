@@ -1,14 +1,17 @@
+import { msg } from '@lingui/core/macro';
+import { STANDARD_OBJECT_IDS } from 'twenty-shared/metadata';
+import { FieldMetadataType, RelationOnDeleteAction } from 'twenty-shared/types';
+import { capitalize } from 'twenty-shared/utils';
+
+import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
 import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
 
-import { FeatureFlagKey } from 'src/engine/core-modules/feature-flag/enums/feature-flag-key.enum';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { RelationMetadataType } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 import { BaseWorkspaceEntity } from 'src/engine/twenty-orm/base.workspace-entity';
 import { CustomWorkspaceEntity } from 'src/engine/twenty-orm/custom.workspace-entity';
 import { WorkspaceDynamicRelation } from 'src/engine/twenty-orm/decorators/workspace-dynamic-relation.decorator';
 import { WorkspaceEntity } from 'src/engine/twenty-orm/decorators/workspace-entity.decorator';
 import { WorkspaceField } from 'src/engine/twenty-orm/decorators/workspace-field.decorator';
-import { WorkspaceGate } from 'src/engine/twenty-orm/decorators/workspace-gate.decorator';
+import { WorkspaceIsFieldUIReadOnly } from 'src/engine/twenty-orm/decorators/workspace-is-field-ui-readonly.decorator';
 import { WorkspaceIsNotAuditLogged } from 'src/engine/twenty-orm/decorators/workspace-is-not-audit-logged.decorator';
 import { WorkspaceIsNullable } from 'src/engine/twenty-orm/decorators/workspace-is-nullable.decorator';
 import { WorkspaceIsSystem } from 'src/engine/twenty-orm/decorators/workspace-is-system.decorator';
@@ -16,8 +19,8 @@ import { WorkspaceJoinColumn } from 'src/engine/twenty-orm/decorators/workspace-
 import { WorkspaceRelation } from 'src/engine/twenty-orm/decorators/workspace-relation.decorator';
 import { TIMELINE_ACTIVITY_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { STANDARD_OBJECT_ICONS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-icons';
-import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 import { CompanyWorkspaceEntity } from 'src/modules/company/standard-objects/company.workspace-entity';
+import { DashboardWorkspaceEntity } from 'src/modules/dashboard/standard-objects/dashboard.workspace-entity';
 import { NoteWorkspaceEntity } from 'src/modules/note/standard-objects/note.workspace-entity';
 import { OpportunityWorkspaceEntity } from 'src/modules/opportunity/standard-objects/opportunity.workspace-entity';
 import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
@@ -29,11 +32,13 @@ import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/sta
 
 @WorkspaceEntity({
   standardId: STANDARD_OBJECT_IDS.timelineActivity,
+
   namePlural: 'timelineActivities',
-  labelSingular: 'Timeline Activity',
-  labelPlural: 'Timeline Activities',
-  description: 'Aggregated / filtered event to be displayed on the timeline',
+  labelSingular: msg`Timeline Activity`,
+  labelPlural: msg`Timeline Activities`,
+  description: msg`Aggregated / filtered event to be displayed on the timeline`,
   icon: STANDARD_OBJECT_ICONS.timelineActivity,
+  labelIdentifierStandardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.name,
 })
 @WorkspaceIsSystem()
 @WorkspaceIsNotAuditLogged()
@@ -41,29 +46,33 @@ export class TimelineActivityWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.happensAt,
     type: FieldMetadataType.DATE_TIME,
-    label: 'Creation date',
-    description: 'Creation date',
+    label: msg`Creation date`,
+    description: msg`Creation date`,
     icon: 'IconCalendar',
     defaultValue: 'now',
   })
+  @WorkspaceIsFieldUIReadOnly()
   happensAt: Date;
 
   @WorkspaceField({
     standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.name,
     type: FieldMetadataType.TEXT,
-    label: 'Event name',
-    description: 'Event name',
+    label: msg`Event name`,
+    description: msg`Event name`,
     icon: 'IconAbc',
   })
-  name: string;
+  @WorkspaceIsFieldUIReadOnly()
+  @WorkspaceIsNullable()
+  name: string | null;
 
   @WorkspaceField({
     standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.properties,
     type: FieldMetadataType.RAW_JSON,
-    label: 'Event details',
-    description: 'Json value for event details',
+    label: msg`Event details`,
+    description: msg`Json value for event details`,
     icon: 'IconListDetails',
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   properties: JSON | null;
 
@@ -71,42 +80,48 @@ export class TimelineActivityWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.linkedRecordCachedName,
     type: FieldMetadataType.TEXT,
-    label: 'Linked Record cached name',
-    description: 'Cached record name',
+    label: msg`Linked Record cached name`,
+    description: msg`Cached record name`,
     icon: 'IconAbc',
   })
-  linkedRecordCachedName: string;
+  @WorkspaceIsFieldUIReadOnly()
+  @WorkspaceIsNullable()
+  linkedRecordCachedName: string | null;
 
   @WorkspaceField({
     standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.linkedRecordId,
     type: FieldMetadataType.UUID,
-    label: 'Linked Record id',
-    description: 'Linked Record id',
+    label: msg`Linked Record id`,
+    description: msg`Linked Record id`,
     icon: 'IconAbc',
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   linkedRecordId: string | null;
 
   @WorkspaceField({
     standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.linkedObjectMetadataId,
     type: FieldMetadataType.UUID,
-    label: 'Linked Object Metadata Id',
-    description: 'inked Object Metadata Id',
+    label: msg`Linked Object Metadata Id`,
+    description: msg`Linked Object Metadata Id`,
     icon: 'IconAbc',
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   linkedObjectMetadataId: string | null;
 
   // Who made the action
   @WorkspaceRelation({
     standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.workspaceMember,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Workspace Member',
-    description: 'Event workspace member',
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Workspace Member`,
+    description: msg`Event workspace member`,
     icon: 'IconCircleUser',
     inverseSideTarget: () => WorkspaceMemberWorkspaceEntity,
     inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.CASCADE,
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
   workspaceMember: Relation<WorkspaceMemberWorkspaceEntity> | null;
 
@@ -114,147 +129,181 @@ export class TimelineActivityWorkspaceEntity extends BaseWorkspaceEntity {
   workspaceMemberId: string | null;
 
   @WorkspaceRelation({
-    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.person,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Person',
-    description: 'Event person',
+    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetPerson,
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Person`,
+    description: msg`Event person`,
     icon: 'IconUser',
     inverseSideTarget: () => PersonWorkspaceEntity,
     inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.CASCADE,
+    isMorphRelation: true,
+    morphId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetMorphId,
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
-  person: Relation<PersonWorkspaceEntity> | null;
+  targetPerson: Relation<PersonWorkspaceEntity> | null;
 
-  @WorkspaceJoinColumn('person')
-  personId: string | null;
+  @WorkspaceJoinColumn('targetPerson')
+  targetPersonId: string | null;
 
   @WorkspaceRelation({
-    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.company,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Company',
-    description: 'Event company',
+    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetCompany,
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Company`,
+    description: msg`Event company`,
     icon: 'IconBuildingSkyscraper',
     inverseSideTarget: () => CompanyWorkspaceEntity,
     inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.CASCADE,
+    isMorphRelation: true,
+    morphId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetMorphId,
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
-  company: Relation<CompanyWorkspaceEntity> | null;
+  targetCompany: Relation<CompanyWorkspaceEntity> | null;
 
-  @WorkspaceJoinColumn('company')
-  companyId: string | null;
+  @WorkspaceJoinColumn('targetCompany')
+  targetCompanyId: string | null;
 
   @WorkspaceRelation({
-    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.opportunity,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Opportunity',
-    description: 'Event opportunity',
+    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetOpportunity,
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Opportunity`,
+    description: msg`Event opportunity`,
     icon: 'IconTargetArrow',
     inverseSideTarget: () => OpportunityWorkspaceEntity,
     inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.SET_NULL,
+    isMorphRelation: true,
+    morphId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetMorphId,
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
-  opportunity: Relation<OpportunityWorkspaceEntity> | null;
+  targetOpportunity: Relation<OpportunityWorkspaceEntity> | null;
 
-  @WorkspaceJoinColumn('opportunity')
-  opportunityId: string | null;
+  @WorkspaceJoinColumn('targetOpportunity')
+  targetOpportunityId: string | null;
 
   @WorkspaceRelation({
-    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.note,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Note',
-    description: 'Event note',
+    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetNote,
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Note`,
+    description: msg`Event note`,
     icon: 'IconTargetArrow',
     inverseSideTarget: () => NoteWorkspaceEntity,
     inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.SET_NULL,
+    isMorphRelation: true,
+    morphId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetMorphId,
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
-  note: Relation<NoteWorkspaceEntity> | null;
+  targetNote: Relation<NoteWorkspaceEntity> | null;
 
-  @WorkspaceJoinColumn('note')
-  noteId: string | null;
+  @WorkspaceJoinColumn('targetNote')
+  targetNoteId: string | null;
 
   @WorkspaceRelation({
-    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.task,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Task',
-    description: 'Event task',
+    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetTask,
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Task`,
+    description: msg`Event task`,
     icon: 'IconTargetArrow',
     inverseSideTarget: () => TaskWorkspaceEntity,
     inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.SET_NULL,
+    isMorphRelation: true,
+    morphId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetMorphId,
   })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
-  task: Relation<TaskWorkspaceEntity> | null;
+  targetTask: Relation<TaskWorkspaceEntity> | null;
 
-  @WorkspaceJoinColumn('task')
-  taskId: string | null;
+  @WorkspaceJoinColumn('targetTask')
+  targetTaskId: string | null;
 
   @WorkspaceRelation({
-    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.workflow,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Workflow',
-    description: 'Event workflow',
+    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetWorkflow,
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Workflow`,
+    description: msg`Event workflow`,
     icon: 'IconTargetArrow',
     inverseSideTarget: () => WorkflowWorkspaceEntity,
     inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.CASCADE,
+    isMorphRelation: true,
+    morphId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetMorphId,
   })
-  @WorkspaceGate({
-    featureFlag: FeatureFlagKey.IsWorkflowEnabled,
-  })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
-  workflow: Relation<WorkflowWorkspaceEntity> | null;
+  targetWorkflow: Relation<WorkflowWorkspaceEntity> | null;
 
-  @WorkspaceJoinColumn('workflow')
-  @WorkspaceGate({
-    featureFlag: FeatureFlagKey.IsWorkflowEnabled,
-  })
-  workflowId: string | null;
+  @WorkspaceJoinColumn('targetWorkflow')
+  targetWorkflowId: string | null;
 
   @WorkspaceRelation({
-    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.workflowVersion,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'WorkflowVersion',
-    description: 'Event workflow version',
+    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetWorkflowVersion,
+    type: RelationType.MANY_TO_ONE,
+    label: msg`WorkflowVersion`,
+    description: msg`Event workflow version`,
     icon: 'IconTargetArrow',
     inverseSideTarget: () => WorkflowVersionWorkspaceEntity,
     inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.CASCADE,
+    isMorphRelation: true,
+    morphId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetMorphId,
   })
-  @WorkspaceGate({
-    featureFlag: FeatureFlagKey.IsWorkflowEnabled,
-  })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
-  workflowVersion: Relation<WorkflowVersionWorkspaceEntity> | null;
+  targetWorkflowVersion: Relation<WorkflowVersionWorkspaceEntity> | null;
 
-  @WorkspaceJoinColumn('workflowVersion')
-  @WorkspaceGate({
-    featureFlag: FeatureFlagKey.IsWorkflowEnabled,
-  })
-  workflowVersionId: string | null;
+  @WorkspaceJoinColumn('targetWorkflowVersion')
+  targetWorkflowVersionId: string | null;
 
   @WorkspaceRelation({
-    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.workflowRun,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Workflow Run',
-    description: 'Event workflow run',
+    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetWorkflowRun,
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Workflow Run`,
+    description: msg`Event workflow run`,
     icon: 'IconTargetArrow',
     inverseSideTarget: () => WorkflowRunWorkspaceEntity,
     inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.CASCADE,
+    isMorphRelation: true,
+    morphId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetMorphId,
   })
-  @WorkspaceGate({
-    featureFlag: FeatureFlagKey.IsWorkflowEnabled,
-  })
+  @WorkspaceIsFieldUIReadOnly()
   @WorkspaceIsNullable()
-  workflowRun: Relation<WorkflowRunWorkspaceEntity> | null;
+  targetWorkflowRun: Relation<WorkflowRunWorkspaceEntity> | null;
 
-  @WorkspaceJoinColumn('workflowRun')
-  @WorkspaceGate({
-    featureFlag: FeatureFlagKey.IsWorkflowEnabled,
+  @WorkspaceJoinColumn('targetWorkflowRun')
+  targetWorkflowRunId: string | null;
+
+  @WorkspaceRelation({
+    standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetDashboard,
+    type: RelationType.MANY_TO_ONE,
+    label: msg`Dashboard`,
+    description: msg`Event dashboard`,
+    icon: 'IconTargetArrow',
+    inverseSideTarget: () => DashboardWorkspaceEntity,
+    inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.SET_NULL,
+    isMorphRelation: true,
+    morphId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetMorphId,
   })
-  workflowRunId: string | null;
+  @WorkspaceIsFieldUIReadOnly()
+  @WorkspaceIsNullable()
+  targetDashboard: Relation<DashboardWorkspaceEntity> | null;
 
+  @WorkspaceJoinColumn('targetDashboard')
+  targetDashboardId: string | null;
+
+  // todo: remove this decorator and the custom field
   @WorkspaceDynamicRelation({
-    type: RelationMetadataType.MANY_TO_ONE,
+    type: RelationType.MANY_TO_ONE,
     argsFactory: (oppositeObjectMetadata) => ({
-      standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.custom,
+      standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetCustom,
       name: oppositeObjectMetadata.nameSingular,
       label: oppositeObjectMetadata.labelSingular,
       description: `Timeline Activity ${oppositeObjectMetadata.labelSingular}`,
@@ -263,6 +312,23 @@ export class TimelineActivityWorkspaceEntity extends BaseWorkspaceEntity {
     }),
     inverseSideTarget: () => CustomWorkspaceEntity,
     inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.CASCADE,
   })
   custom: Relation<CustomWorkspaceEntity>;
+
+  @WorkspaceDynamicRelation({
+    type: RelationType.MANY_TO_ONE,
+    argsFactory: (oppositeObjectMetadata) => ({
+      standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetCustom,
+      name: oppositeObjectMetadata.nameSingular,
+      label: oppositeObjectMetadata.labelSingular,
+      description: `Timeline Activity ${oppositeObjectMetadata.labelSingular}`,
+      joinColumn: `target${capitalize(oppositeObjectMetadata.nameSingular)}Id`,
+      icon: 'IconTimeline',
+    }),
+    inverseSideTarget: () => CustomWorkspaceEntity,
+    inverseSideFieldKey: 'timelineActivities',
+    onDelete: RelationOnDeleteAction.CASCADE,
+  })
+  targetCustom: Relation<CustomWorkspaceEntity>;
 }

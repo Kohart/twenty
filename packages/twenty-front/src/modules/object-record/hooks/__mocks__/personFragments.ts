@@ -8,6 +8,7 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ZERO_RELATIONS = `
         source
         workspaceMemberId
         name
+        context
       }
       deletedAt
       emails {
@@ -30,6 +31,7 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ZERO_RELATIONS = `
       phones {
         primaryPhoneNumber
         primaryPhoneCountryCode
+        primaryPhoneCallingCode
         additionalPhones
       }
       position
@@ -37,6 +39,7 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ZERO_RELATIONS = `
       whatsapp {
         primaryPhoneNumber
         primaryPhoneCountryCode
+        primaryPhoneCallingCode
         additionalPhones
       }
       workPreference
@@ -53,20 +56,8 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS = `
         edges {
           node {
             __typename
-            authorId
-            companyId
-            createdAt
-            deletedAt
-            fullPath
             id
             name
-            noteId
-            opportunityId
-            personId
-            rocketId
-            taskId
-            type
-            updatedAt
           }
         }
       }
@@ -75,74 +66,21 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS = `
         edges {
           node {
             __typename
-            calendarEventId
-            createdAt
-            deletedAt
-            displayName
             handle
             id
-            isOrganizer
-            personId
-            responseStatus
-            updatedAt
-            workspaceMemberId
           }
         }
       }
       city
       company {
         __typename
-        accountOwnerId
-        address {
-          addressStreet1
-          addressStreet2
-          addressCity
-          addressState
-          addressCountry
-          addressPostcode
-          addressLat
-          addressLng
-        }
-        annualRecurringRevenue {
-          amountMicros
-          currencyCode
-        }
-        createdAt
-        createdBy {
-          source
-          workspaceMemberId
-          name
-        }
-        deletedAt
         domainName {
           primaryLinkUrl
           primaryLinkLabel
           secondaryLinks
         }
-        employees
         id
-        idealCustomerProfile
-        introVideo {
-          primaryLinkUrl
-          primaryLinkLabel
-          secondaryLinks
-        }
-        linkedinLink {
-          primaryLinkUrl
-          primaryLinkLabel
-          secondaryLinks
-        }
         name
-        position
-        tagline
-        updatedAt
-        visaSponsorship
-        workPolicy
-        xLink {
-          primaryLinkUrl
-          primaryLinkLabel
-          secondaryLinks
-        }
       }
       companyId
       createdAt
@@ -150,6 +88,7 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS = `
         source
         workspaceMemberId
         name
+        context
       }
       deletedAt
       emails {
@@ -160,23 +99,7 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS = `
         edges {
           node {
             __typename
-            companyId
-            createdAt
-            deletedAt
-            favoriteFolderId
             id
-            noteId
-            opportunityId
-            personId
-            position
-            rocketId
-            taskId
-            updatedAt
-            viewId
-            workflowId
-            workflowRunId
-            workflowVersionId
-            workspaceMemberId
           }
         }
       }
@@ -192,16 +115,8 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS = `
         edges {
           node {
             __typename
-            createdAt
-            deletedAt
-            displayName
             handle
             id
-            messageId
-            personId
-            role
-            updatedAt
-            workspaceMemberId
           }
         }
       }
@@ -213,15 +128,7 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS = `
         edges {
           node {
             __typename
-            companyId
-            createdAt
-            deletedAt
             id
-            noteId
-            opportunityId
-            personId
-            rocketId
-            updatedAt
           }
         }
       }
@@ -229,31 +136,15 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS = `
       phones {
         primaryPhoneNumber
         primaryPhoneCountryCode
+        primaryPhoneCallingCode
         additionalPhones
       }
       pointOfContactForOpportunities {
         edges {
           node {
             __typename
-            amount {
-              amountMicros
-              currencyCode
-            }
-            closeDate
-            companyId
-            createdAt
-            createdBy {
-              source
-              workspaceMemberId
-              name
-            }
-            deletedAt
             id
             name
-            pointOfContactId
-            position
-            stage
-            updatedAt
           }
         }
       }
@@ -262,15 +153,7 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS = `
         edges {
           node {
             __typename
-            companyId
-            createdAt
-            deletedAt
             id
-            opportunityId
-            personId
-            rocketId
-            taskId
-            updatedAt
           }
         }
       }
@@ -278,26 +161,7 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS = `
         edges {
           node {
             __typename
-            companyId
-            createdAt
-            deletedAt
-            happensAt
             id
-            linkedObjectMetadataId
-            linkedRecordCachedName
-            linkedRecordId
-            name
-            noteId
-            opportunityId
-            personId
-            properties
-            rocketId
-            taskId
-            updatedAt
-            workflowId
-            workflowRunId
-            workflowVersionId
-            workspaceMemberId
           }
         }
       }
@@ -305,6 +169,7 @@ export const PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS = `
       whatsapp {
         primaryPhoneNumber
         primaryPhoneCountryCode
+        primaryPhoneCallingCode
         additionalPhones
       }
       workPreference

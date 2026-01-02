@@ -1,84 +1,48 @@
 import styled from '@emotion/styled';
 import { useRecoilValue } from 'recoil';
 
-import { workspacesState } from '@/auth/states/workspaces';
-import { MultiWorkspaceDropdownButton } from '@/ui/navigation/navigation-drawer/components/MultiWorkspaceDropdownButton';
-import { DEFAULT_WORKSPACE_LOGO } from '@/ui/navigation/navigation-drawer/constants/DefaultWorkspaceLogo';
-import { DEFAULT_WORKSPACE_NAME } from '@/ui/navigation/navigation-drawer/constants/DefaultWorkspaceName';
+import { MultiWorkspaceDropdownButton } from '@/ui/navigation/navigation-drawer/components/MultiWorkspaceDropdown/MultiWorkspaceDropdownButton';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 
-import { NavigationDrawerAnimatedCollapseWrapper } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerAnimatedCollapseWrapper';
+import { PAGE_BAR_MIN_HEIGHT } from '@/ui/layout/page/constants/PageBarMinHeight';
 import { isNavigationDrawerExpandedState } from '@/ui/navigation/states/isNavigationDrawerExpanded';
-import { isNonEmptyString } from '@sniptt/guards';
 import { NavigationDrawerCollapseButton } from './NavigationDrawerCollapseButton';
 
 const StyledContainer = styled.div`
   align-items: center;
   display: flex;
-  height: ${({ theme }) => theme.spacing(8)};
   user-select: none;
-`;
-const StyledSingleWorkspaceContainer = styled(StyledContainer)`
-  gap: ${({ theme }) => theme.spacing(2)};
-  padding: ${({ theme }) => theme.spacing(1)};
-`;
-
-const StyledLogo = styled.div<{ logo: string }>`
-  background: url(${({ logo }) => logo});
-  background-position: center;
-  background-size: cover;
-  border-radius: ${({ theme }) => theme.border.radius.xs};
-  height: 16px;
-  width: 16px;
-`;
-
-const StyledName = styled.div`
-  color: ${({ theme }) => theme.font.color.primary};
-  font-family: 'Inter';
-  font-size: ${({ theme }) => theme.font.size.md};
-  font-weight: ${({ theme }) => theme.font.weight.medium};
+  padding-right: ${({ theme }) => theme.spacing(2)};
+  min-height: ${PAGE_BAR_MIN_HEIGHT}px;
 `;
 
 const StyledNavigationDrawerCollapseButton = styled(
   NavigationDrawerCollapseButton,
 )<{ show?: boolean }>`
+  height: ${({ theme }) => theme.spacing(4)};
   margin-left: auto;
   opacity: ${({ show }) => (show ? 1 : 0)};
+  padding-right: ${({ theme }) => theme.spacing(1)};
   transition: opacity ${({ theme }) => theme.animation.duration.normal}s;
+  width: ${({ theme }) => theme.spacing(4)};
 `;
 
 type NavigationDrawerHeaderProps = {
-  name?: string;
-  logo?: string;
   showCollapseButton: boolean;
 };
 
 export const NavigationDrawerHeader = ({
-  name = DEFAULT_WORKSPACE_NAME,
-  logo = DEFAULT_WORKSPACE_LOGO,
   showCollapseButton,
 }: NavigationDrawerHeaderProps) => {
   const isMobile = useIsMobile();
-  const workspaces = useRecoilValue(workspacesState);
-  const isMultiWorkspace = workspaces !== null && workspaces.length > 1;
+
   const isNavigationDrawerExpanded = useRecoilValue(
     isNavigationDrawerExpandedState,
   );
 
   return (
     <StyledContainer>
-      {isMultiWorkspace ? (
-        <MultiWorkspaceDropdownButton workspaces={workspaces} />
-      ) : (
-        <StyledSingleWorkspaceContainer>
-          <StyledLogo
-            logo={isNonEmptyString(logo) ? logo : DEFAULT_WORKSPACE_LOGO}
-          />
-          <NavigationDrawerAnimatedCollapseWrapper>
-            <StyledName>{name}</StyledName>
-          </NavigationDrawerAnimatedCollapseWrapper>
-        </StyledSingleWorkspaceContainer>
-      )}
+      <MultiWorkspaceDropdownButton />
       {!isMobile && isNavigationDrawerExpanded && (
         <StyledNavigationDrawerCollapseButton
           direction="left"

@@ -1,24 +1,45 @@
-import { ObjectMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/object-metadata.interface';
-
 import { objectRecordChangedValues } from 'src/engine/core-modules/event-emitter/utils/object-record-changed-values';
+import { type FlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-maps.type';
+import { type FlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/types/flat-field-metadata.type';
+import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object-metadata/types/flat-object-metadata.type';
 
-const mockObjectMetadata: ObjectMetadataInterface = {
+const mockObjectMetadata = {
   id: '1',
+  icon: 'Icon123',
   nameSingular: 'Object',
   namePlural: 'Objects',
   labelSingular: 'Object',
   labelPlural: 'Objects',
-  description: 'Test object metadata',
   targetTableName: 'test_table',
-  fromRelations: [],
-  toRelations: [],
-  fields: [],
-  indexMetadatas: [],
+  workspaceId: '1',
+  universalIdentifier: '1',
   isSystem: false,
   isCustom: false,
   isActive: true,
   isRemote: false,
   isAuditLogged: true,
+  isSearchable: true,
+  indexMetadataIds: [],
+  fieldMetadataIds: [],
+  viewIds: [],
+  applicationId: null,
+  isLabelSyncedWithName: false,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  shortcut: null,
+  description: null,
+  standardOverrides: null,
+  isUIReadOnly: false,
+  standardId: null,
+  labelIdentifierFieldMetadataId: null,
+  imageIdentifierFieldMetadataId: null,
+  duplicateCriteria: null,
+} as FlatObjectMetadata;
+
+const mockFlatFieldMetadataMaps: FlatEntityMaps<FlatFieldMetadata> = {
+  byId: {},
+  idByUniversalIdentifier: {},
+  universalIdentifiersByApplicationId: {},
 };
 
 describe('objectRecordChangedValues', () => {
@@ -37,8 +58,8 @@ describe('objectRecordChangedValues', () => {
     const result = objectRecordChangedValues(
       oldRecord,
       newRecord,
-      ['name'],
       mockObjectMetadata,
+      mockFlatFieldMetadataMaps,
     );
 
     expect(result).toEqual({
@@ -59,8 +80,8 @@ describe('objectRecordChangedValues', () => {
     const result = objectRecordChangedValues(
       oldRecord,
       newRecord,
-      [],
       mockObjectMetadata,
+      mockFlatFieldMetadataMaps,
     );
 
     expect(result).toEqual({});
@@ -81,8 +102,8 @@ describe('objectRecordChangedValues', () => {
     const result = objectRecordChangedValues(
       oldRecord,
       newRecord,
-      ['name', 'value'],
       mockObjectMetadata,
+      mockFlatFieldMetadataMaps,
     );
 
     expect(result).toEqual({});
@@ -111,8 +132,8 @@ describe('objectRecordChangedValues', () => {
     const result = objectRecordChangedValues(
       oldRecord,
       newRecord,
-      ['name', 'config', 'status'],
       mockObjectMetadata,
+      mockFlatFieldMetadataMaps,
     );
 
     expect(result).toEqual(expectedChanges);

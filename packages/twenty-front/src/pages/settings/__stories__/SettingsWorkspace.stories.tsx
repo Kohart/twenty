@@ -1,18 +1,18 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 
-import { SettingsWorkspace } from '../SettingsWorkspace';
+import { SettingsWorkspace } from '~/pages/settings/SettingsWorkspace';
 
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/Settings/SettingsWorkspace',
   component: SettingsWorkspace,
   decorators: [PageDecorator],
-  args: { routePath: '/settings/workspace' },
+  args: { routePath: '/settings/general' },
   parameters: {
     msw: graphqlMocks,
   },

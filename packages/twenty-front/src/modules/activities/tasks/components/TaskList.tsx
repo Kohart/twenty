@@ -1,12 +1,12 @@
 import styled from '@emotion/styled';
-import { ReactElement } from 'react';
+import { type ReactElement } from 'react';
 
 import { ActivityList } from '@/activities/components/ActivityList';
-import { Task } from '@/activities/types/Task';
+import { type Task } from '@/activities/types/Task';
 import { TaskRow } from './TaskRow';
 
 type TaskListProps = {
-  title?: string;
+  title: string;
   tasks: Task[];
   button?: ReactElement | false;
 };

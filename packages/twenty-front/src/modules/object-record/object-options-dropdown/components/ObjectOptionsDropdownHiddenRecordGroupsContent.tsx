@@ -1,57 +1,55 @@
 import { useEffect } from 'react';
-import {
-  IconChevronLeft,
-  IconSettings,
-  MenuItem,
-  UndecoratedLink,
-} from 'twenty-ui';
 
 import { useObjectNamePluralFromSingular } from '@/object-metadata/hooks/useObjectNamePluralFromSingular';
 
-import { useOptionsDropdown } from '@/object-record/object-options-dropdown/hooks/useOptionsDropdown';
+import { useObjectOptionsDropdown } from '@/object-record/object-options-dropdown/hooks/useObjectOptionsDropdown';
 import { RecordGroupsVisibilityDropdownSection } from '@/object-record/record-group/components/RecordGroupsVisibilityDropdownSection';
-import { useRecordGroups } from '@/object-record/record-group/hooks/useRecordGroups';
 import { useRecordGroupVisibility } from '@/object-record/record-group/hooks/useRecordGroupVisibility';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
-import { SettingsPath } from '@/types/SettingsPath';
-import { DropdownMenuHeader } from '@/ui/layout/dropdown/components/DropdownMenuHeader';
+import { hiddenRecordGroupIdsComponentSelector } from '@/object-record/record-group/states/selectors/hiddenRecordGroupIdsComponentSelector';
+import { recordIndexGroupFieldMetadataItemComponentState } from '@/object-record/record-index/states/recordIndexGroupFieldMetadataComponentState';
+import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
+import { DropdownMenuHeader } from '@/ui/layout/dropdown/components/DropdownMenuHeader/DropdownMenuHeader';
+import { DropdownMenuHeaderLeftComponent } from '@/ui/layout/dropdown/components/DropdownMenuHeader/internal/DropdownMenuHeaderLeftComponent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
 import { navigationMemorizedUrlState } from '@/ui/navigation/states/navigationMemorizedUrlState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { useLingui } from '@lingui/react/macro';
 import { useLocation } from 'react-router-dom';
 import { useSetRecoilState } from 'recoil';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
+import { IconChevronLeft, IconSettings } from 'twenty-ui/display';
+import { MenuItem, UndecoratedLink } from 'twenty-ui/navigation';
 
 export const ObjectOptionsDropdownHiddenRecordGroupsContent = () => {
+  const { t } = useLingui();
   const {
     currentContentId,
-    viewType,
-    recordIndexId,
     objectMetadataItem,
     onContentChange,
     closeDropdown,
-  } = useOptionsDropdown();
+  } = useObjectOptionsDropdown();
+
+  const recordGroupFieldMetadata = useRecoilComponentValue(
+    recordIndexGroupFieldMetadataItemComponentState,
+  );
+
+  const hiddenRecordGroupIds = useRecoilComponentValue(
+    hiddenRecordGroupIdsComponentSelector,
+  );
 
   const { objectNamePlural } = useObjectNamePluralFromSingular({
     objectNameSingular: objectMetadataItem.nameSingular,
   });
 
-  const { hiddenRecordGroups, viewGroupFieldMetadataItem } = useRecordGroups({
-    objectNameSingular: objectMetadataItem.nameSingular,
-  });
-
   const { handleVisibilityChange: handleRecordGroupVisibilityChange } =
-    useRecordGroupVisibility({
-      viewBarId: recordIndexId,
-      viewType,
-    });
+    useRecordGroupVisibility();
 
-  const viewGroupSettingsUrl = getSettingsPagePath(
-    SettingsPath.ObjectFieldEdit,
-    {
-      objectSlug: objectNamePlural,
-      fieldSlug: viewGroupFieldMetadataItem?.name ?? '',
-    },
-  );
+  const viewGroupSettingsUrl = getSettingsPath(SettingsPath.ObjectFieldEdit, {
+    objectNamePlural,
+    fieldName: recordGroupFieldMetadata?.name ?? '',
+  });
 
   const location = useLocation();
   const setNavigationMemorizedUrl = useSetRecoilState(
@@ -61,26 +59,27 @@ export const ObjectOptionsDropdownHiddenRecordGroupsContent = () => {
   useEffect(() => {
     if (
       currentContentId === 'hiddenRecordGroups' &&
-      hiddenRecordGroups.length === 0
+      hiddenRecordGroupIds.length === 0
     ) {
       onContentChange('recordGroups');
     }
-  }, [hiddenRecordGroups, currentContentId, onContentChange]);
+  }, [hiddenRecordGroupIds, currentContentId, onContentChange]);
 
   return (
-    <>
-      <DropdownMenuItemsContainer>
-        <DropdownMenuHeader
-          StartIcon={IconChevronLeft}
-          onClick={() => onContentChange('recordGroups')}
-        >
-          Hidden {viewGroupFieldMetadataItem?.label}
-        </DropdownMenuHeader>
-      </DropdownMenuItemsContainer>
-
+    <DropdownContent>
+      <DropdownMenuHeader
+        StartComponent={
+          <DropdownMenuHeaderLeftComponent
+            onClick={() => onContentChange('recordGroups')}
+            Icon={IconChevronLeft}
+          />
+        }
+      >
+        {t`Hidden`} {recordGroupFieldMetadata?.label}
+      </DropdownMenuHeader>
       <RecordGroupsVisibilityDropdownSection
-        title={`Hidden ${viewGroupFieldMetadataItem?.label}`}
-        recordGroups={hiddenRecordGroups}
+        title={`${t`Hidden`} ${recordGroupFieldMetadata?.label}`}
+        recordGroupIds={hiddenRecordGroupIds}
         onVisibilityChange={handleRecordGroupVisibilityChange}
         isDraggable={false}
         showSubheader={false}
@@ -95,9 +94,9 @@ export const ObjectOptionsDropdownHiddenRecordGroupsContent = () => {
         }}
       >
         <DropdownMenuItemsContainer>
-          <MenuItem LeftIcon={IconSettings} text="Edit field values" />
+          <MenuItem LeftIcon={IconSettings} text={t`Edit field values`} />
         </DropdownMenuItemsContainer>
       </UndecoratedLink>
-    </>
+    </DropdownContent>
   );
 };

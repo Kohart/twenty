@@ -1,17 +1,22 @@
-import { useQuery, WatchQueryFetchPolicy } from '@apollo/client';
+import { useQuery, type WatchQueryFetchPolicy } from '@apollo/client';
 
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
-import { ObjectMetadataItemIdentifier } from '@/object-metadata/types/ObjectMetadataItemIdentifier';
-import { RecordGqlOperationFindManyResult } from '@/object-record/graphql/types/RecordGqlOperationFindManyResult';
-import { RecordGqlOperationGqlRecordFields } from '@/object-record/graphql/types/RecordGqlOperationGqlRecordFields';
-import { RecordGqlOperationVariables } from '@/object-record/graphql/types/RecordGqlOperationVariables';
+import { type ObjectMetadataItemIdentifier } from '@/object-metadata/types/ObjectMetadataItemIdentifier';
+import { type RecordGqlOperationFindManyResult } from '@/object-record/graphql/types/RecordGqlOperationFindManyResult';
+import { type RecordGqlOperationGqlRecordFields } from '@/object-record/graphql/types/RecordGqlOperationGqlRecordFields';
+import { type RecordGqlOperationVariables } from '@/object-record/graphql/types/RecordGqlOperationVariables';
 import { useFetchMoreRecordsWithPagination } from '@/object-record/hooks/useFetchMoreRecordsWithPagination';
 import { useFindManyRecordsQuery } from '@/object-record/hooks/useFindManyRecordsQuery';
 import { useHandleFindManyRecordsCompleted } from '@/object-record/hooks/useHandleFindManyRecordsCompleted';
 import { useHandleFindManyRecordsError } from '@/object-record/hooks/useHandleFindManyRecordsError';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { OnFindManyRecordsCompleted } from '@/object-record/types/OnFindManyRecordsCompleted';
+import { useObjectPermissionsForObject } from '@/object-record/hooks/useObjectPermissionsForObject';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type OnFindManyRecordsCompleted } from '@/object-record/types/OnFindManyRecordsCompleted';
 import { getQueryIdentifier } from '@/object-record/utils/getQueryIdentifier';
+
+import { QUERY_DEFAULT_LIMIT_RECORDS } from 'twenty-shared/constants';
+import { type RecordGqlOperationFilter } from 'twenty-shared/types';
 
 export type UseFindManyRecordsParams<T> = ObjectMetadataItemIdentifier &
   RecordGqlOperationVariables & {
@@ -20,23 +25,26 @@ export type UseFindManyRecordsParams<T> = ObjectMetadataItemIdentifier &
     skip?: boolean;
     recordGqlFields?: RecordGqlOperationGqlRecordFields;
     fetchPolicy?: WatchQueryFetchPolicy;
+    withSoftDeleted?: boolean;
   };
 
 export const useFindManyRecords = <T extends ObjectRecord = ObjectRecord>({
   objectNameSingular,
   filter,
   orderBy,
-  limit,
   skip,
   recordGqlFields,
   fetchPolicy,
   onError,
   onCompleted,
   cursorFilter,
+  limit = QUERY_DEFAULT_LIMIT_RECORDS,
+  withSoftDeleted = false,
 }: UseFindManyRecordsParams<T>) => {
   const { objectMetadataItem } = useObjectMetadataItem({
     objectNameSingular,
   });
+  const apolloCoreClient = useApolloCoreClient();
   const { findManyRecordsQuery } = useFindManyRecordsQuery({
     objectNameSingular,
     recordGqlFields,
@@ -48,9 +56,19 @@ export const useFindManyRecords = <T extends ObjectRecord = ObjectRecord>({
     handleError: onError,
   });
 
+  const softDeleteFilter: RecordGqlOperationFilter = {
+    or: [{ deletedAt: { is: 'NULL' } }, { deletedAt: { is: 'NOT_NULL' } }],
+  };
+
+  const withSoftDeleteFilter = withSoftDeleted
+    ? {
+        and: [...(filter ? [filter] : []), softDeleteFilter],
+      }
+    : filter;
+
   const queryIdentifier = getQueryIdentifier({
     objectNameSingular,
-    filter,
+    filter: withSoftDeleteFilter,
     orderBy,
     limit,
   });
@@ -61,24 +79,31 @@ export const useFindManyRecords = <T extends ObjectRecord = ObjectRecord>({
     onCompleted,
   });
 
-  const { data, loading, error, fetchMore } =
+  const objectPermissions = useObjectPermissionsForObject(
+    objectMetadataItem.id,
+  );
+
+  const hasReadPermission = objectPermissions.canReadObjectRecords;
+
+  const { data, loading, error, fetchMore, refetch } =
     useQuery<RecordGqlOperationFindManyResult>(findManyRecordsQuery, {
-      skip: skip || !objectMetadataItem,
+      skip: skip || !objectMetadataItem || !hasReadPermission,
       variables: {
-        filter,
+        filter: withSoftDeleteFilter,
         orderBy,
         lastCursor: cursorFilter?.cursor ?? undefined,
-        limit: cursorFilter?.limit ?? limit,
+        limit,
       },
       fetchPolicy: fetchPolicy,
       onCompleted: handleFindManyRecordsCompleted,
       onError: handleFindManyRecordsError,
+      client: apolloCoreClient,
     });
 
   const { fetchMoreRecords, records, hasNextPage } =
     useFetchMoreRecordsWithPagination<T>({
       objectNameSingular,
-      filter,
+      filter: withSoftDeleteFilter,
       orderBy,
       limit,
       fetchMore,
@@ -98,8 +123,9 @@ export const useFindManyRecords = <T extends ObjectRecord = ObjectRecord>({
     loading,
     error,
     fetchMoreRecords,
-    queryStateIdentifier: queryIdentifier,
+    queryIdentifier,
     hasNextPage,
     pageInfo,
+    refetch,
   };
 };

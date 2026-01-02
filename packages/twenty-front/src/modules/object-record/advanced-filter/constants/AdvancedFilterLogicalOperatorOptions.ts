@@ -1,12 +1,12 @@
-import { ViewFilterGroupLogicalOperator } from '@/views/types/ViewFilterGroupLogicalOperator';
+import { RecordFilterGroupLogicalOperator } from 'twenty-shared/types';
 
 export const ADVANCED_FILTER_LOGICAL_OPERATOR_OPTIONS = [
   {
-    value: ViewFilterGroupLogicalOperator.AND,
+    value: RecordFilterGroupLogicalOperator.AND,
     label: 'And',
   },
   {
-    value: ViewFilterGroupLogicalOperator.OR,
+    value: RecordFilterGroupLogicalOperator.OR,
     label: 'Or',
   },
 ];

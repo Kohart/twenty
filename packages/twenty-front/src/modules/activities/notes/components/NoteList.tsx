@@ -1,14 +1,15 @@
-import { ReactElement } from 'react';
 import styled from '@emotion/styled';
+import { type ReactElement } from 'react';
 
-import { Note } from '@/activities/types/Note';
+import { type Note } from '@/activities/types/Note';
 
-import { NoteCard } from './NoteCard';
+import { NoteTile } from './NoteTile';
 
 type NoteListProps = {
   title: string;
   notes: Note[];
-  button?: ReactElement | false;
+  button?: ReactElement | false | null;
+  totalCount: number;
 };
 
 const StyledContainer = styled.div`
@@ -47,19 +48,24 @@ const StyledNoteContainer = styled.div`
   width: 100%;
 `;
 
-export const NoteList = ({ title, notes, button }: NoteListProps) => (
+export const NoteList = ({
+  title,
+  notes,
+  totalCount,
+  button,
+}: NoteListProps) => (
   <>
     {notes && notes.length > 0 && (
       <StyledContainer>
         <StyledTitleBar>
           <StyledTitle>
-            {title} <StyledCount>{notes.length}</StyledCount>
+            {title} <StyledCount>{totalCount}</StyledCount>
           </StyledTitle>
           {button}
         </StyledTitleBar>
         <StyledNoteContainer>
           {notes.map((note) => (
-            <NoteCard
+            <NoteTile
               key={note.id}
               note={note}
               isSingleNote={notes.length === 1}

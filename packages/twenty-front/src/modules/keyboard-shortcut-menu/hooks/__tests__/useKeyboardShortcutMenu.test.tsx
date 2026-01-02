@@ -1,23 +1,29 @@
 import { expect } from '@storybook/test';
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';
 import { RecoilRoot, useRecoilValue } from 'recoil';
 
 import { isKeyboardShortcutMenuOpenedState } from '@/keyboard-shortcut-menu/states/isKeyboardShortcutMenuOpenedState';
-import { AppHotkeyScope } from '@/ui/utilities/hotkey/types/AppHotkeyScope';
 
-import { useKeyboardShortcutMenu } from '../useKeyboardShortcutMenu';
+import { useKeyboardShortcutMenu } from '@/keyboard-shortcut-menu/hooks/useKeyboardShortcutMenu';
 
-const mockSetHotkeyScopeAndMemorizePreviousScope = jest.fn();
+const mockPushFocusItemToFocusStack = jest.fn();
+const mockRemoveFocusItemFromFocusStackById = jest.fn();
 
-const mockGoBackToPreviousHotkeyScope = jest.fn();
-
-jest.mock('@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope', () => ({
-  usePreviousHotkeyScope: () => ({
-    setHotkeyScopeAndMemorizePreviousScope:
-      mockSetHotkeyScopeAndMemorizePreviousScope,
-    goBackToPreviousHotkeyScope: mockGoBackToPreviousHotkeyScope,
+jest.mock('@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack', () => ({
+  usePushFocusItemToFocusStack: () => ({
+    pushFocusItemToFocusStack: mockPushFocusItemToFocusStack,
   }),
 }));
+
+jest.mock(
+  '@/ui/utilities/focus/hooks/useRemoveFocusItemFromFocusStackById',
+  () => ({
+    useRemoveFocusItemFromFocusStackById: () => ({
+      removeFocusItemFromFocusStackById: mockRemoveFocusItemFromFocusStackById,
+    }),
+  }),
+);
 
 const renderHookConfig = () => {
   const { result } = renderHook(
@@ -38,6 +44,10 @@ const renderHookConfig = () => {
 };
 
 describe('useKeyboardShortcutMenu', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should toggle keyboard shortcut menu correctly', async () => {
     const { result } = renderHookConfig();
     expect(result.current.toggleKeyboardShortcutMenu).toBeDefined();
@@ -47,18 +57,26 @@ describe('useKeyboardShortcutMenu', () => {
       result.current.toggleKeyboardShortcutMenu();
     });
 
-    expect(mockSetHotkeyScopeAndMemorizePreviousScope).toHaveBeenCalledWith(
-      AppHotkeyScope.KeyboardShortcutMenu,
-    );
+    expect(mockPushFocusItemToFocusStack).toHaveBeenCalledWith({
+      focusId: 'keyboard-shortcut-menu',
+      component: {
+        type: 'keyboard-shortcut-menu',
+        instanceId: 'keyboard-shortcut-menu',
+      },
+      globalHotkeysConfig: {
+        enableGlobalHotkeysConflictingWithKeyboard: false,
+        enableGlobalHotkeysWithModifiers: false,
+      },
+    });
     expect(result.current.isKeyboardShortcutMenuOpened).toBe(true);
 
     act(() => {
       result.current.toggleKeyboardShortcutMenu();
     });
 
-    expect(mockSetHotkeyScopeAndMemorizePreviousScope).toHaveBeenCalledWith(
-      AppHotkeyScope.KeyboardShortcutMenu,
-    );
+    expect(mockRemoveFocusItemFromFocusStackById).toHaveBeenCalledWith({
+      focusId: 'keyboard-shortcut-menu',
+    });
     expect(result.current.isKeyboardShortcutMenuOpened).toBe(false);
   });
 
@@ -68,16 +86,26 @@ describe('useKeyboardShortcutMenu', () => {
       result.current.openKeyboardShortcutMenu();
     });
 
-    expect(mockSetHotkeyScopeAndMemorizePreviousScope).toHaveBeenCalledWith(
-      AppHotkeyScope.KeyboardShortcutMenu,
-    );
+    expect(mockPushFocusItemToFocusStack).toHaveBeenCalledWith({
+      focusId: 'keyboard-shortcut-menu',
+      component: {
+        type: 'keyboard-shortcut-menu',
+        instanceId: 'keyboard-shortcut-menu',
+      },
+      globalHotkeysConfig: {
+        enableGlobalHotkeysConflictingWithKeyboard: false,
+        enableGlobalHotkeysWithModifiers: false,
+      },
+    });
     expect(result.current.isKeyboardShortcutMenuOpened).toBe(true);
 
     act(() => {
       result.current.closeKeyboardShortcutMenu();
     });
 
-    expect(mockGoBackToPreviousHotkeyScope).toHaveBeenCalled();
+    expect(mockRemoveFocusItemFromFocusStackById).toHaveBeenCalledWith({
+      focusId: 'keyboard-shortcut-menu',
+    });
     expect(result.current.isKeyboardShortcutMenuOpened).toBe(false);
   });
 });

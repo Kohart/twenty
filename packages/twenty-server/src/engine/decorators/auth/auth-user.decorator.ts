@@ -1,5 +1,5 @@
 import {
-  ExecutionContext,
+  type ExecutionContext,
   ForbiddenException,
   createParamDecorator,
 } from '@nestjs/common';
@@ -16,7 +16,8 @@ export const AuthUser = createParamDecorator(
 
     if (!options?.allowUndefined && !request.user) {
       throw new ForbiddenException(
-        "You're not authorized to do this. Note: This endpoint requires a user and won't work with just an API key.",
+        "You're not authorized to do this. " +
+          "Note: This endpoint requires a user and won't work with just an API key.",
       );
     }
 

@@ -1,23 +1,22 @@
-import { expect } from '@storybook/jest';
-import { Meta, StoryObj } from '@storybook/react';
-import { userEvent, within } from '@storybook/test';
+import { type Meta, type StoryObj } from '@storybook/react';
+import { expect, within } from '@storybook/test';
 
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 import { sleep } from '~/utils/sleep';
 
-import { SettingsObjectDetailPage } from '../SettingsObjectDetailPage';
+import { SettingsObjectDetailPage } from '~/pages/settings/data-model/SettingsObjectDetailPage';
 
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/Settings/DataModel/SettingsObjectDetail',
   component: SettingsObjectDetailPage,
   decorators: [PageDecorator],
   args: {
-    routePath: '/settings/objects/:objectSlug',
-    routeParams: { ':objectSlug': 'companies' },
+    routePath: '/settings/objects/:objectNamePlural',
+    routeParams: { ':objectNamePlural': 'companies' },
   },
   parameters: {
     msw: graphqlMocks,
@@ -36,7 +35,7 @@ export const StandardObject: Story = {
 
 export const CustomObject: Story = {
   args: {
-    routeParams: { ':objectSlug': 'my-customs' },
+    routeParams: { ':objectNamePlural': 'myCustoms' },
   },
 };
 
@@ -49,19 +48,5 @@ export const ObjectTabs: Story = {
 
     await expect(fieldsTab).toBeVisible();
     await expect(settingsTab).toBeVisible();
-  },
-};
-
-export const FieldDropdownMenu: Story = {
-  play: async () => {
-    const canvas = within(document.body);
-    const [fieldVerticalDotsIconButton] = await canvas.findAllByRole('button', {
-      name: 'Active Field Options',
-    });
-
-    await userEvent.click(fieldVerticalDotsIconButton);
-
-    await canvas.findByText('View');
-    await canvas.findByText('Deactivate');
   },
 };

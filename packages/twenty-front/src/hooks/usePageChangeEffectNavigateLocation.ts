@@ -1,120 +1,154 @@
+import { verifyEmailRedirectPathState } from '@/app/states/verifyEmailRedirectPathState';
 import { useIsLogged } from '@/auth/hooks/useIsLogged';
+import { calendarBookingPageIdState } from '@/client-config/states/calendarBookingPageIdState';
+import { useIsCurrentLocationOnAWorkspace } from '@/domain-manager/hooks/useIsCurrentLocationOnAWorkspace';
 import { useDefaultHomePagePath } from '@/navigation/hooks/useDefaultHomePagePath';
+import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
 import { useOnboardingStatus } from '@/onboarding/hooks/useOnboardingStatus';
-import { AppPath } from '@/types/AppPath';
-import { SettingsPath } from '@/types/SettingsPath';
-import { useSubscriptionStatus } from '@/workspace/hooks/useSubscriptionStatus';
-import { OnboardingStatus, SubscriptionStatus } from '~/generated/graphql';
-import { useIsMatchingLocation } from '~/hooks/useIsMatchingLocation';
+import { useIsWorkspaceActivationStatusEqualsTo } from '@/workspace/hooks/useIsWorkspaceActivationStatusEqualsTo';
+import { useLocation, useParams } from 'react-router-dom';
+import { useRecoilValue } from 'recoil';
+import { AppPath, SettingsPath } from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
+import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
+import { OnboardingStatus } from '~/generated/graphql';
+import { isMatchingLocation } from '~/utils/isMatchingLocation';
 
 export const usePageChangeEffectNavigateLocation = () => {
-  const isMatchingLocation = useIsMatchingLocation();
   const isLoggedIn = useIsLogged();
+  const { isOnAWorkspace } = useIsCurrentLocationOnAWorkspace();
   const onboardingStatus = useOnboardingStatus();
-  const subscriptionStatus = useSubscriptionStatus();
+  const isWorkspaceSuspended = useIsWorkspaceActivationStatusEqualsTo(
+    WorkspaceActivationStatus.SUSPENDED,
+  );
   const { defaultHomePagePath } = useDefaultHomePagePath();
+  const location = useLocation();
+  const calendarBookingPageId = useRecoilValue(calendarBookingPageIdState);
 
-  const isMatchingOpenRoute =
-    isMatchingLocation(AppPath.Invite) ||
-    isMatchingLocation(AppPath.ResetPassword);
+  const someMatchingLocationOf = (appPaths: AppPath[]): boolean =>
+    appPaths.some((appPath) => isMatchingLocation(location, appPath));
+  const onGoingUserCreationPaths = [
+    AppPath.Invite,
+    AppPath.SignInUp,
+    AppPath.VerifyEmail,
+    AppPath.Verify,
+  ];
+  const onboardingPaths = [
+    AppPath.CreateWorkspace,
+    AppPath.CreateProfile,
+    AppPath.SyncEmails,
+    AppPath.InviteTeam,
+    AppPath.PlanRequired,
+    AppPath.PlanRequiredSuccess,
+    AppPath.BookCallDecision,
+    AppPath.BookCall,
+  ];
 
-  const isMatchingOngoingUserCreationRoute =
-    isMatchingOpenRoute ||
-    isMatchingLocation(AppPath.SignInUp) ||
-    isMatchingLocation(AppPath.Verify);
+  const objectNamePlural = useParams().objectNamePlural ?? '';
+  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
+  const objectMetadataItem = objectMetadataItems?.find(
+    (objectMetadataItem) => objectMetadataItem.namePlural === objectNamePlural,
+  );
+  const verifyEmailRedirectPath = useRecoilValue(verifyEmailRedirectPathState);
 
-  const isMatchingOnboardingRoute =
-    isMatchingOngoingUserCreationRoute ||
-    isMatchingLocation(AppPath.CreateWorkspace) ||
-    isMatchingLocation(AppPath.CreateProfile) ||
-    isMatchingLocation(AppPath.SyncEmails) ||
-    isMatchingLocation(AppPath.InviteTeam) ||
-    isMatchingLocation(AppPath.PlanRequired) ||
-    isMatchingLocation(AppPath.PlanRequiredSuccess);
-
-  if (isMatchingOpenRoute) {
-    return;
-  }
-
-  if (!isLoggedIn && !isMatchingOngoingUserCreationRoute) {
+  if (
+    (!isLoggedIn || (isLoggedIn && !isOnAWorkspace)) &&
+    !someMatchingLocationOf([
+      ...onGoingUserCreationPaths,
+      AppPath.ResetPassword,
+    ])
+  ) {
     return AppPath.SignInUp;
   }
 
   if (
-    onboardingStatus === OnboardingStatus.PlanRequired &&
-    !isMatchingLocation(AppPath.PlanRequired)
+    onboardingStatus === OnboardingStatus.PLAN_REQUIRED &&
+    !someMatchingLocationOf([
+      AppPath.PlanRequired,
+      AppPath.PlanRequiredSuccess,
+      AppPath.BookCall,
+      AppPath.BookCallDecision,
+    ])
   ) {
+    if (
+      isMatchingLocation(location, AppPath.VerifyEmail) &&
+      isDefined(verifyEmailRedirectPath)
+    ) {
+      return verifyEmailRedirectPath;
+    }
     return AppPath.PlanRequired;
   }
 
-  if (
-    subscriptionStatus === SubscriptionStatus.Unpaid &&
-    !isMatchingLocation(AppPath.SettingsCatchAll)
-  ) {
-    return `${AppPath.SettingsCatchAll.replace('/*', '')}/${
-      SettingsPath.Billing
-    }`;
+  if (isWorkspaceSuspended) {
+    if (!isMatchingLocation(location, AppPath.SettingsCatchAll)) {
+      return `${AppPath.SettingsCatchAll.replace('/*', '')}/${
+        SettingsPath.Billing
+      }`;
+    }
+
+    return;
   }
 
   if (
-    subscriptionStatus === SubscriptionStatus.Canceled &&
-    !(
-      isMatchingLocation(AppPath.SettingsCatchAll) ||
-      isMatchingLocation(AppPath.PlanRequired)
-    )
-  ) {
-    return `${AppPath.SettingsCatchAll.replace('/*', '')}/${
-      SettingsPath.Billing
-    }`;
-  }
-
-  if (
-    onboardingStatus === OnboardingStatus.WorkspaceActivation &&
-    !isMatchingLocation(AppPath.CreateWorkspace) &&
-    !isMatchingLocation(AppPath.PlanRequiredSuccess)
+    onboardingStatus === OnboardingStatus.WORKSPACE_ACTIVATION &&
+    !someMatchingLocationOf([
+      AppPath.CreateWorkspace,
+      AppPath.BookCallDecision,
+      AppPath.BookCall,
+    ])
   ) {
     return AppPath.CreateWorkspace;
   }
 
   if (
-    onboardingStatus === OnboardingStatus.ProfileCreation &&
-    !isMatchingLocation(AppPath.CreateProfile)
+    onboardingStatus === OnboardingStatus.PROFILE_CREATION &&
+    !isMatchingLocation(location, AppPath.CreateProfile)
   ) {
     return AppPath.CreateProfile;
   }
 
   if (
-    onboardingStatus === OnboardingStatus.SyncEmail &&
-    !isMatchingLocation(AppPath.SyncEmails)
+    onboardingStatus === OnboardingStatus.SYNC_EMAIL &&
+    !isMatchingLocation(location, AppPath.SyncEmails)
   ) {
     return AppPath.SyncEmails;
   }
 
   if (
-    onboardingStatus === OnboardingStatus.InviteTeam &&
-    !isMatchingLocation(AppPath.InviteTeam)
+    onboardingStatus === OnboardingStatus.INVITE_TEAM &&
+    !isMatchingLocation(location, AppPath.InviteTeam)
   ) {
     return AppPath.InviteTeam;
   }
 
   if (
-    onboardingStatus === OnboardingStatus.Completed &&
-    subscriptionStatus === SubscriptionStatus.Canceled &&
-    isMatchingLocation(AppPath.PlanRequired)
+    onboardingStatus === OnboardingStatus.BOOK_ONBOARDING &&
+    !someMatchingLocationOf([AppPath.BookCallDecision, AppPath.BookCall])
   ) {
-    return;
+    if (!isDefined(calendarBookingPageId)) {
+      return defaultHomePagePath;
+    }
+    return AppPath.BookCallDecision;
   }
 
   if (
-    onboardingStatus === OnboardingStatus.Completed &&
-    isMatchingOnboardingRoute &&
+    onboardingStatus === OnboardingStatus.COMPLETED &&
+    someMatchingLocationOf([...onboardingPaths, ...onGoingUserCreationPaths]) &&
+    !isMatchingLocation(location, AppPath.ResetPassword) &&
     isLoggedIn
   ) {
     return defaultHomePagePath;
   }
 
-  if (isMatchingLocation(AppPath.Index) && isLoggedIn) {
+  if (isMatchingLocation(location, AppPath.Index) && isLoggedIn) {
     return defaultHomePagePath;
+  }
+
+  if (
+    isMatchingLocation(location, AppPath.RecordIndexPage) &&
+    !isDefined(objectMetadataItem)
+  ) {
+    return AppPath.NotFound;
   }
 
   return;

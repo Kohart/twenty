@@ -1,12 +1,12 @@
 import { Logger } from '@nestjs/common';
 
 import {
-  MessageQueueJobData,
-  MessageQueueJob,
+  type MessageQueueJobData,
+  type MessageQueueJob,
 } from 'src/engine/core-modules/message-queue/interfaces/message-queue-job.interface';
-import { MessageQueueDriver } from 'src/engine/core-modules/message-queue/drivers/interfaces/message-queue-driver.interface';
+import { type MessageQueueDriver } from 'src/engine/core-modules/message-queue/drivers/interfaces/message-queue-driver.interface';
 
-import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { type MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 
 export class SyncDriver implements MessageQueueDriver {
   private readonly logger = new Logger(SyncDriver.name);
@@ -24,21 +24,26 @@ export class SyncDriver implements MessageQueueDriver {
     await this.processJob(queueName, { id: '', name: jobName, data });
   }
 
-  async addCron<T extends MessageQueueJobData | undefined>(
-    queueName: MessageQueue,
-    jobName: string,
-    data: T,
-  ): Promise<void> {
+  async addCron<T extends MessageQueueJobData | undefined>({
+    queueName,
+    jobName,
+    data,
+  }: {
+    queueName: MessageQueue;
+    jobName: string;
+    data: T;
+  }): Promise<void> {
     this.logger.log(`Running cron job with SyncDriver`);
     await this.processJob(queueName, {
       id: '',
       name: jobName,
       // TODO: Fix this type issue
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data: data as any,
     });
   }
 
-  async removeCron(queueName: MessageQueue) {
+  async removeCron({ queueName }: { queueName: MessageQueue }) {
     this.logger.log(`Removing '${queueName}' cron job with SyncDriver`);
   }
 

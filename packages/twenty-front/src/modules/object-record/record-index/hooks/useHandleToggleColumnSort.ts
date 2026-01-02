@@ -1,31 +1,31 @@
 import { useCallback } from 'react';
 
-import { useColumnDefinitionsFromFieldMetadata } from '@/object-metadata/hooks/useColumnDefinitionsFromFieldMetadata';
-import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
-import { Sort } from '@/object-record/object-sort-dropdown/types/Sort';
-import { useUpsertCombinedViewSorts } from '@/views/hooks/useUpsertCombinedViewSorts';
-import { isDefined } from '~/utils/isDefined';
+import { useColumnDefinitionsFromObjectMetadata } from '@/object-metadata/hooks/useColumnDefinitionsFromObjectMetadata';
+import { useObjectMetadataItemById } from '@/object-metadata/hooks/useObjectMetadataItemById';
+import { useUpsertRecordSort } from '@/object-record/record-sort/hooks/useUpsertRecordSort';
+import { type RecordSort } from '@/object-record/record-sort/types/RecordSort';
+import { isDefined } from 'twenty-shared/utils';
+import { v4 } from 'uuid';
+import { ViewSortDirection } from '~/generated/graphql';
 
 type UseHandleToggleColumnSortProps = {
-  objectNameSingular: string;
-  viewBarId: string;
+  objectMetadataItemId: string;
 };
 
 export const useHandleToggleColumnSort = ({
-  viewBarId,
-  objectNameSingular,
+  objectMetadataItemId,
 }: UseHandleToggleColumnSortProps) => {
-  const { objectMetadataItem } = useObjectMetadataItem({
-    objectNameSingular,
+  const { objectMetadataItem } = useObjectMetadataItemById({
+    objectId: objectMetadataItemId,
   });
 
   const { columnDefinitions } =
-    useColumnDefinitionsFromFieldMetadata(objectMetadataItem);
+    useColumnDefinitionsFromObjectMetadata(objectMetadataItem);
 
-  const { upsertCombinedViewSort } = useUpsertCombinedViewSorts(viewBarId);
+  const { upsertRecordSort } = useUpsertRecordSort();
 
   const handleToggleColumnSort = useCallback(
-    (fieldMetadataId: string) => {
+    async (fieldMetadataId: string) => {
       const correspondingColumnDefinition = columnDefinitions.find(
         (columnDefinition) =>
           columnDefinition.fieldMetadataId === fieldMetadataId,
@@ -33,19 +33,15 @@ export const useHandleToggleColumnSort = ({
 
       if (!isDefined(correspondingColumnDefinition)) return;
 
-      const newSort: Sort = {
+      const newSort: RecordSort = {
+        id: v4(),
         fieldMetadataId,
-        definition: {
-          fieldMetadataId,
-          label: correspondingColumnDefinition.label,
-          iconName: correspondingColumnDefinition.iconName,
-        },
-        direction: 'asc',
+        direction: ViewSortDirection.ASC,
       };
 
-      upsertCombinedViewSort(newSort);
+      upsertRecordSort(newSort);
     },
-    [columnDefinitions, upsertCombinedViewSort],
+    [columnDefinitions, upsertRecordSort],
   );
 
   return handleToggleColumnSort;

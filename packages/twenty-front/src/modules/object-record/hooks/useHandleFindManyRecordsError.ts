@@ -1,8 +1,8 @@
-import { ApolloError } from '@apollo/client';
+import { type ApolloError } from '@apollo/client';
 
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
+import { useCallback } from 'react';
 import { logError } from '~/utils/logError';
 
 export const useHandleFindManyRecordsError = ({
@@ -12,18 +12,21 @@ export const useHandleFindManyRecordsError = ({
   objectMetadataItem: ObjectMetadataItem;
   handleError?: (error?: Error) => void;
 }) => {
-  const { enqueueSnackBar } = useSnackBar();
+  const { enqueueErrorSnackBar } = useSnackBar();
 
-  const handleFindManyRecordsError = (error: ApolloError) => {
-    logError(
-      `useFindManyRecords for "${objectMetadataItem.namePlural}" error : ` +
-        error,
-    );
-    enqueueSnackBar(`${error.message}`, {
-      variant: SnackBarVariant.Error,
-    });
-    handleError?.(error);
-  };
+  const handleFindManyRecordsError = useCallback(
+    (error: ApolloError) => {
+      logError(
+        `useFindManyRecords for "${objectMetadataItem.namePlural}" error : ` +
+          error,
+      );
+      enqueueErrorSnackBar({
+        apolloError: error,
+      });
+      handleError?.(error);
+    },
+    [enqueueErrorSnackBar, handleError, objectMetadataItem.namePlural],
+  );
 
   return {
     handleFindManyRecordsError,

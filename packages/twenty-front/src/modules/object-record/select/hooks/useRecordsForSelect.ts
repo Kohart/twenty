@@ -5,25 +5,25 @@ import { useMapToObjectRecordIdentifier } from '@/object-metadata/hooks/useMapTo
 
 import { DEFAULT_SEARCH_REQUEST_LIMIT } from '@/object-record/constants/DefaultSearchRequestLimit';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
-import { SelectableItem } from '@/object-record/select/types/SelectableItem';
+import { type SelectableItem } from '@/object-record/select/types/SelectableItem';
 import { getObjectFilterFields } from '@/object-record/select/utils/getObjectFilterFields';
 import { makeAndFilterVariables } from '@/object-record/utils/makeAndFilterVariables';
 import { makeOrFilterVariables } from '@/object-record/utils/makeOrFilterVariables';
-import { OrderBy } from '@/types/OrderBy';
+import { type OrderBy } from '@/types/OrderBy';
 
 export const useRecordsForSelect = ({
   searchFilterText,
   sortOrder = 'AscNullsLast',
   selectedIds,
   limit,
-  excludeRecordIds = [],
+  excludedRecordIds = [],
   objectNameSingular,
 }: {
   searchFilterText: string;
   sortOrder?: OrderBy;
   selectedIds: string[];
   limit?: number;
-  excludeRecordIds?: string[];
+  excludedRecordIds?: string[];
   objectNameSingular: string;
 }) => {
   const { mapToObjectRecordIdentifier } = useMapToObjectRecordIdentifier({
@@ -91,7 +91,7 @@ export const useRecordsForSelect = ({
     skip: !selectedIds.length,
   });
 
-  const notFilterIds = [...selectedIds, ...excludeRecordIds];
+  const notFilterIds = [...selectedIds, ...excludedRecordIds];
   const notFilter = notFilterIds.length
     ? { not: { id: { in: notFilterIds } } }
     : undefined;

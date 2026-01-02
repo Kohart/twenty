@@ -2,16 +2,18 @@ import styled from '@emotion/styled';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Key } from 'ts-key-enum';
-import { Button, IconSend } from 'twenty-ui';
 import { z } from 'zod';
 
-import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import { TextInput } from '@/ui/input/components/TextInput';
+import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { sanitizeEmailList } from '@/workspace/utils/sanitizeEmailList';
-import { isDefined } from '~/utils/isDefined';
-import { useCreateWorkspaceInvitation } from '../../workspace-invitation/hooks/useCreateWorkspaceInvitation';
+import { i18n } from '@lingui/core';
+import { msg } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react/macro';
+import { isDefined } from 'twenty-shared/utils';
+import { IconSend } from 'twenty-ui/display';
+import { Button } from 'twenty-ui/input';
+import { useCreateWorkspaceInvitation } from '@/workspace-invitation/hooks/useCreateWorkspaceInvitation';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -24,57 +26,56 @@ const StyledLinkContainer = styled.div`
   margin-right: ${({ theme }) => theme.spacing(2)};
 `;
 
-const emailValidationSchema = (email: string) =>
-  z.string().email(`Invalid email '${email}'`);
+const emailsEmptyErrorMessage = msg`Emails should not be empty`;
 
-const validationSchema = () =>
-  z
-    .object({
-      emails: z.string().superRefine((value, ctx) => {
-        if (!value.length) {
-          return;
+const validationSchema = z
+  .object({
+    emails: z.string().superRefine((value, ctx) => {
+      if (!value.length) {
+        return;
+      }
+      const emails = sanitizeEmailList(value.split(','));
+      if (emails.length === 0) {
+        ctx.addIssue({
+          code: 'custom',
+          message: i18n._(emailsEmptyErrorMessage),
+        });
+      }
+      const invalidEmails: string[] = [];
+      for (const email of emails) {
+        const result = z.email().safeParse(email);
+        if (!result.success) {
+          invalidEmails.push(email);
         }
-        const emails = sanitizeEmailList(value.split(','));
-        if (emails.length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.invalid_string,
-            message: 'Emails should not be empty',
-            validation: 'email',
-          });
-        }
-        const invalidEmails: string[] = [];
-        for (const email of emails) {
-          const result = emailValidationSchema(email).safeParse(email);
-          if (!result.success) {
-            invalidEmails.push(email);
-          }
-        }
-        if (invalidEmails.length > 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.invalid_string,
-            message:
-              invalidEmails.length > 1
-                ? 'Emails "' + invalidEmails.join('", "') + '" are invalid'
-                : 'Email "' + invalidEmails.join('", "') + '" is invalid',
-            validation: 'email',
-          });
-        }
-      }),
-    })
-    .required();
+      }
+      if (invalidEmails.length > 0) {
+        const invalidEmailsList = invalidEmails.join(', ');
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            invalidEmails.length > 1
+              ? `Invalid emails: ${invalidEmailsList}`
+              : `Invalid email: ${invalidEmailsList}`,
+        });
+      }
+    }),
+  })
+  .required();
 
 type FormInput = {
   emails: string;
 };
 
 export const WorkspaceInviteTeam = () => {
-  const { enqueueSnackBar } = useSnackBar();
+  const { t } = useLingui();
+
+  const { enqueueSuccessSnackBar, enqueueErrorSnackBar } = useSnackBar();
   const { sendInvitation } = useCreateWorkspaceInvitation();
 
   const { reset, handleSubmit, control, formState, watch } = useForm<FormInput>(
     {
       mode: 'onSubmit',
-      resolver: zodResolver(validationSchema()),
+      resolver: zodResolver(validationSchema),
       defaultValues: {
         emails: '',
       },
@@ -86,30 +87,23 @@ export const WorkspaceInviteTeam = () => {
     const emailsList = sanitizeEmailList(emails.split(','));
     const { data } = await sendInvitation({ emails: emailsList });
     if (isDefined(data) && data.sendInvitations.result.length > 0) {
-      enqueueSnackBar(
-        `${data.sendInvitations.result.length} invitations sent`,
-        {
-          variant: SnackBarVariant.Success,
+      const invitationCount = data.sendInvitations.result.length;
+      enqueueSuccessSnackBar({
+        message: t`${invitationCount} invitations sent`,
+        options: {
           duration: 2000,
         },
-      );
+      });
       return;
     }
     if (isDefined(data) && !data.sendInvitations.success) {
-      data.sendInvitations.errors.forEach((error) => {
-        enqueueSnackBar(error, {
-          variant: SnackBarVariant.Error,
+      enqueueErrorSnackBar({
+        options: {
           duration: 5000,
-        });
+        },
       });
     }
   });
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === Key.Enter) {
-      submit();
-    }
-  };
 
   const { isSubmitSuccessful, errors } = formState;
 
@@ -128,12 +122,13 @@ export const WorkspaceInviteTeam = () => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => {
               return (
-                <TextInput
+                <SettingsTextInput
+                  instanceId="workspace-invite-team-emails"
+                  // eslint-disable-next-line lingui/no-unlocalized-strings
                   placeholder="tim@apple.com, jony.ive@apple.dev"
                   value={value}
                   onChange={onChange}
                   error={error?.message}
-                  onKeyDown={handleKeyDown}
                   fullWidth
                 />
               );
@@ -144,7 +139,7 @@ export const WorkspaceInviteTeam = () => {
           Icon={IconSend}
           variant="primary"
           accent="blue"
-          title="Invite"
+          title={t`Invite`}
           type="submit"
           disabled={isEmailsEmpty || !!errors.emails}
         />

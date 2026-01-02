@@ -1,27 +1,34 @@
 import { Injectable } from '@nestjs/common';
 
-import { Stream } from 'stream';
+import { basename, dirname, extname } from 'path';
+import { type Readable } from 'stream';
 
-import { addMilliseconds } from 'date-fns';
-import ms from 'ms';
+import { isNonEmptyString } from '@sniptt/guards';
+import { buildSignedPath } from 'twenty-shared/utils';
+import { v4 as uuidV4 } from 'uuid';
 
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import {
+  type FileTokenJwtPayload,
+  JwtTokenTypeEnum,
+} from 'src/engine/core-modules/auth/types/auth-context.type';
 import { FileStorageService } from 'src/engine/core-modules/file-storage/file-storage.service';
+import { extractFolderPathAndFilename } from 'src/engine/core-modules/file/utils/extract-folderpath-and-filename.utils';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
+import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 
 @Injectable()
 export class FileService {
   constructor(
     private readonly jwtWrapperService: JwtWrapperService,
     private readonly fileStorageService: FileStorageService,
-    private readonly environmentService: EnvironmentService,
+    private readonly twentyConfigService: TwentyConfigService,
   ) {}
 
   async getFileStream(
     folderPath: string,
     filename: string,
     workspaceId: string,
-  ): Promise<Stream> {
+  ): Promise<Readable> {
     const workspaceFolderPath = `workspace-${workspaceId}/${folderPath}`;
 
     return await this.fileStorageService.read({
@@ -30,27 +37,97 @@ export class FileService {
     });
   }
 
-  async encodeFileToken(payloadToEncode: Record<string, any>) {
-    const fileTokenExpiresIn = this.environmentService.get(
+  signFileUrl({ url, workspaceId }: { url: string; workspaceId: string }) {
+    if (!isNonEmptyString(url)) {
+      return url;
+    }
+
+    return buildSignedPath({
+      path: url,
+      token: this.encodeFileToken({
+        filename: extractFolderPathAndFilename(url).filename,
+        workspaceId,
+      }),
+    });
+  }
+
+  encodeFileToken(payloadToEncode: Omit<FileTokenJwtPayload, 'type' | 'sub'>) {
+    const fileTokenExpiresIn = this.twentyConfigService.get(
       'FILE_TOKEN_EXPIRES_IN',
     );
+
+    const payload: FileTokenJwtPayload = {
+      ...payloadToEncode,
+      sub: payloadToEncode.workspaceId,
+      type: JwtTokenTypeEnum.FILE,
+    };
+
     const secret = this.jwtWrapperService.generateAppSecret(
-      'FILE',
+      payload.type,
       payloadToEncode.workspaceId,
     );
 
-    const expirationDate = addMilliseconds(new Date(), ms(fileTokenExpiresIn));
+    return this.jwtWrapperService.sign(payload, {
+      secret,
+      expiresIn: fileTokenExpiresIn,
+    });
+  }
 
-    const signedPayload = this.jwtWrapperService.sign(
-      {
-        expirationDate: expirationDate,
-        ...payloadToEncode,
-      },
-      {
-        secret,
-      },
-    );
+  async deleteFile({
+    folderPath,
+    filename,
+    workspaceId,
+  }: {
+    folderPath: string;
+    filename: string;
+    workspaceId: string;
+  }) {
+    const workspaceFolderPath = `workspace-${workspaceId}/${folderPath}`;
 
-    return signedPayload;
+    return await this.fileStorageService.delete({
+      folderPath: workspaceFolderPath,
+      filename,
+    });
+  }
+
+  async deleteWorkspaceFolder(workspaceId: string) {
+    const workspaceFolderPath = `workspace-${workspaceId}`;
+
+    const isWorkspaceFolderFound =
+      await this.fileStorageService.checkFolderExists(workspaceFolderPath);
+
+    if (!isWorkspaceFolderFound) {
+      return;
+    }
+
+    return await this.fileStorageService.delete({
+      folderPath: workspaceFolderPath,
+    });
+  }
+
+  async copyFileFromWorkspaceToWorkspace(
+    fromWorkspaceId: string,
+    fromPath: string,
+    toWorkspaceId: string,
+  ) {
+    const subFolder = dirname(fromPath);
+    const fromWorkspaceFolderPath = `workspace-${fromWorkspaceId}`;
+    const toWorkspaceFolderPath = `workspace-${toWorkspaceId}`;
+    const fromFilename = basename(fromPath);
+
+    const toFilename = uuidV4() + extname(fromFilename);
+
+    await this.fileStorageService.copy({
+      from: {
+        folderPath: `${fromWorkspaceFolderPath}/${subFolder}`,
+        filename: fromFilename,
+      },
+      to: {
+        folderPath: `${toWorkspaceFolderPath}/${subFolder}`,
+        filename: toFilename,
+      },
+    });
+
+    return [toWorkspaceFolderPath, subFolder, toFilename];
   }
 }

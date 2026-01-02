@@ -1,13 +1,13 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
 
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 
-import { NotFound } from '../NotFound';
+import { NotFound } from '~/pages/not-found/NotFound';
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/NotFound/Default',
   component: NotFound,

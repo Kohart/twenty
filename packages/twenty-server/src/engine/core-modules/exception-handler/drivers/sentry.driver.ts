@@ -1,14 +1,22 @@
 import * as Sentry from '@sentry/node';
+import {
+  getGenericOperationName,
+  getHumanReadableNameFromCode,
+  isDefined,
+} from 'twenty-shared/utils';
 
-import { ExceptionHandlerOptions } from 'src/engine/core-modules/exception-handler/interfaces/exception-handler-options.interface';
-import { ExceptionHandlerUser } from 'src/engine/core-modules/exception-handler/interfaces/exception-handler-user.interface';
+import { type ExceptionHandlerOptions } from 'src/engine/core-modules/exception-handler/interfaces/exception-handler-options.interface';
 
-import { ExceptionHandlerDriverInterface } from 'src/engine/core-modules/exception-handler/interfaces';
+import { PostgresException } from 'src/engine/api/graphql/workspace-query-runner/utils/postgres-exception';
+import { type ExceptionHandlerDriverInterface } from 'src/engine/core-modules/exception-handler/interfaces';
+import { MessageImportDriverException } from 'src/modules/messaging/message-import-manager/drivers/exceptions/message-import-driver.exception';
+import { CustomException } from 'src/utils/custom-exception';
 
 export class ExceptionHandlerSentryDriver
   implements ExceptionHandlerDriverInterface
 {
   captureExceptions(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     exceptions: ReadonlyArray<any>,
     options?: ExceptionHandlerOptions,
   ) {
@@ -16,12 +24,20 @@ export class ExceptionHandlerSentryDriver
 
     Sentry.withScope((scope) => {
       if (options?.operation) {
-        scope.setTag('operation', options.operation.name);
-        scope.setTag('operationName', options.operation.name);
+        scope.setExtra('operation', options.operation.name);
+        scope.setExtra('operationType', options.operation.type);
       }
 
       if (options?.document) {
         scope.setExtra('document', options.document);
+      }
+
+      if (options?.workspace) {
+        scope.setExtra('workspace', options.workspace);
+      }
+
+      if (options?.additionalData) {
+        scope.setExtra('additionalData', options.additionalData);
       }
 
       if (options?.user) {
@@ -30,8 +46,6 @@ export class ExceptionHandlerSentryDriver
           email: options.user.email,
           firstName: options.user.firstName,
           lastName: options.user.lastName,
-          workspaceId: options.user.workspaceId,
-          workspaceDisplayName: options.user.workspaceDisplayName,
         });
       }
 
@@ -48,13 +62,49 @@ export class ExceptionHandlerSentryDriver
           });
         }
 
-        const eventId = Sentry.captureException(exception, {
-          fingerprint: [
-            'graphql',
-            errorPath,
+        if ('context' in exception && exception.context) {
+          Object.entries(exception.context).forEach(([key, value]) => {
+            scope.setExtra(key, value);
+          });
+        }
+
+        if ('cause' in exception && exception.cause) {
+          scope.setContext('cause', {
+            name: exception.cause.name,
+            message: exception.cause.message,
+            stack: exception.cause.stack,
+          });
+        }
+
+        if (
+          exception instanceof CustomException &&
+          exception.code !== 'UNKNOWN'
+        ) {
+          scope.setTag('customExceptionCode', exception.code);
+          scope.setFingerprint([exception.code]);
+          exception.name = getHumanReadableNameFromCode(exception.code);
+        }
+
+        if (exception instanceof PostgresException) {
+          scope.setTag('postgresSqlErrorCode', exception.code);
+          const fingerPrint = [exception.code];
+          const genericOperationName = getGenericOperationName(
             options?.operation?.name,
-            options?.operation?.type,
-          ],
+          );
+
+          if (isDefined(genericOperationName)) {
+            fingerPrint.push(genericOperationName);
+          }
+          scope.setFingerprint(fingerPrint);
+          exception.name = exception.message;
+        }
+
+        if (exception instanceof MessageImportDriverException) {
+          scope.setTag('messageImportDriverCode', exception.code);
+          scope.setFingerprint([exception.code]);
+        }
+
+        const eventId = Sentry.captureException(exception, {
           contexts: {
             GraphQL: {
               operationName: options?.operation?.name,
@@ -68,22 +118,5 @@ export class ExceptionHandlerSentryDriver
     });
 
     return eventIds;
-  }
-
-  captureMessage(message: string, user?: ExceptionHandlerUser) {
-    Sentry.captureMessage(message, (scope) => {
-      if (user) {
-        scope.setUser({
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          workspaceId: user.workspaceId,
-          workspaceDisplayName: user.workspaceDisplayName,
-        });
-      }
-
-      return scope;
-    });
   }
 }

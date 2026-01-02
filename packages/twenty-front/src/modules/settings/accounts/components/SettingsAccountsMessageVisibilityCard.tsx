@@ -1,5 +1,6 @@
 import { SettingsAccountsRadioSettingsCard } from '@/settings/accounts/components/SettingsAccountsRadioSettingsCard';
 import { SettingsAccountsVisibilityIcon } from '@/settings/accounts/components/SettingsAccountsVisibilityIcon';
+import { msg } from '@lingui/core/macro';
 import { MessageChannelVisibility } from '~/generated/graphql';
 
 type SettingsAccountsMessageVisibilityCardProps = {
@@ -9,9 +10,9 @@ type SettingsAccountsMessageVisibilityCardProps = {
 
 const inboxSettingsVisibilityOptions = [
   {
-    title: 'Everything',
-    description: 'Subject, body and attachments will be shared with your team.',
-    value: MessageChannelVisibility.ShareEverything,
+    title: msg`Everything`,
+    description: msg`Subject, body and attachments will be shared with your team.`,
+    value: MessageChannelVisibility.SHARE_EVERYTHING,
     cardMedia: (
       <SettingsAccountsVisibilityIcon
         metadata="active"
@@ -21,9 +22,9 @@ const inboxSettingsVisibilityOptions = [
     ),
   },
   {
-    title: 'Subject and metadata',
-    description: 'Subject and metadata will be shared with your team.',
-    value: MessageChannelVisibility.Subject,
+    title: msg`Subject and metadata`,
+    description: msg`Subject and metadata will be shared with your team.`,
+    value: MessageChannelVisibility.SUBJECT,
     cardMedia: (
       <SettingsAccountsVisibilityIcon
         metadata="active"
@@ -33,9 +34,9 @@ const inboxSettingsVisibilityOptions = [
     ),
   },
   {
-    title: 'Metadata',
-    description: 'Timestamp and participants will be shared with your team.',
-    value: MessageChannelVisibility.Metadata,
+    title: msg`Metadata`,
+    description: msg`Timestamp and participants will be shared with your team.`,
+    value: MessageChannelVisibility.METADATA,
     cardMedia: (
       <SettingsAccountsVisibilityIcon
         metadata="active"
@@ -48,7 +49,7 @@ const inboxSettingsVisibilityOptions = [
 
 export const SettingsAccountsMessageVisibilityCard = ({
   onChange,
-  value = MessageChannelVisibility.ShareEverything,
+  value = MessageChannelVisibility.SHARE_EVERYTHING,
 }: SettingsAccountsMessageVisibilityCardProps) => (
   <SettingsAccountsRadioSettingsCard
     name="message-visibility"

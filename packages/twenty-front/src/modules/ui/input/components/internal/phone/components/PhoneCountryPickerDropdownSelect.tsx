@@ -1,14 +1,15 @@
+import { t } from '@lingui/core/macro';
 import styled from '@emotion/styled';
 import { useMemo, useState } from 'react';
 
-import { Country } from '@/ui/input/components/internal/types/Country';
-import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
+import { type Country } from '@/ui/input/components/internal/types/Country';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { DropdownMenuSearchInput } from '@/ui/layout/dropdown/components/DropdownMenuSearchInput';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
 
+import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import 'react-phone-number-input/style.css';
-import { MenuItem, MenuItemSelectAvatar } from 'twenty-ui';
+import { MenuItem, MenuItemSelectAvatar } from 'twenty-ui/navigation';
 
 const StyledIconContainer = styled.div`
   align-items: center;
@@ -47,7 +48,7 @@ export const PhoneCountryPickerDropdownSelect = ({
   );
 
   return (
-    <DropdownMenu width="auto" disableBlur>
+    <DropdownContent>
       <DropdownMenuSearchInput
         value={searchFilter}
         onChange={(event) => setSearchFilter(event.currentTarget.value)}
@@ -56,7 +57,7 @@ export const PhoneCountryPickerDropdownSelect = ({
       <DropdownMenuSeparator />
       <DropdownMenuItemsContainer hasMaxHeight>
         {filteredCountries?.length === 0 ? (
-          <MenuItem text="No result" />
+          <MenuItem text={t`No results`} />
         ) : (
           <>
             {selectedCountry && (
@@ -91,6 +92,6 @@ export const PhoneCountryPickerDropdownSelect = ({
           </>
         )}
       </DropdownMenuItemsContainer>
-    </DropdownMenu>
+    </DropdownContent>
   );
 };

@@ -1,8 +1,8 @@
-import { act } from 'react-dom/test-utils';
 import { renderHook } from '@testing-library/react';
+import { act } from 'react';
 import { RecoilRoot } from 'recoil';
 
-import { useDragSelect } from '../useDragSelect';
+import { useDragSelect } from '@/ui/utilities/drag-select/hooks/useDragSelect';
 
 describe('useDragSelect', () => {
   it('Should set drag selection start state', () => {

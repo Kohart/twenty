@@ -1,10 +1,11 @@
-import { FunctionComponent } from 'react';
+import type { CSSProperties, FunctionComponent } from 'react';
 
 export type IconComponentProps = {
   className?: string;
+  style?: CSSProperties;
+  size?: number | string;
+  stroke?: number | string;
   color?: string;
-  size?: number;
-  stroke?: number;
 };
 
 export type IconComponent = FunctionComponent<IconComponentProps>;

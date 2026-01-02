@@ -4,7 +4,7 @@ import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadata
 import { EMPTY_MUTATION } from '@/object-record/constants/EmptyMutation';
 import { getRestoreManyRecordsMutationResponseField } from '@/object-record/utils/getRestoreManyRecordsMutationResponseField';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
-import { capitalize } from '~/utils/string/capitalize';
+import { capitalize } from 'twenty-shared/utils';
 
 export const useRestoreManyRecordsMutation = ({
   objectNameSingular,

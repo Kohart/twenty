@@ -1,13 +1,11 @@
-import { ReactNode } from 'react';
 import styled from '@emotion/styled';
-import { MOBILE_VIEWPORT } from 'twenty-ui';
-
-import { RightDrawer } from '@/ui/layout/right-drawer/components/RightDrawer';
+import { type ReactNode } from 'react';
 
 import { PagePanel } from './PagePanel';
 
 type PageBodyProps = {
   children: ReactNode;
+  className?: string;
 };
 
 const StyledMainContainer = styled.div`
@@ -22,11 +20,6 @@ const StyledMainContainer = styled.div`
   padding-right: ${({ theme }) => theme.spacing(3)};
   padding-left: 0;
   width: 100%;
-
-  @media (max-width: ${MOBILE_VIEWPORT}px) {
-    padding-left: ${({ theme }) => theme.spacing(3)};
-    padding-bottom: 0;
-  }
 `;
 
 type LeftContainerProps = {
@@ -40,11 +33,10 @@ const StyledLeftContainer = styled.div<LeftContainerProps>`
   width: 100%;
 `;
 
-export const PageBody = ({ children }: PageBodyProps) => (
-  <StyledMainContainer>
+export const PageBody = ({ children, className }: PageBodyProps) => (
+  <StyledMainContainer className={className}>
     <StyledLeftContainer>
       <PagePanel>{children}</PagePanel>
     </StyledLeftContainer>
-    <RightDrawer />
   </StyledMainContainer>
 );

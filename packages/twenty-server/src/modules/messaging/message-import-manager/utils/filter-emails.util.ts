@@ -1,48 +1,60 @@
-import { isEmailBlocklisted } from 'src/modules/blocklist/utils/is-email-blocklisted.util';
-import { MessageWithParticipants } from 'src/modules/messaging/message-import-manager/types/message';
+import { MessageParticipantRole } from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
 
-// Todo: refactor this into several utils
+import { type MessageWithParticipants } from 'src/modules/messaging/message-import-manager/types/message';
+import { filterOutBlocklistedMessages } from 'src/modules/messaging/message-import-manager/utils/filter-out-blocklisted-messages.util';
+import { filterOutIcsAttachments } from 'src/modules/messaging/message-import-manager/utils/filter-out-ics-attachments.util';
+import { filterOutInternals } from 'src/modules/messaging/message-import-manager/utils/filter-out-internals.util';
+import { isGroupEmail } from 'src/modules/messaging/message-import-manager/utils/is-group-email';
+import { isMessageSenderMatchingHandles } from 'src/modules/messaging/message-import-manager/utils/is-message-sender-matching-handles.util';
+import { isWorkEmail } from 'src/utils/is-work-email';
+
 export const filterEmails = (
-  messageChannelHandles: string[],
+  primaryHandle: string,
+  handleAliases: string[],
   messages: MessageWithParticipants[],
   blocklist: string[],
+  excludeGroupEmails: boolean = true,
 ) => {
-  return filterOutBlocklistedMessages(
-    messageChannelHandles,
-    filterOutIcsAttachments(messages),
+  const messagesWithoutIcsAttachments = filterOutIcsAttachments(messages);
+
+  const messagesWithoutBlocklisted = filterOutBlocklistedMessages(
+    [primaryHandle, ...handleAliases],
+    messagesWithoutIcsAttachments,
     blocklist,
   );
-};
 
-const filterOutBlocklistedMessages = (
-  messageChannelHandles: string[],
-  messages: MessageWithParticipants[],
-  blocklist: string[],
-) => {
-  return messages.filter((message) => {
-    if (!message.participants) {
+  const messagesWithoutInternals = isWorkEmail(primaryHandle)
+    ? filterOutInternals(primaryHandle, messagesWithoutBlocklisted)
+    : messagesWithoutBlocklisted;
+
+  if (!excludeGroupEmails) {
+    return messagesWithoutInternals;
+  }
+
+  const userHandles = [primaryHandle, ...handleAliases];
+
+  return messagesWithoutInternals.filter((message) => {
+    const isSentByUser = isMessageSenderMatchingHandles(message, userHandles);
+
+    if (isSentByUser) {
       return true;
     }
 
-    return message.participants.every(
-      (participant) =>
-        !isEmailBlocklisted(
-          messageChannelHandles,
-          participant.handle,
-          blocklist,
-        ),
-    );
-  });
-};
+    const senderHandle = message.participants?.find(
+      (participant) => participant.role === MessageParticipantRole.FROM,
+    )?.handle;
 
-const filterOutIcsAttachments = (messages: MessageWithParticipants[]) => {
-  return messages.filter((message) => {
-    if (!message.attachments) {
+    if (!isDefined(senderHandle)) {
       return true;
     }
 
-    return message.attachments.every(
-      (attachment) => !attachment.filename.endsWith('.ics'),
-    );
+    const isSenderGroupEmail = isGroupEmail(senderHandle);
+
+    if (!isSenderGroupEmail) {
+      return true;
+    }
+
+    return false;
   });
 };

@@ -1,38 +1,35 @@
 import {
-  IconComponent,
+  type FieldArrayValue,
+  type FieldBooleanValue,
+  type FieldDateTimeValue,
+  type FieldDateValue,
+  type FieldJsonValue,
+  type FieldMultiSelectValue,
+  type FieldNumberValue,
+  type FieldRelationValue,
+  type FieldSelectValue,
+  type FieldTextValue,
+  type FieldUUidValue,
+} from '@/object-record/record-field/ui/types/FieldMetadata';
+import { DEFAULT_DATE_VALUE } from '@/settings/data-model/constants/DefaultDateValue';
+import { type SettingsFieldTypeCategoryType } from '@/settings/data-model/types/SettingsFieldTypeCategoryType';
+import { type SettingsNonCompositeFieldType } from '@/settings/data-model/types/SettingsNonCompositeFieldType';
+import { type FieldRatingValue } from 'twenty-shared/types';
+import {
   IllustrationIconArray,
   IllustrationIconCalendarEvent,
   IllustrationIconCalendarTime,
   IllustrationIconJson,
   IllustrationIconNumbers,
   IllustrationIconOneToMany,
-  IllustrationIconSetting,
   IllustrationIconStar,
   IllustrationIconTag,
   IllustrationIconTags,
   IllustrationIconText,
   IllustrationIconToggle,
   IllustrationIconUid,
-} from 'twenty-ui';
-
-import {
-  FieldArrayValue,
-  FieldBooleanValue,
-  FieldDateTimeValue,
-  FieldDateValue,
-  FieldJsonValue,
-  FieldMultiSelectValue,
-  FieldNumberValue,
-  FieldRatingValue,
-  FieldRelationValue,
-  FieldRichTextValue,
-  FieldSelectValue,
-  FieldTextValue,
-  FieldUUidValue,
-} from '@/object-record/record-field/types/FieldMetadata';
-import { DEFAULT_DATE_VALUE } from '@/settings/data-model/constants/DefaultDateValue';
-import { SettingsFieldTypeCategoryType } from '@/settings/data-model/types/SettingsFieldTypeCategoryType';
-import { SettingsNonCompositeFieldType } from '@/settings/data-model/types/SettingsNonCompositeFieldType';
+  type IconComponent,
+} from 'twenty-ui/display';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 DEFAULT_DATE_VALUE.setFullYear(DEFAULT_DATE_VALUE.getFullYear() + 2);
@@ -40,7 +37,7 @@ DEFAULT_DATE_VALUE.setFullYear(DEFAULT_DATE_VALUE.getFullYear() + 2);
 export type SettingsFieldTypeConfig<T> = {
   label: string;
   Icon: IconComponent;
-  exampleValue?: T;
+  exampleValues?: [T, T, T];
   category: SettingsFieldTypeCategoryType;
 };
 
@@ -52,86 +49,94 @@ type SettingsNonCompositeFieldTypeConfigArray = Record<
 // TODO: can we derive this from backend definitions ?
 export const SETTINGS_NON_COMPOSITE_FIELD_TYPE_CONFIGS: SettingsNonCompositeFieldTypeConfigArray =
   {
-    [FieldMetadataType.Uuid]: {
+    [FieldMetadataType.UUID]: {
       label: 'Unique ID',
       Icon: IllustrationIconUid,
-      exampleValue: '00000000-0000-0000-0000-000000000000',
+      exampleValues: [
+        '00000000-0000-4000-8000-000000000000',
+        '00000000-0000-4000-8000-000000000001',
+        '00000000-0000-4000-8000-000000000003',
+      ],
       category: 'Advanced',
     } as const satisfies SettingsFieldTypeConfig<FieldUUidValue>,
-    [FieldMetadataType.Text]: {
+    [FieldMetadataType.TEXT]: {
       label: 'Text',
       Icon: IllustrationIconText,
-      exampleValue:
+      exampleValues: [
         'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum magna enim, dapibus non enim in, lacinia faucibus nunc. Sed interdum ante sed felis facilisis, eget ultricies neque molestie. Mauris auctor, justo eu volutpat cursus, libero erat tempus nulla, non sodales lorem lacus a est.',
+        'Vestibulum magna enim, dapibus non enim in, lacinia faucibus nunc. Sed interdum ante sed felis facilisis, eget ultricies neque molestie. Mauris auctor, justo eu volutpat cursus, libero erat tempus nulla, non sodales lorem lacus a est.',
+        'Sed interdum ante sed felis facilisis, eget ultricies neque molestie. Mauris auctor, justo eu volutpat cursus, libero erat tempus nulla, non sodales lorem lacus a est.',
+      ],
       category: 'Basic',
     } as const satisfies SettingsFieldTypeConfig<FieldTextValue>,
-    [FieldMetadataType.Numeric]: {
-      label: 'Numeric',
-      Icon: IllustrationIconNumbers,
-      exampleValue: 2000,
-      category: 'Basic',
-    } as const satisfies SettingsFieldTypeConfig<FieldNumberValue>,
-    [FieldMetadataType.Number]: {
+    [FieldMetadataType.NUMBER]: {
       label: 'Number',
       Icon: IllustrationIconNumbers,
-      exampleValue: 2000,
+      exampleValues: [2000, 3000, 4000],
       category: 'Basic',
     } as const satisfies SettingsFieldTypeConfig<FieldNumberValue>,
-    [FieldMetadataType.Boolean]: {
+    [FieldMetadataType.BOOLEAN]: {
       label: 'True/False',
       Icon: IllustrationIconToggle,
-      exampleValue: true,
+      exampleValues: [true, false, true],
       category: 'Basic',
     } as const satisfies SettingsFieldTypeConfig<FieldBooleanValue>,
-    [FieldMetadataType.DateTime]: {
+    [FieldMetadataType.DATE_TIME]: {
       label: 'Date and Time',
       Icon: IllustrationIconCalendarTime,
-      exampleValue: DEFAULT_DATE_VALUE.toISOString(),
+      exampleValues: [
+        DEFAULT_DATE_VALUE.toISOString(),
+        '2025-06-10T12:01:00.000Z',
+        '2018-07-14T12:02:00.000Z',
+      ],
       category: 'Basic',
     } as const satisfies SettingsFieldTypeConfig<FieldDateTimeValue>,
-    [FieldMetadataType.Date]: {
+    [FieldMetadataType.DATE]: {
       label: 'Date',
       Icon: IllustrationIconCalendarEvent,
-      exampleValue: DEFAULT_DATE_VALUE.toISOString(),
+      exampleValues: [
+        DEFAULT_DATE_VALUE.toISOString(),
+        '2025-06-10T00:00:00.000Z',
+        '2018-07-14T00:00:00.000Z',
+      ],
       category: 'Basic',
     } as const satisfies SettingsFieldTypeConfig<FieldDateValue>,
-    [FieldMetadataType.Select]: {
+    [FieldMetadataType.SELECT]: {
       label: 'Select',
       Icon: IllustrationIconTag,
       category: 'Basic',
     } as const satisfies SettingsFieldTypeConfig<FieldSelectValue>,
-    [FieldMetadataType.MultiSelect]: {
+    [FieldMetadataType.MULTI_SELECT]: {
       label: 'Multi-select',
       Icon: IllustrationIconTags,
       category: 'Basic',
     } as const satisfies SettingsFieldTypeConfig<FieldMultiSelectValue>,
-    [FieldMetadataType.Relation]: {
+    [FieldMetadataType.RELATION]: {
       label: 'Relation',
       Icon: IllustrationIconOneToMany,
       category: 'Relation',
     } as const satisfies SettingsFieldTypeConfig<FieldRelationValue<any>>,
-    [FieldMetadataType.Rating]: {
+    [FieldMetadataType.MORPH_RELATION]: {
+      label: 'Morph Relation',
+      Icon: IllustrationIconOneToMany,
+      category: 'Relation',
+    } as const satisfies SettingsFieldTypeConfig<FieldRelationValue<any>>,
+    [FieldMetadataType.RATING]: {
       label: 'Rating',
       Icon: IllustrationIconStar,
-      exampleValue: 'RATING_3',
+      exampleValues: ['RATING_3', 'RATING_4', 'RATING_5'],
       category: 'Basic',
     } as const satisfies SettingsFieldTypeConfig<FieldRatingValue>,
-    [FieldMetadataType.RawJson]: {
+    [FieldMetadataType.RAW_JSON]: {
       label: 'JSON',
       Icon: IllustrationIconJson,
-      exampleValue: { key: 'value' },
-      category: 'Basic',
+      exampleValues: [{ key: 'value1' }, { key: 'value2', key2: 'value2' }, {}],
+      category: 'Advanced',
     } as const satisfies SettingsFieldTypeConfig<FieldJsonValue>,
-    [FieldMetadataType.RichText]: {
-      label: 'Rich Text',
-      Icon: IllustrationIconSetting,
-      exampleValue: { key: 'value' },
-      category: 'Basic',
-    } as const satisfies SettingsFieldTypeConfig<FieldRichTextValue>,
-    [FieldMetadataType.Array]: {
+    [FieldMetadataType.ARRAY]: {
       label: 'Array',
       Icon: IllustrationIconArray,
-      category: 'Basic',
-      exampleValue: ['value1', 'value2'],
+      category: 'Advanced',
+      exampleValues: [['value1', 'value2'], ['value3'], []],
     } as const satisfies SettingsFieldTypeConfig<FieldArrayValue>,
   };

@@ -1,60 +1,64 @@
-import { getSnapshotValue } from '@/ui/utilities/recoil-scope/utils/getSnapshotValue';
-import { useRecoilComponentCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackStateV2';
+import { useRecoilComponentCallbackState } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackState';
+import { getSnapshotValue } from '@/ui/utilities/state/utils/getSnapshotValue';
 import { useChangeView } from '@/views/hooks/useChangeView';
 import { useCreateViewFromCurrentView } from '@/views/hooks/useCreateViewFromCurrentView';
+import { ViewType } from '@/views/types/ViewType';
 import { useCloseAndResetViewPicker } from '@/views/view-picker/hooks/useCloseAndResetViewPicker';
+import { viewPickerCalendarFieldMetadataIdComponentState } from '@/views/view-picker/states/viewPickerCalendarFieldMetadataIdComponentState';
 import { viewPickerInputNameComponentState } from '@/views/view-picker/states/viewPickerInputNameComponentState';
 import { viewPickerIsDirtyComponentState } from '@/views/view-picker/states/viewPickerIsDirtyComponentState';
 import { viewPickerIsPersistingComponentState } from '@/views/view-picker/states/viewPickerIsPersistingComponentState';
-import { viewPickerKanbanFieldMetadataIdComponentState } from '@/views/view-picker/states/viewPickerKanbanFieldMetadataIdComponentState';
+import { viewPickerMainGroupByFieldMetadataIdComponentState } from '@/views/view-picker/states/viewPickerMainGroupByFieldMetadataIdComponentState';
 import { viewPickerModeComponentState } from '@/views/view-picker/states/viewPickerModeComponentState';
 import { viewPickerSelectedIconComponentState } from '@/views/view-picker/states/viewPickerSelectedIconComponentState';
 import { viewPickerTypeComponentState } from '@/views/view-picker/states/viewPickerTypeComponentState';
+import { viewPickerVisibilityComponentState } from '@/views/view-picker/states/viewPickerVisibilityComponentState';
 import { useRecoilCallback } from 'recoil';
-import { v4 } from 'uuid';
+import { isDefined } from 'twenty-shared/utils';
 
-export const useCreateViewFromCurrentState = (viewBarInstanceId?: string) => {
+export const useCreateViewFromCurrentState = () => {
   const { closeAndResetViewPicker } = useCloseAndResetViewPicker();
 
-  const viewPickerInputNameCallbackState = useRecoilComponentCallbackStateV2(
+  const viewPickerInputNameCallbackState = useRecoilComponentCallbackState(
     viewPickerInputNameComponentState,
-    viewBarInstanceId,
   );
 
-  const viewPickerSelectedIconCallbackState = useRecoilComponentCallbackStateV2(
+  const viewPickerSelectedIconCallbackState = useRecoilComponentCallbackState(
     viewPickerSelectedIconComponentState,
-    viewBarInstanceId,
   );
 
-  const viewPickerTypeCallbackState = useRecoilComponentCallbackStateV2(
+  const viewPickerTypeCallbackState = useRecoilComponentCallbackState(
     viewPickerTypeComponentState,
-    viewBarInstanceId,
   );
 
-  const viewPickerKanbanFieldMetadataIdCallbackState =
-    useRecoilComponentCallbackStateV2(
-      viewPickerKanbanFieldMetadataIdComponentState,
-      viewBarInstanceId,
+  const viewPickerMainGroupByFieldMetadataIdCallbackState =
+    useRecoilComponentCallbackState(
+      viewPickerMainGroupByFieldMetadataIdComponentState,
     );
 
-  const viewPickerIsPersistingCallbackState = useRecoilComponentCallbackStateV2(
+  const viewPickerCalendarFieldMetadataIdCallbackState =
+    useRecoilComponentCallbackState(
+      viewPickerCalendarFieldMetadataIdComponentState,
+    );
+
+  const viewPickerIsPersistingCallbackState = useRecoilComponentCallbackState(
     viewPickerIsPersistingComponentState,
-    viewBarInstanceId,
   );
 
-  const viewPickerIsDirtyCallbackState = useRecoilComponentCallbackStateV2(
+  const viewPickerIsDirtyCallbackState = useRecoilComponentCallbackState(
     viewPickerIsDirtyComponentState,
-    viewBarInstanceId,
   );
 
-  const viewPickerModeCallbackState = useRecoilComponentCallbackStateV2(
+  const viewPickerModeCallbackState = useRecoilComponentCallbackState(
     viewPickerModeComponentState,
-    viewBarInstanceId,
   );
 
-  const { createViewFromCurrentView } =
-    useCreateViewFromCurrentView(viewBarInstanceId);
-  const { changeView } = useChangeView(viewBarInstanceId);
+  const viewPickerVisibilityCallbackState = useRecoilComponentCallbackState(
+    viewPickerVisibilityComponentState,
+  );
+
+  const { createViewFromCurrentView } = useCreateViewFromCurrentView();
+  const { changeView } = useChangeView();
 
   const createViewFromCurrentState = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -68,37 +72,47 @@ export const useCreateViewFromCurrentState = (viewBarInstanceId?: string) => {
           viewPickerSelectedIconCallbackState,
         );
         const type = getSnapshotValue(snapshot, viewPickerTypeCallbackState);
-        const kanbanFieldMetadataId = getSnapshotValue(
+        const mainGroupByFieldMetadataId = getSnapshotValue(
           snapshot,
-          viewPickerKanbanFieldMetadataIdCallbackState,
+          viewPickerMainGroupByFieldMetadataIdCallbackState,
+        );
+        const calendarFieldMetadataId = getSnapshotValue(
+          snapshot,
+          viewPickerCalendarFieldMetadataIdCallbackState,
         );
 
         const viewPickerMode = getSnapshotValue(
           snapshot,
           viewPickerModeCallbackState,
         );
+        const visibility = getSnapshotValue(
+          snapshot,
+          viewPickerVisibilityCallbackState,
+        );
 
-        const shouldCopyFiltersAndSorts =
+        const shouldCopyFiltersAndSortsAndAggregate =
           viewPickerMode === 'create-from-current';
-
-        const id = v4();
 
         set(viewPickerIsPersistingCallbackState, true);
         set(viewPickerIsDirtyCallbackState, false);
 
-        await createViewFromCurrentView(
+        const createdViewId = await createViewFromCurrentView(
           {
-            id,
             name,
             icon: iconKey,
             type,
-            kanbanFieldMetadataId,
+            mainGroupByFieldMetadataId:
+              type === ViewType.Kanban ? mainGroupByFieldMetadataId : null,
+            calendarFieldMetadataId,
+            visibility,
           },
-          shouldCopyFiltersAndSorts,
+          shouldCopyFiltersAndSortsAndAggregate,
         );
 
-        closeAndResetViewPicker();
-        changeView(id);
+        if (isDefined(createdViewId)) {
+          closeAndResetViewPicker();
+          changeView(createdViewId);
+        }
       },
     [
       closeAndResetViewPicker,
@@ -107,10 +121,12 @@ export const useCreateViewFromCurrentState = (viewBarInstanceId?: string) => {
       viewPickerInputNameCallbackState,
       viewPickerIsDirtyCallbackState,
       viewPickerIsPersistingCallbackState,
-      viewPickerKanbanFieldMetadataIdCallbackState,
+      viewPickerMainGroupByFieldMetadataIdCallbackState,
+      viewPickerCalendarFieldMetadataIdCallbackState,
       viewPickerSelectedIconCallbackState,
       viewPickerTypeCallbackState,
       viewPickerModeCallbackState,
+      viewPickerVisibilityCallbackState,
     ],
   );
 

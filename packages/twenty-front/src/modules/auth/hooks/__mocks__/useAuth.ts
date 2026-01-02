@@ -1,42 +1,78 @@
 import {
-  ChallengeDocument,
+  GetAuthTokensFromLoginTokenDocument,
+  GetCurrentUserDocument,
+  GetLoginTokenFromCredentialsDocument,
   SignUpDocument,
-  VerifyDocument,
-} from '~/generated/graphql';
+  SignUpInWorkspaceDocument,
+} from '~/generated-metadata/graphql';
 
 export const queries = {
-  challenge: ChallengeDocument,
-  verify: VerifyDocument,
+  getLoginTokenFromCredentials: GetLoginTokenFromCredentialsDocument,
+  getAuthTokensFromLoginToken: GetAuthTokensFromLoginTokenDocument,
   signup: SignUpDocument,
+  getCurrentUser: GetCurrentUserDocument,
+  signUpInWorkspace: SignUpInWorkspaceDocument,
 };
 
 export const email = 'test@test.com';
 export const password = 'testing';
+export const origin = 'http://localhost';
 export const token =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
 export const variables = {
-  challenge: {
+  getLoginTokenFromCredentials: {
     email,
     password,
+    origin,
   },
-  verify: { loginToken: token },
-  signup: {},
+  getAuthTokensFromLoginToken: { loginToken: token, origin },
+  signup: {
+    email,
+    password,
+    workspacePersonalInviteToken: null,
+    locale: '',
+  },
+  signUpInWorkspace: {
+    email,
+    password,
+    workspacePersonalInviteToken: null,
+    locale: '',
+  },
+  getCurrentUser: {},
 };
 
 export const results = {
-  challenge: {
+  getLoginTokenFromCredentials: {
     loginToken: {
       token,
       expiresAt: '2022-01-01',
     },
   },
-  verify: {
-    user: {
+  getAuthTokensFromLoginToken: {
+    tokens: {
+      accessOrWorkspaceAgnosticToken: { token, expiresAt: 'expiresAt' },
+      refreshToken: { token, expiresAt: 'expiresAt' },
+    },
+  },
+  signUp: { loginToken: { token, expiresAt: 'expiresAt' } },
+  signUpInWorkspace: {
+    loginToken: { token, expiresAt: 'expiresAt' },
+    workspace: {
+      id: 'workspace-id',
+      workspaceUrls: {
+        subdomainUrl: 'https://subdomain.twenty.com',
+        customUrl: 'https://custom.twenty.com',
+      },
+    },
+  },
+  getCurrentUser: {
+    currentUser: {
       id: 'id',
       firstName: 'firstName',
       lastName: 'lastName',
       email: 'email',
+      canAccessFullAdminPanel: false,
       canImpersonate: 'canImpersonate',
       supportUserHash: 'supportUserHash',
       workspaceMember: {
@@ -49,14 +85,19 @@ export const results = {
         avatarUrl: 'avatarUrl',
         locale: 'locale',
       },
-      defaultWorkspace: {
+      availableWorkspaces: [],
+      currentWorkspace: {
         id: 'id',
         displayName: 'displayName',
         logo: 'logo',
-        domainName: 'domainName',
         inviteHash: 'inviteHash',
         allowImpersonation: true,
         subscriptionStatus: 'subscriptionStatus',
+        customDomain: null,
+        workspaceUrls: {
+          customUrl: undefined,
+          subdomainUrl: 'https://twenty.com',
+        },
         featureFlags: {
           id: 'id',
           key: 'key',
@@ -65,42 +106,36 @@ export const results = {
         },
       },
     },
-    tokens: {
-      accessToken: { token, expiresAt: 'expiresAt' },
-      refreshToken: { token, expiresAt: 'expiresAt' },
-    },
-    signup: {},
   },
-  signUp: { loginToken: { token, expiresAt: 'expiresAt' } },
 };
 
-export const mocks = [
-  {
+export const mocks = {
+  getLoginTokenFromCredentials: {
     request: {
-      query: queries.challenge,
-      variables: variables.challenge,
+      query: queries.getLoginTokenFromCredentials,
+      variables: variables.getLoginTokenFromCredentials,
     },
     result: jest.fn(() => ({
       data: {
-        challenge: results.challenge,
+        getLoginTokenFromCredentials: results.getLoginTokenFromCredentials,
       },
     })),
   },
-  {
+  getAuthTokensFromLoginToken: {
     request: {
-      query: queries.verify,
-      variables: variables.verify,
+      query: queries.getAuthTokensFromLoginToken,
+      variables: variables.getAuthTokensFromLoginToken,
     },
     result: jest.fn(() => ({
       data: {
-        verify: results.verify,
+        getAuthTokensFromLoginToken: results.getAuthTokensFromLoginToken,
       },
     })),
   },
-  {
+  signup: {
     request: {
       query: queries.signup,
-      variables: variables.challenge,
+      variables: variables.signup,
     },
     result: jest.fn(() => ({
       data: {
@@ -108,4 +143,24 @@ export const mocks = [
       },
     })),
   },
-];
+  getCurrentUser: {
+    request: {
+      query: queries.getCurrentUser,
+      variables: variables.getCurrentUser,
+    },
+    result: jest.fn(() => ({
+      data: results.getCurrentUser,
+    })),
+  },
+  signUpInWorkspace: {
+    request: {
+      query: queries.signUpInWorkspace,
+      variables: variables.signUpInWorkspace,
+    },
+    result: jest.fn(() => ({
+      data: {
+        signUpInWorkspace: results.signUpInWorkspace,
+      },
+    })),
+  },
+};

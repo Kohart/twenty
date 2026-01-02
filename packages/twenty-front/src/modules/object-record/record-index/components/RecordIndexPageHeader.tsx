@@ -1,91 +1,77 @@
-import { PageFavoriteFoldersDropdown } from '@/favorites/components/PageFavoriteFolderDropdown';
-import { FAVORITE_FOLDER_PICKER_DROPDOWN_ID } from '@/favorites/favorite-folder-picker/constants/FavoriteFolderPickerDropdownId';
-import { useFavorites } from '@/favorites/hooks/useFavorites';
+import { RecordIndexActionMenu } from '@/action-menu/components/RecordIndexActionMenu';
+import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainContextStoreInstanceId';
+import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
+import { contextStoreNumberOfSelectedRecordsComponentState } from '@/context-store/states/contextStoreNumberOfSelectedRecordsComponentState';
 import { useFilteredObjectMetadataItems } from '@/object-metadata/hooks/useFilteredObjectMetadataItems';
-import { isObjectMetadataReadOnly } from '@/object-metadata/utils/isObjectMetadataReadOnly';
-import { RecordIndexPageKanbanAddButton } from '@/object-record/record-index/components/RecordIndexPageKanbanAddButton';
-import { RecordIndexRootPropsContext } from '@/object-record/record-index/contexts/RecordIndexRootPropsContext';
-import { recordIndexViewTypeState } from '@/object-record/record-index/states/recordIndexViewTypeState';
-import { usePrefetchedData } from '@/prefetch/hooks/usePrefetchedData';
-import { PrefetchKey } from '@/prefetch/types/PrefetchKey';
-import { PageAddButton } from '@/ui/layout/page/components/PageAddButton';
+import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
+import { PageHeaderToggleCommandMenuButton } from '@/ui/layout/page-header/components/PageHeaderToggleCommandMenuButton';
 import { PageHeader } from '@/ui/layout/page/components/PageHeader';
-import { PageHotkeysEffect } from '@/ui/layout/page/components/PageHotkeysEffect';
-import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
-import { currentViewIdComponentState } from '@/views/states/currentViewIdComponentState';
-import { View } from '@/views/types/View';
-import { ViewType } from '@/views/types/ViewType';
-import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
-import { useContext } from 'react';
-import { useRecoilValue } from 'recoil';
-import { useIcons } from 'twenty-ui';
-import { capitalize } from '~/utils/string/capitalize';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import styled from '@emotion/styled';
+import { t } from '@lingui/core/macro';
+import { isDefined } from 'twenty-shared/utils';
+import { useIcons } from 'twenty-ui/display';
+
+const StyledTitleWithSelectedRecords = styled.div`
+  display: flex;
+  flex-direction: row;
+  gap: ${({ theme }) => theme.spacing(1)};
+`;
+
+const StyledTitle = styled.div`
+  color: ${({ theme }) => theme.font.color.primary};
+  padding-right: ${({ theme }) => theme.spacing(0.5)};
+`;
+
+const StyledSelectedRecordsCount = styled.div`
+  color: ${({ theme }) => theme.font.color.tertiary};
+  padding-left: ${({ theme }) => theme.spacing(0.5)};
+`;
 
 export const RecordIndexPageHeader = () => {
   const { findObjectMetadataItemByNamePlural } =
     useFilteredObjectMetadataItems();
-  const isFavoriteFolderEnabled = useIsFeatureEnabled(
-    'IS_FAVORITE_FOLDER_ENABLED',
+
+  const contextStoreNumberOfSelectedRecords = useRecoilComponentValue(
+    contextStoreNumberOfSelectedRecordsComponentState,
   );
 
-  const { objectNamePlural, onCreateRecord, recordIndexId } = useContext(
-    RecordIndexRootPropsContext,
-  );
-  const { records: views } = usePrefetchedData<View>(PrefetchKey.AllViews);
-  const currentViewId = useRecoilComponentValueV2(
-    currentViewIdComponentState,
-    recordIndexId,
-  );
-
-  const view = views.find((view) => view.id === currentViewId);
-
-  const { sortedFavorites: favorites } = useFavorites();
-
-  const isFavorite = favorites.some(
-    (favorite) =>
-      favorite.recordId === currentViewId && favorite.workspaceMemberId,
-  );
+  const { objectNamePlural } = useRecordIndexContextOrThrow();
 
   const objectMetadataItem =
     findObjectMetadataItemByNamePlural(objectNamePlural);
 
   const { getIcon } = useIcons();
-  const Icon = getIcon(
-    findObjectMetadataItemByNamePlural(objectNamePlural)?.icon,
-  );
+  const Icon = getIcon(objectMetadataItem?.icon);
 
-  const recordIndexViewType = useRecoilValue(recordIndexViewTypeState);
-
-  const shouldDisplayAddButton = objectMetadataItem
-    ? !isObjectMetadataReadOnly(objectMetadataItem)
-    : false;
-
-  const isTable = recordIndexViewType === ViewType.Table;
+  const label = objectMetadataItem?.labelPlural ?? objectNamePlural;
 
   const pageHeaderTitle =
-    objectMetadataItem?.labelPlural ?? capitalize(objectNamePlural);
+    contextStoreNumberOfSelectedRecords > 0 ? (
+      <StyledTitleWithSelectedRecords>
+        <StyledTitle>{label}</StyledTitle>
+        <>{'->'}</>
+        <StyledSelectedRecordsCount>
+          {t`${contextStoreNumberOfSelectedRecords} selected`}
+        </StyledSelectedRecordsCount>
+      </StyledTitleWithSelectedRecords>
+    ) : (
+      label
+    );
 
-  const handleAddButtonClick = () => {
-    onCreateRecord();
-  };
+  const contextStoreCurrentViewId = useRecoilComponentValue(
+    contextStoreCurrentViewIdComponentState,
+    MAIN_CONTEXT_STORE_INSTANCE_ID,
+  );
 
   return (
     <PageHeader title={pageHeaderTitle} Icon={Icon}>
-      <PageHotkeysEffect onAddButtonClick={handleAddButtonClick} />
-      {isFavoriteFolderEnabled && (
-        <PageFavoriteFoldersDropdown
-          record={view}
-          dropdownId={FAVORITE_FOLDER_PICKER_DROPDOWN_ID}
-          objectNameSingular="view"
-          isFavorite={isFavorite}
-        />
+      {isDefined(contextStoreCurrentViewId) && (
+        <>
+          <RecordIndexActionMenu />
+          <PageHeaderToggleCommandMenuButton />
+        </>
       )}
-      {shouldDisplayAddButton &&
-        (isTable ? (
-          <PageAddButton onClick={handleAddButtonClick} />
-        ) : (
-          <RecordIndexPageKanbanAddButton />
-        ))}
     </PageHeader>
   );
 };

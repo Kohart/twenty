@@ -1,6 +1,7 @@
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
-import { Any, Repository } from 'typeorm';
+import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
+import { DataSource, Repository } from 'typeorm';
 
 import { SentryCronMonitor } from 'src/engine/core-modules/cron/sentry-cron-monitor.decorator';
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
@@ -9,14 +10,11 @@ import { Process } from 'src/engine/core-modules/message-queue/decorators/proces
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
-import {
-  Workspace,
-  WorkspaceActivationStatus,
-} from 'src/engine/core-modules/workspace/workspace.entity';
-import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { getWorkspaceSchemaName } from 'src/engine/workspace-datasource/utils/get-workspace-schema-name.util';
 import {
   CalendarEventListFetchJob,
-  CalendarEventListFetchJobData,
+  type CalendarEventListFetchJobData,
 } from 'src/modules/calendar/calendar-event-import-manager/jobs/calendar-event-list-fetch.job';
 import { CalendarChannelSyncStage } from 'src/modules/calendar/common/standard-objects/calendar-channel.workspace-entity';
 
@@ -27,12 +25,13 @@ export const CALENDAR_EVENT_LIST_FETCH_CRON_PATTERN = '*/5 * * * *';
 })
 export class CalendarEventListFetchCronJob {
   constructor(
-    @InjectRepository(Workspace, 'core')
-    private readonly workspaceRepository: Repository<Workspace>,
+    @InjectRepository(WorkspaceEntity)
+    private readonly workspaceRepository: Repository<WorkspaceEntity>,
     @InjectMessageQueue(MessageQueue.calendarQueue)
     private readonly messageQueueService: MessageQueueService,
-    private readonly twentyORMGlobalManager: TwentyORMGlobalManager,
     private readonly exceptionHandlerService: ExceptionHandlerService,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
   ) {}
 
   @Process(CalendarEventListFetchCronJob.name)
@@ -41,8 +40,6 @@ export class CalendarEventListFetchCronJob {
     CALENDAR_EVENT_LIST_FETCH_CRON_PATTERN,
   )
   async handle(): Promise<void> {
-    console.time('CalendarEventListFetchCronJob time');
-
     const activeWorkspaces = await this.workspaceRepository.find({
       where: {
         activationStatus: WorkspaceActivationStatus.ACTIVE,
@@ -51,21 +48,14 @@ export class CalendarEventListFetchCronJob {
 
     for (const activeWorkspace of activeWorkspaces) {
       try {
-        const calendarChannelRepository =
-          await this.twentyORMGlobalManager.getRepositoryForWorkspace(
-            activeWorkspace.id,
-            'calendarChannel',
-          );
+        const schemaName = getWorkspaceSchemaName(activeWorkspace.id);
 
-        const calendarChannels = await calendarChannelRepository.find({
-          where: {
-            isSyncEnabled: true,
-            syncStage: Any([
-              CalendarChannelSyncStage.FULL_CALENDAR_EVENT_LIST_FETCH_PENDING,
-              CalendarChannelSyncStage.PARTIAL_CALENDAR_EVENT_LIST_FETCH_PENDING,
-            ]),
-          },
-        });
+        const now = new Date().toISOString();
+
+        const [calendarChannels] = await this.coreDataSource.query(
+          `UPDATE ${schemaName}."calendarChannel" SET "syncStage" = '${CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED}', "syncStageStartedAt" = COALESCE("syncStageStartedAt", '${now}')
+          WHERE "isSyncEnabled" = true AND "syncStage" = '${CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING}' RETURNING *`,
+        );
 
         for (const calendarChannel of calendarChannels) {
           await this.messageQueueService.add<CalendarEventListFetchJobData>(
@@ -78,13 +68,11 @@ export class CalendarEventListFetchCronJob {
         }
       } catch (error) {
         this.exceptionHandlerService.captureExceptions([error], {
-          user: {
-            workspaceId: activeWorkspace.id,
+          workspace: {
+            id: activeWorkspace.id,
           },
         });
       }
     }
-
-    console.timeEnd('CalendarEventListFetchCronJob time');
   }
 }

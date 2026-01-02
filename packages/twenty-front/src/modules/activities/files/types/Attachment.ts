@@ -1,21 +1,19 @@
+import { type AttachmentFileCategory } from './AttachmentFileCategory';
+
+export type { AttachmentFileCategory };
+
 export type Attachment = {
   id: string;
   name: string;
   fullPath: string;
-  type: AttachmentType;
+  fileCategory: AttachmentFileCategory;
   companyId: string;
   personId: string;
-  authorId: string;
+  createdBy?: {
+    source: string;
+    workspaceMemberId: string | null;
+    name: string;
+  };
   createdAt: string;
   __typename: string;
 };
-
-export type AttachmentType =
-  | 'Archive'
-  | 'Audio'
-  | 'Image'
-  | 'Presentation'
-  | 'Spreadsheet'
-  | 'TextDocument'
-  | 'Video'
-  | 'Other';

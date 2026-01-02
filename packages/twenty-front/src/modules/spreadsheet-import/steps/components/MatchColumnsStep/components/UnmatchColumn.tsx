@@ -1,30 +1,36 @@
 import { useSpreadsheetImportInternal } from '@/spreadsheet-import/hooks/useSpreadsheetImportInternal';
-import { SubMatchingSelect } from '@/spreadsheet-import/steps/components/MatchColumnsStep/components/SubMatchingSelect';
+import { SubMatchingSelectRow } from '@/spreadsheet-import/steps/components/MatchColumnsStep/components/SubMatchingSelectRow';
 import { UnmatchColumnBanner } from '@/spreadsheet-import/steps/components/MatchColumnsStep/components/UnmatchColumnBanner';
-import { Column } from '@/spreadsheet-import/steps/components/MatchColumnsStep/MatchColumnsStep';
-import { Fields } from '@/spreadsheet-import/types';
+import { type SpreadsheetImportFields } from '@/spreadsheet-import/types';
+import { type SpreadsheetColumn } from '@/spreadsheet-import/types/SpreadsheetColumn';
+import { type SpreadsheetColumns } from '@/spreadsheet-import/types/SpreadsheetColumns';
+import { SpreadsheetColumnType } from '@/spreadsheet-import/types/SpreadsheetColumnType';
 import styled from '@emotion/styled';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react/macro';
 import { useState } from 'react';
-import { ExpandableContainer, isDefined } from 'twenty-ui';
+import { isDefined } from 'twenty-shared/utils';
+import { AnimatedExpandableContainer } from 'twenty-ui/layout';
 
-const getExpandableContainerTitle = <T extends string>(
-  fields: Fields<T>,
-  column: Column<T>,
-) => {
+const getExpandableContainerTitle = (
+  fields: SpreadsheetImportFields,
+  column: SpreadsheetColumn,
+): string => {
   const fieldLabel = fields.find(
     (field) => 'value' in column && field.key === column.value,
   )?.label;
 
-  return `Match ${fieldLabel} (${
+  const unmatchedCount =
     'matchedOptions' in column &&
-    column.matchedOptions.filter((option) => !isDefined(option.value)).length
-  } Unmatched)`;
+    column.matchedOptions?.filter((option) => !isDefined(option.value)).length;
+
+  return t`Match ${fieldLabel} (${unmatchedCount} Unmatched)`;
 };
 
-type UnmatchColumnProps<T extends string> = {
-  columns: Column<T>[];
+type UnmatchColumnProps = {
+  columns: SpreadsheetColumns;
   columnIndex: number;
-  onSubChange: (val: T, index: number, option: string) => void;
+  onSubChange: (val: string, index: number, option: string) => void;
 };
 
 const StyledContainer = styled.div`
@@ -40,15 +46,18 @@ const StyledContentWrapper = styled.div`
   padding-bottom: ${({ theme }) => theme.spacing(4)};
 `;
 
-export const UnmatchColumn = <T extends string>({
+export const UnmatchColumn = ({
   columns,
   columnIndex,
   onSubChange,
-}: UnmatchColumnProps<T>) => {
-  const { fields } = useSpreadsheetImportInternal<T>();
+}: UnmatchColumnProps) => {
+  const { spreadsheetImportFields: fields } = useSpreadsheetImportInternal();
   const [isExpanded, setIsExpanded] = useState(false);
   const column = columns[columnIndex];
   const isSelect = 'matchedOptions' in column;
+  const { t } = useLingui();
+
+  const allMatched = column.type === SpreadsheetColumnType.matchedSelectOptions;
 
   if (!isSelect) return null;
 
@@ -58,20 +67,26 @@ export const UnmatchColumn = <T extends string>({
         message={getExpandableContainerTitle(fields, column)}
         buttonOnClick={() => setIsExpanded(!isExpanded)}
         isExpanded={isExpanded}
+        allMatched={allMatched}
       />
-      <ExpandableContainer isExpanded={isExpanded}>
+      <AnimatedExpandableContainer
+        isExpanded={isExpanded}
+        dimension="height"
+        mode="scroll-height"
+        containAnimation
+      >
         <StyledContentWrapper>
-          {column.matchedOptions.map((option) => (
-            <SubMatchingSelect
+          {column.matchedOptions?.map((option) => (
+            <SubMatchingSelectRow
               option={option}
               column={column}
               onSubChange={onSubChange}
               key={option.entry}
-              placeholder="Select an option"
+              placeholder={t`Select an option`}
             />
           ))}
         </StyledContentWrapper>
-      </ExpandableContainer>
+      </AnimatedExpandableContainer>
     </StyledContainer>
   );
 };

@@ -1,7 +1,7 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconComponent } from '@ui/display';
-import { MouseEvent } from 'react';
+import { type IconComponent } from '@ui/display';
+import { type MouseEvent } from 'react';
 
 export type LightButtonAccent = 'secondary' | 'tertiary';
 
@@ -14,6 +14,7 @@ export type LightButtonProps = {
   disabled?: boolean;
   focus?: boolean;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  type?: React.ComponentProps<'button'>['type'];
 };
 
 const StyledButton = styled.button<
@@ -26,7 +27,7 @@ const StyledButton = styled.button<
 
   border-radius: ${({ theme }) => theme.border.radius.sm};
   box-shadow: ${({ theme, focus }) =>
-    focus ? `0 0 0 3px  ${theme.color.blue10}` : 'none'};
+    focus ? `0 0 0 3px  ${theme.color.blue3}` : 'none'};
   color: ${({ theme, accent, active, disabled, focus }) => {
     switch (accent) {
       case 'secondary':
@@ -82,6 +83,7 @@ export const LightButton = ({
   accent = 'secondary',
   disabled = false,
   focus = false,
+  type = 'button',
   onClick,
 }: LightButtonProps) => {
   const theme = useTheme();
@@ -91,6 +93,7 @@ export const LightButton = ({
       onClick={onClick}
       disabled={disabled}
       focus={focus && !disabled}
+      type={type}
       accent={accent}
       className={className}
       active={active}

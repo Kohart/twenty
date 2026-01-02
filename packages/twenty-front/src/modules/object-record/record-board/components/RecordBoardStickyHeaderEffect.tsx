@@ -1,9 +1,11 @@
+import { scrollWrapperScrollTopComponentState } from '@/ui/utilities/scroll/states/scrollWrapperScrollTopComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 import { useEffect } from 'react';
 
-import { useScrollTopValue } from '@/ui/utilities/scroll/hooks/useScrollTopValue';
-
 export const RecordBoardStickyHeaderEffect = () => {
-  const scrollTop = useScrollTopValue('recordBoard');
+  const scrollTop = useRecoilComponentValue(
+    scrollWrapperScrollTopComponentState,
+  );
 
   // TODO: move this outside because it might cause way too many re-renders for other hooks
   useEffect(() => {

@@ -1,8 +1,12 @@
 import styled from '@emotion/styled';
-import { IconComponent } from '@ui/display';
-import { FunctionComponent, MouseEvent, ReactElement } from 'react';
+import { type IconComponent } from '@ui/display';
+import {
+  type FunctionComponent,
+  type MouseEvent,
+  type ReactElement,
+} from 'react';
 
-import { LightIconButton, LightIconButtonProps } from './LightIconButton';
+import { LightIconButton, type LightIconButtonProps } from './LightIconButton';
 
 const StyledLightIconButtonGroupContainer = styled.div`
   display: inline-flex;
@@ -19,6 +23,8 @@ export type LightIconButtonGroupProps = Pick<
     accent?: LightIconButtonProps['accent'];
     onClick?: (event: MouseEvent<any>) => void;
     disabled?: boolean;
+    ariaLabel?: string;
+    dataTestId?: string;
   }[];
 };
 
@@ -28,26 +34,30 @@ export const LightIconButtonGroup = ({
   className,
 }: LightIconButtonGroupProps) => (
   <StyledLightIconButtonGroupContainer className={className}>
-    {iconButtons.map(({ Wrapper, Icon, accent, onClick }, index) => {
-      const iconButton = (
-        <LightIconButton
-          key={`light-icon-button-${index}`}
-          Icon={Icon}
-          accent={accent}
-          disabled={!onClick}
-          onClick={onClick}
-          size={size}
-        />
-      );
+    {iconButtons.map(
+      ({ Wrapper, Icon, accent, onClick, ariaLabel, dataTestId }, index) => {
+        const iconButton = (
+          <LightIconButton
+            key={`light-icon-button-${index}`}
+            Icon={Icon}
+            accent={accent}
+            disabled={!onClick}
+            onClick={onClick}
+            size={size}
+            aria-label={ariaLabel}
+            testId={dataTestId}
+          />
+        );
 
-      return Wrapper ? (
-        <Wrapper
-          key={`light-icon-button-wrapper-${index}`}
-          iconButton={iconButton}
-        />
-      ) : (
-        iconButton
-      );
-    })}
+        return Wrapper ? (
+          <Wrapper
+            key={`light-icon-button-wrapper-${index}`}
+            iconButton={iconButton}
+          />
+        ) : (
+          iconButton
+        );
+      },
+    )}
   </StyledLightIconButtonGroupContainer>
 );

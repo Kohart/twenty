@@ -1,13 +1,14 @@
-import { Meta, StoryObj } from '@storybook/react';
-import { ComponentDecorator } from 'twenty-ui';
+import { type Meta, type StoryObj } from '@storybook/react';
 
 import { SettingsAccountsBlocklistInput } from '@/settings/accounts/components/SettingsAccountsBlocklistInput';
-import { SettingsAccountsBlocklistSection } from '@/settings/accounts/components/SettingsAccountsBlocklistSection';
+import { type SettingsAccountsBlocklistSection } from '@/settings/accounts/components/SettingsAccountsBlocklistSection';
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
+import { ComponentDecorator } from 'twenty-ui/testing';
 
 const meta: Meta<typeof SettingsAccountsBlocklistSection> = {
   title: 'Modules/Settings/Accounts/Blocklist/SettingsAccountsBlocklistSection',
   component: SettingsAccountsBlocklistInput,
-  decorators: [ComponentDecorator],
+  decorators: [ComponentDecorator, I18nFrontDecorator],
 };
 
 export default meta;

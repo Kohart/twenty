@@ -8,10 +8,7 @@ import { WorkspaceMigrationModule } from 'src/engine/metadata-modules/workspace-
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature(
-      [ObjectMetadataEntity, FieldMetadataEntity],
-      'metadata',
-    ),
+    TypeOrmModule.forFeature([ObjectMetadataEntity, FieldMetadataEntity]),
     WorkspaceMigrationModule,
   ],
   providers: [RemoteTableRelationsService],

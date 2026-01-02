@@ -1,7 +1,6 @@
-import { MockedResponse } from '@apollo/client/testing';
+import { type MockedResponse } from '@apollo/client/testing';
 import { act, renderHook } from '@testing-library/react';
 import gql from 'graphql-tag';
-import pick from 'lodash.pick';
 
 import { useCreateActivityInDB } from '@/activities/hooks/useCreateActivityInDB';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
@@ -12,8 +11,13 @@ const mockedDate = '2024-03-15T12:00:00.000Z';
 const toISOStringMock = jest.fn(() => mockedDate);
 global.Date.prototype.toISOString = toISOStringMock;
 
+const { id, title, bodyV2, status, dueAt } = mockedTasks[0];
 const mockedActivity = {
-  ...pick(mockedTasks[0], ['id', 'title', 'body', 'type', 'status', 'dueAt']),
+  id,
+  title,
+  bodyV2,
+  status,
+  dueAt,
   updatedAt: mockedDate,
 };
 
@@ -47,14 +51,19 @@ const mocks: MockedResponse[] = [
                   noteId
                   opportunityId
                   personId
+                  petId
                   rocketId
+                  surveyResultId
                   taskId
                   type
                   updatedAt
                 }
               }
             }
-            body
+            bodyV2 {
+              blocknote
+              markdown
+            }
             createdAt
             dueAt
             id

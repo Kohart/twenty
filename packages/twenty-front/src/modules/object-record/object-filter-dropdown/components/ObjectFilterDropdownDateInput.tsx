@@ -1,126 +1,119 @@
-import { useRecoilValue } from 'recoil';
-import { v4 } from 'uuid';
+import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { CalendarStartDay } from 'twenty-shared/constants';
 
-import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
-import { Filter } from '@/object-record/object-filter-dropdown/types/Filter';
+import { detectCalendarStartDay } from '@/localization/utils/detection/detectCalendarStartDay';
+import { useApplyObjectFilterDropdownFilterValue } from '@/object-record/object-filter-dropdown/hooks/useApplyObjectFilterDropdownFilterValue';
+import { objectFilterDropdownCurrentRecordFilterComponentState } from '@/object-record/object-filter-dropdown/states/objectFilterDropdownCurrentRecordFilterComponentState';
+import { selectedOperandInDropdownComponentState } from '@/object-record/object-filter-dropdown/states/selectedOperandInDropdownComponentState';
 import { getRelativeDateDisplayValue } from '@/object-record/object-filter-dropdown/utils/getRelativeDateDisplayValue';
-import { InternalDatePicker } from '@/ui/input/components/internal/date/components/InternalDatePicker';
-import { ViewFilterOperand } from '@/views/types/ViewFilterOperand';
-import { computeVariableDateViewFilterValue } from '@/views/view-filter-value/utils/computeVariableDateViewFilterValue';
+import { DatePicker } from '@/ui/input/components/internal/date/components/DatePicker';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { UserContext } from '@/users/contexts/UserContext';
+import { stringifyRelativeDateFilter } from '@/views/view-filter-value/utils/stringifyRelativeDateFilter';
+import { useContext } from 'react';
+import { useRecoilValue } from 'recoil';
+import { type FirstDayOfTheWeek, ViewFilterOperand } from 'twenty-shared/types';
 import {
-  VariableDateViewFilterValueDirection,
-  VariableDateViewFilterValueUnit,
-} from '@/views/view-filter-value/utils/resolveDateViewFilterValue';
-import { resolveFilterValue } from '@/views/view-filter-value/utils/resolveFilterValue';
-import { useState } from 'react';
-import { isDefined } from 'twenty-ui';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
+  isDefined,
+  type RelativeDateFilter,
+  resolveDateFilter,
+} from 'twenty-shared/utils';
+import { dateLocaleState } from '~/localization/states/dateLocaleState';
+import { formatDateString } from '~/utils/string/formatDateString';
 
 export const ObjectFilterDropdownDateInput = () => {
-  const {
-    filterDefinitionUsedInDropdownState,
-    selectedOperandInDropdownState,
-    selectedFilterState,
-    setIsObjectFilterDropdownUnfolded,
-    selectFilter,
-  } = useFilterDropdown();
+  const { dateFormat, timeZone } = useContext(UserContext);
+  const dateLocale = useRecoilValue(dateLocaleState);
+  const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
 
-  const filterDefinitionUsedInDropdown = useRecoilValue(
-    filterDefinitionUsedInDropdownState,
-  );
-  const selectedOperandInDropdown = useRecoilValue(
-    selectedOperandInDropdownState,
+  const selectedOperandInDropdown = useRecoilComponentValue(
+    selectedOperandInDropdownComponentState,
   );
 
-  const selectedFilter = useRecoilValue(selectedFilterState) as
-    | (Filter & { definition: { type: 'DATE' | 'DATE_TIME' } })
-    | null
-    | undefined;
-
-  const initialFilterValue = selectedFilter
-    ? resolveFilterValue(selectedFilter)
-    : null;
-  const [internalDate, setInternalDate] = useState<Date | null>(
-    initialFilterValue instanceof Date ? initialFilterValue : null,
+  const objectFilterDropdownCurrentRecordFilter = useRecoilComponentValue(
+    objectFilterDropdownCurrentRecordFilterComponentState,
   );
 
-  const isDateTimeInput =
-    filterDefinitionUsedInDropdown?.type === FieldMetadataType.DateTime;
+  const { applyObjectFilterDropdownFilterValue } =
+    useApplyObjectFilterDropdownFilterValue();
 
-  const handleAbsoluteDateChange = (newDate: Date | null) => {
-    setInternalDate(newDate);
+  const handleAbsoluteDateChange = (newPlainDate: string | null) => {
+    const newFilterValue = newPlainDate ?? '';
 
-    if (!filterDefinitionUsedInDropdown || !selectedOperandInDropdown) return;
-
-    selectFilter?.({
-      id: selectedFilter?.id ? selectedFilter.id : v4(),
-      fieldMetadataId: filterDefinitionUsedInDropdown.fieldMetadataId,
-      value: newDate?.toISOString() ?? '',
-      operand: selectedOperandInDropdown,
-      displayValue: isDefined(newDate)
-        ? isDateTimeInput
-          ? newDate.toLocaleString()
-          : newDate.toLocaleDateString()
-        : '',
-      definition: filterDefinitionUsedInDropdown,
-      viewFilterGroupId: selectedFilter?.viewFilterGroupId,
+    // TODO: remove this and use getDisplayValue instead
+    const formattedDate = formatDateString({
+      value: newPlainDate,
+      timeZone,
+      dateFormat,
+      localeCatalog: dateLocale.localeCatalog,
     });
 
-    setIsObjectFilterDropdownUnfolded(false);
+    const newDisplayValue = isDefined(newPlainDate) ? formattedDate : '';
+
+    applyObjectFilterDropdownFilterValue(newFilterValue, newDisplayValue);
   };
 
   const handleRelativeDateChange = (
-    relativeDate: {
-      direction: VariableDateViewFilterValueDirection;
-      amount?: number;
-      unit: VariableDateViewFilterValueUnit;
-    } | null,
+    relativeDate: RelativeDateFilter | null,
   ) => {
-    if (!filterDefinitionUsedInDropdown || !selectedOperandInDropdown) return;
+    const userDefinedCalendarStartDay =
+      CalendarStartDay[
+        currentWorkspaceMember?.calendarStartDay ?? CalendarStartDay.SYSTEM
+      ];
+    const defaultSystemCalendarStartDay = detectCalendarStartDay();
 
-    const value = relativeDate
-      ? computeVariableDateViewFilterValue(
-          relativeDate.direction,
-          relativeDate.amount,
-          relativeDate.unit,
-        )
+    const resolvedCalendarStartDay = (
+      userDefinedCalendarStartDay === CalendarStartDay[CalendarStartDay.SYSTEM]
+        ? defaultSystemCalendarStartDay
+        : userDefinedCalendarStartDay
+    ) as FirstDayOfTheWeek;
+
+    const newFilterValue = relativeDate
+      ? stringifyRelativeDateFilter({
+          ...relativeDate,
+          timezone: timeZone,
+          firstDayOfTheWeek: resolvedCalendarStartDay,
+        })
       : '';
 
-    selectFilter?.({
-      id: selectedFilter?.id ? selectedFilter.id : v4(),
-      fieldMetadataId: filterDefinitionUsedInDropdown.fieldMetadataId,
-      value,
-      operand: selectedOperandInDropdown,
-      displayValue: getRelativeDateDisplayValue(relativeDate),
-      definition: filterDefinitionUsedInDropdown,
-      viewFilterGroupId: selectedFilter?.viewFilterGroupId,
-    });
+    const newDisplayValue = relativeDate
+      ? getRelativeDateDisplayValue(relativeDate)
+      : '';
 
-    setIsObjectFilterDropdownUnfolded(false);
+    applyObjectFilterDropdownFilterValue(newFilterValue, newDisplayValue);
   };
 
   const isRelativeOperand =
-    selectedOperandInDropdown === ViewFilterOperand.IsRelative;
+    selectedOperandInDropdown === ViewFilterOperand.IS_RELATIVE;
 
-  const resolvedValue = selectedFilter
-    ? resolveFilterValue(selectedFilter)
+  const handleClear = () => {
+    isRelativeOperand
+      ? handleRelativeDateChange(null)
+      : handleAbsoluteDateChange(null);
+  };
+  const resolvedValue = objectFilterDropdownCurrentRecordFilter
+    ? resolveDateFilter(objectFilterDropdownCurrentRecordFilter)
     : null;
 
   const relativeDate =
-    resolvedValue && !(resolvedValue instanceof Date)
+    resolvedValue && typeof resolvedValue === 'object'
+      ? resolvedValue
+      : undefined;
+
+  const plainDateValue =
+    resolvedValue && typeof resolvedValue === 'string'
       ? resolvedValue
       : undefined;
 
   return (
-    <InternalDatePicker
+    <DatePicker
+      instanceId={`object-filter-dropdown-date-input`}
       relativeDate={relativeDate}
-      highlightedDateRange={relativeDate}
       isRelative={isRelativeOperand}
-      date={internalDate}
+      plainDateString={plainDateValue ?? null}
       onChange={handleAbsoluteDateChange}
       onRelativeDateChange={handleRelativeDateChange}
-      onMouseSelect={handleAbsoluteDateChange}
-      isDateTimeInput={isDateTimeInput}
+      onClear={handleClear}
     />
   );
 };

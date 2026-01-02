@@ -1,23 +1,24 @@
 import { SettingsNewAccountSection } from '@/settings/accounts/components/SettingsNewAccountSection';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
-import { SettingsPath } from '@/types/SettingsPath';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
+import { t } from '@lingui/core/macro';
+import { SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath } from 'twenty-shared/utils';
 
 export const SettingsNewAccount = () => {
   return (
     <SubMenuTopBarContainer
-      title="New Account"
+      title={t`New Account`}
       links={[
         {
-          children: 'User',
-          href: getSettingsPagePath(SettingsPath.ProfilePage),
+          children: t`User`,
+          href: getSettingsPath(SettingsPath.ProfilePage),
         },
         {
-          children: 'Accounts',
-          href: getSettingsPagePath(SettingsPath.Accounts),
+          children: t`Accounts`,
+          href: getSettingsPath(SettingsPath.Accounts),
         },
-        { children: `New` },
+        { children: t`New` },
       ]}
     >
       <SettingsPageContainer>

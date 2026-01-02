@@ -1,13 +1,11 @@
-import { FavoriteFolderHotkeyScope } from '@/favorites/constants/FavoriteFolderRightIconDropdownHotkeyScope';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
+import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
-import {
-  IconDotsVertical,
-  IconPencil,
-  IconTrash,
-  LightIconButton,
-  MenuItem,
-} from 'twenty-ui';
+import { GenericDropdownContentWidth } from '@/ui/layout/dropdown/constants/GenericDropdownContentWidth';
+import { useLingui } from '@lingui/react/macro';
+import { IconDotsVertical, IconPencil, IconTrash } from 'twenty-ui/display';
+import { LightIconButton } from 'twenty-ui/input';
+import { MenuItem } from 'twenty-ui/navigation';
 
 type FavoriteFolderNavigationDrawerItemDropdownProps = {
   folderId: string;
@@ -22,44 +20,42 @@ export const FavoriteFolderNavigationDrawerItemDropdown = ({
   onDelete,
   closeDropdown,
 }: FavoriteFolderNavigationDrawerItemDropdownProps) => {
+  const { t } = useLingui();
   const handleRename = () => {
-    onRename();
     closeDropdown();
+    onRename();
   };
 
   const handleDelete = () => {
-    onDelete();
     closeDropdown();
+    onDelete();
   };
 
   return (
     <Dropdown
       dropdownId={`favorite-folder-edit-${folderId}`}
-      dropdownHotkeyScope={{
-        scope: FavoriteFolderHotkeyScope.FavoriteFolderRightIconDropdown,
-      }}
-      usePortal
       data-select-disable
       clickableComponent={
         <LightIconButton Icon={IconDotsVertical} accent="tertiary" />
       }
-      dropdownPlacement="right"
-      dropdownOffset={{ y: -15 }}
+      dropdownPlacement="bottom-start"
       dropdownComponents={
-        <DropdownMenuItemsContainer>
-          <MenuItem
-            LeftIcon={IconPencil}
-            onClick={handleRename}
-            accent="default"
-            text="Rename"
-          />
-          <MenuItem
-            LeftIcon={IconTrash}
-            onClick={handleDelete}
-            accent="danger"
-            text="Delete"
-          />
-        </DropdownMenuItemsContainer>
+        <DropdownContent widthInPixels={GenericDropdownContentWidth.Narrow}>
+          <DropdownMenuItemsContainer>
+            <MenuItem
+              LeftIcon={IconPencil}
+              onClick={handleRename}
+              accent="default"
+              text={t`Rename`}
+            />
+            <MenuItem
+              LeftIcon={IconTrash}
+              onClick={handleDelete}
+              accent="danger"
+              text={t`Delete`}
+            />
+          </DropdownMenuItemsContainer>
+        </DropdownContent>
       }
     />
   );

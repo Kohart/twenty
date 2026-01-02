@@ -21,14 +21,19 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "../../.cache/tsc",
     "paths": {
-      "@/*": ["packages/twenty-front/src/modules/*"],
-      "~/*": ["packages/twenty-front/src/*"],
-      "twenty-ui": ["packages/twenty-ui/src/index.ts"],
-      "@ui/*": ["packages/twenty-ui/src/*"]
-    }
+      "@/*": ["./src/modules/*"],
+      "~/*": ["./src/*"]
+    },
+    "plugins": [
+      {
+        "name": "@styled/typescript-styled-plugin",
+        "lint": {
+          "validProperties": ["container-type"],
+        }
+      }
+    ]
   },
   "files": [],
-  "include": [],
   "references": [
     {
       "path": "./tsconfig.dev.json"

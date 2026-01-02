@@ -11,13 +11,14 @@ import {
 } from 'src/engine/core-modules/auth/auth.util';
 import { NotFoundError } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
-import { PostgresCredentialsDTO } from 'src/engine/core-modules/postgres-credentials/dtos/postgres-credentials.dto';
-import { PostgresCredentials } from 'src/engine/core-modules/postgres-credentials/postgres-credentials.entity';
+import { type PostgresCredentialsDTO } from 'src/engine/core-modules/postgres-credentials/dtos/postgres-credentials.dto';
+import { PostgresCredentialsEntity } from 'src/engine/core-modules/postgres-credentials/postgres-credentials.entity';
+import { JwtTokenTypeEnum } from 'src/engine/core-modules/auth/types/auth-context.type';
 
 export class PostgresCredentialsService {
   constructor(
-    @InjectRepository(PostgresCredentials, 'core')
-    private readonly postgresCredentialsRepository: Repository<PostgresCredentials>,
+    @InjectRepository(PostgresCredentialsEntity)
+    private readonly postgresCredentialsRepository: Repository<PostgresCredentialsEntity>,
     private readonly jwtWrapperService: JwtWrapperService,
   ) {}
 
@@ -28,7 +29,7 @@ export class PostgresCredentialsService {
     const password = randomBytes(16).toString('hex');
 
     const key = this.jwtWrapperService.generateAppSecret(
-      'POSTGRES_PROXY',
+      JwtTokenTypeEnum.POSTGRES_PROXY,
       workspaceId,
     );
     const passwordHash = encryptText(password, key);
@@ -85,7 +86,7 @@ export class PostgresCredentialsService {
     });
 
     const key = this.jwtWrapperService.generateAppSecret(
-      'POSTGRES_PROXY',
+      JwtTokenTypeEnum.POSTGRES_PROXY,
       workspaceId,
     );
 
@@ -112,7 +113,7 @@ export class PostgresCredentialsService {
     }
 
     const key = this.jwtWrapperService.generateAppSecret(
-      'POSTGRES_PROXY',
+      JwtTokenTypeEnum.POSTGRES_PROXY,
       workspaceId,
     );
 

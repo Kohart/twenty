@@ -2,7 +2,7 @@ import {
   formatToHumanReadableDay,
   formatToHumanReadableMonth,
   formatToHumanReadableTime,
-} from '../formatDate';
+} from '~/utils/format/formatDate';
 
 describe('formatToHumanReadableMonth', () => {
   it('should format the date to a human-readable month', () => {
@@ -25,6 +25,6 @@ describe('formatToHumanReadableTime', () => {
     const date = new Date('2022-01-01T12:30:00Z');
     const result = formatToHumanReadableTime(date, 'UTC');
 
-    expect(['12:30 PM', '12:30 PM', '12:30 p.m.']).toContain(result);
+    expect(['12:30 PM', '12:30 PM', '12:30 p.m.']).toContain(result);
   });
 });

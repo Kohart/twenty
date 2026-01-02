@@ -7,7 +7,7 @@ import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { useSetNextOnboardingStatus } from '@/onboarding/hooks/useSetNextOnboardingStatus';
 import { OnboardingStatus, SubscriptionStatus } from '~/generated/graphql';
 import {
-  mockDefaultWorkspace,
+  mockCurrentWorkspace,
   mockedUserData,
 } from '~/testing/mock-data/users';
 
@@ -35,9 +35,14 @@ const renderHooks = (
   act(() => {
     result.current.setCurrentUser({ ...mockedUserData, onboardingStatus });
     result.current.setCurrentWorkspace({
-      ...mockDefaultWorkspace,
+      ...mockCurrentWorkspace,
       currentBillingSubscription: withCurrentBillingSubscription
-        ? { id: v4(), status: SubscriptionStatus.Active }
+        ? {
+            id: v4(),
+            status: SubscriptionStatus.Active,
+            metadata: {},
+            phases: [],
+          }
         : undefined,
       workspaceMembersCount: withOneWorkspaceMember ? 1 : 2,
     });
@@ -51,37 +56,37 @@ const renderHooks = (
 describe('useSetNextOnboardingStatus', () => {
   it('should set next onboarding status for ProfileCreation', () => {
     const nextOnboardingStatus = renderHooks(
-      OnboardingStatus.ProfileCreation,
+      OnboardingStatus.PROFILE_CREATION,
       false,
       true,
     );
-    expect(nextOnboardingStatus).toEqual(OnboardingStatus.SyncEmail);
+    expect(nextOnboardingStatus).toEqual(OnboardingStatus.SYNC_EMAIL);
   });
 
   it('should set next onboarding status for SyncEmail', () => {
     const nextOnboardingStatus = renderHooks(
-      OnboardingStatus.SyncEmail,
+      OnboardingStatus.SYNC_EMAIL,
       false,
       true,
     );
-    expect(nextOnboardingStatus).toEqual(OnboardingStatus.InviteTeam);
+    expect(nextOnboardingStatus).toEqual(OnboardingStatus.INVITE_TEAM);
   });
 
   it('should skip invite when more than 1 workspaceMember exist', () => {
     const nextOnboardingStatus = renderHooks(
-      OnboardingStatus.SyncEmail,
+      OnboardingStatus.SYNC_EMAIL,
       true,
       false,
     );
-    expect(nextOnboardingStatus).toEqual(OnboardingStatus.Completed);
+    expect(nextOnboardingStatus).toEqual(OnboardingStatus.COMPLETED);
   });
 
   it('should set next onboarding status for Completed', () => {
     const nextOnboardingStatus = renderHooks(
-      OnboardingStatus.InviteTeam,
+      OnboardingStatus.INVITE_TEAM,
       true,
       true,
     );
-    expect(nextOnboardingStatus).toEqual(OnboardingStatus.Completed);
+    expect(nextOnboardingStatus).toEqual(OnboardingStatus.COMPLETED);
   });
 });

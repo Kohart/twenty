@@ -1,5 +1,4 @@
-import { capitalize } from 'src/utils/capitalize';
-
+import { capitalize } from 'twenty-shared/utils';
 export const buildDescriptionForRelationFieldMetadataOnFromField = ({
   relationObjectMetadataNamePlural,
   targetObjectLabelSingular,

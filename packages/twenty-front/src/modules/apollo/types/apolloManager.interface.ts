@@ -1,8 +1,8 @@
-import { ApolloClient } from '@apollo/client';
+import { type ApolloClient } from '@apollo/client';
 
-import { AuthTokenPair } from '~/generated/graphql';
+import { type CurrentWorkspaceMember } from '@/auth/states/currentWorkspaceMemberState';
 
 export interface ApolloManager<TCacheShape> {
   getClient(): ApolloClient<TCacheShape>;
-  updateTokenPair(tokenPair: AuthTokenPair | null): void;
+  updateWorkspaceMember(workspaceMember: CurrentWorkspaceMember | null): void;
 }

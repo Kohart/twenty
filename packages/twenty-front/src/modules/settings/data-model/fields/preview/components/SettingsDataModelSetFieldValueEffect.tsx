@@ -1,59 +1,28 @@
-import { useSetRecordFieldValue } from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
-import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
 import { recordStoreFamilySelector } from '@/object-record/record-store/states/selectors/recordStoreFamilySelector';
-import { settingsPreviewRecordIdState } from '@/settings/data-model/fields/preview/states/settingsPreviewRecordIdState';
 import { useEffect } from 'react';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
-import { isDefined } from '~/utils/isDefined';
+import { useSetRecoilState } from 'recoil';
 
 type SettingsDataModelSetFieldValueEffectProps = {
   recordId: string;
-  fieldName: string;
+  gqlFieldName: string;
   value: unknown;
 };
 
 export const SettingsDataModelSetFieldValueEffect = ({
   recordId,
-  fieldName,
+  gqlFieldName,
   value,
 }: SettingsDataModelSetFieldValueEffectProps) => {
-  const settingsPreviewRecordId = useRecoilValue(settingsPreviewRecordIdState);
-
-  const upsertedPreviewRecord = useRecoilValue(
-    recordStoreFamilyState(settingsPreviewRecordId ?? ''),
-  );
-
   const setFieldValue = useSetRecoilState(
     recordStoreFamilySelector({
       recordId,
-      fieldName,
+      fieldName: gqlFieldName,
     }),
   );
-  const setRecordFieldValue = useSetRecordFieldValue();
 
   useEffect(() => {
-    if (
-      isDefined(upsertedPreviewRecord) &&
-      !!upsertedPreviewRecord[fieldName]
-    ) {
-      setFieldValue(upsertedPreviewRecord[fieldName]);
-      setRecordFieldValue(
-        recordId,
-        fieldName,
-        upsertedPreviewRecord[fieldName],
-      );
-    } else {
-      setFieldValue(value);
-      setRecordFieldValue(recordId, fieldName, value);
-    }
-  }, [
-    value,
-    setFieldValue,
-    setRecordFieldValue,
-    recordId,
-    fieldName,
-    upsertedPreviewRecord,
-  ]);
+    setFieldValue(value);
+  }, [value, setFieldValue, recordId, gqlFieldName]);
 
   return null;
 };

@@ -1,56 +1,38 @@
-import { useContext, useMemo } from 'react';
-
-import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
+import { type RecordField } from '@/object-record/record-field/types/RecordField';
 import { RecordTableCellContext } from '@/object-record/record-table/contexts/RecordTableCellContext';
-import { RecordTableRowContext } from '@/object-record/record-table/contexts/RecordTableRowContext';
+import { useRecordTableRowContextOrThrow } from '@/object-record/record-table/contexts/RecordTableRowContext';
 import { RecordTableCellFieldContextWrapper } from '@/object-record/record-table/record-table-cell/components/RecordTableCellFieldContextWrapper';
-import { isSoftFocusOnTableCellComponentFamilyState } from '@/object-record/record-table/states/isSoftFocusOnTableCellComponentFamilyState';
-import { isTableCellInEditModeComponentFamilyState } from '@/object-record/record-table/states/isTableCellInEditModeComponentFamilyState';
-import { ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
-import { TableCellPosition } from '@/object-record/record-table/types/TableCellPosition';
-import { useRecoilComponentFamilyValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyValueV2';
+import { type TableCellPosition } from '@/object-record/record-table/types/TableCellPosition';
+import { useMemo } from 'react';
 
 export const RecordTableCellWrapper = ({
   children,
-  column,
-  columnIndex,
+  recordField,
+  recordFieldIndex,
 }: {
-  column: ColumnDefinition<FieldMetadata>;
-  columnIndex: number;
+  recordField: RecordField;
+  recordFieldIndex: number;
   children: React.ReactNode;
 }) => {
-  const { rowIndex } = useContext(RecordTableRowContext);
+  const { rowIndex } = useRecordTableRowContextOrThrow();
 
   const currentTableCellPosition: TableCellPosition = useMemo(
     () => ({
-      column: columnIndex,
+      column: recordFieldIndex,
       row: rowIndex,
     }),
-    [columnIndex, rowIndex],
-  );
-
-  const isInEditMode = useRecoilComponentFamilyValueV2(
-    isTableCellInEditModeComponentFamilyState,
-    currentTableCellPosition,
-  );
-
-  const hasSoftFocus = useRecoilComponentFamilyValueV2(
-    isSoftFocusOnTableCellComponentFamilyState,
-    currentTableCellPosition,
+    [recordFieldIndex, rowIndex],
   );
 
   return (
     <RecordTableCellContext.Provider
       value={{
-        columnDefinition: column,
-        columnIndex,
-        isInEditMode,
-        hasSoftFocus,
+        recordField,
         cellPosition: currentTableCellPosition,
       }}
-      key={column.fieldMetadataId}
+      key={recordField.fieldMetadataItemId}
     >
-      <RecordTableCellFieldContextWrapper>
+      <RecordTableCellFieldContextWrapper recordField={recordField}>
         {children}
       </RecordTableCellFieldContextWrapper>
     </RecordTableCellContext.Provider>

@@ -1,10 +1,9 @@
-import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { FieldMetadataType } from 'twenty-shared/types';
 
 export const mockPerformance = {
   objectMetadataItem: {
     __typename: 'object',
     id: '4916628e-8570-4242-8970-f58c509e5a93',
-    dataSourceId: '0fd9fd54-0e8d-4f78-911c-76b33436a768',
     nameSingular: 'person',
     namePlural: 'people',
     primaryLinkLabelSingular: 'Person',
@@ -36,8 +35,8 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: null,
         options: null,
-        relationDefinition: {
-          __typename: 'RelationDefinition',
+        relation: {
+          __typename: 'Relation',
           relationId: '0cf72416-3d94-4d94-abf3-7dc9d734435b',
           direction: 'MANY_TO_ONE',
           sourceObjectMetadata: {
@@ -80,7 +79,7 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: "''",
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -98,7 +97,7 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: "''",
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -116,8 +115,8 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: null,
         options: null,
-        relationDefinition: {
-          __typename: 'RelationDefinition',
+        relation: {
+          __typename: 'Relation',
           relationId: 'd76f949d-023d-4b45-a71e-f39e3b1562ba',
           direction: 'ONE_TO_MANY',
           sourceObjectMetadata: {
@@ -160,8 +159,8 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: null,
         options: null,
-        relationDefinition: {
-          __typename: 'RelationDefinition',
+        relation: {
+          __typename: 'Relation',
           relationId: 'a5a61d23-8ac9-4014-9441-ec3a1781a661',
           direction: 'ONE_TO_MANY',
           sourceObjectMetadata: {
@@ -204,8 +203,8 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: null,
         options: null,
-        relationDefinition: {
-          __typename: 'RelationDefinition',
+        relation: {
+          __typename: 'Relation',
           relationId: '456f7875-b48c-4795-a0c7-a69d7339afee',
           direction: 'ONE_TO_MANY',
           sourceObjectMetadata: {
@@ -248,7 +247,7 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: 'now',
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -266,8 +265,8 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: null,
         options: null,
-        relationDefinition: {
-          __typename: 'RelationDefinition',
+        relation: {
+          __typename: 'Relation',
           relationId: '31542774-fb15-4d01-b00b-8fc94887f458',
           direction: 'ONE_TO_MANY',
           sourceObjectMetadata: {
@@ -313,7 +312,7 @@ export const mockPerformance = {
           primaryLinkLabel: "''",
         },
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -331,8 +330,8 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: null,
         options: null,
-        relationDefinition: {
-          __typename: 'RelationDefinition',
+        relation: {
+          __typename: 'Relation',
           relationId: 'c0cc3456-afa4-46e0-820d-2db0b63a8273',
           direction: 'ONE_TO_MANY',
           sourceObjectMetadata: {
@@ -375,7 +374,7 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: "''",
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -393,7 +392,7 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: null,
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -411,7 +410,7 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: "''",
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -429,7 +428,7 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: "''",
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -447,7 +446,7 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: 'now',
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -465,7 +464,7 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: null,
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -483,8 +482,8 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: null,
         options: null,
-        relationDefinition: {
-          __typename: 'RelationDefinition',
+        relation: {
+          __typename: 'Relation',
           relationId: '25150feb-fcd7-407e-b5fa-ffe58a0450ac',
           direction: 'ONE_TO_MANY',
           sourceObjectMetadata: {
@@ -530,7 +529,7 @@ export const mockPerformance = {
           firstName: "''",
         },
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -551,7 +550,7 @@ export const mockPerformance = {
           primaryLinkLabel: "''",
         },
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
       {
         __typename: 'field',
@@ -569,8 +568,8 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: null,
         options: null,
-        relationDefinition: {
-          __typename: 'RelationDefinition',
+        relation: {
+          __typename: 'Relation',
           relationId: 'e2eb7156-6e65-4bf8-922b-670179744f27',
           direction: 'ONE_TO_MANY',
           sourceObjectMetadata: {
@@ -613,7 +612,7 @@ export const mockPerformance = {
         updatedAt: '2024-05-16T10:54:27.788Z',
         defaultValue: 'uuid',
         options: null,
-        relationDefinition: null,
+        relation: null,
       },
     ],
   },
@@ -663,7 +662,8 @@ export const mockPerformance = {
     id: '20202020-2d40-4e49-8df4-9c6a049191df',
     email: 'lorie.vladim@google.com',
     phones: {
-      primaryPhoneCountryCode: '+33',
+      primaryPhoneCountryCode: 'FR',
+      primaryPhoneCallingCode: '+33',
       primaryPhoneNumber: '788901235',
     },
     linkedinLink: {
@@ -708,26 +708,26 @@ export const mockPerformance = {
     },
   },
   fieldDefinition: {
-    fieldMetadataId: '4e79f0b7-d100-4e89-a07b-315a710b8059',
+    fieldMetadataId: '9058056e-36b3-4a3f-9037-f0bca9744296',
     primaryLinkLabel: 'Company',
-    label: 'Company',
     metadata: {
       fieldName: 'company',
       placeHolder: 'Company',
       relationType: 'TO_ONE_OBJECT',
-      relationFieldMetadataId: '01fa2247-7937-4493-b7e2-3d72f05d6d25',
+      relationFieldMetadataId: '7b281010-5f47-4771-b3f5-f4bcd24ed1b5',
       relationObjectMetadataNameSingular: 'company',
       relationObjectMetadataNamePlural: 'companies',
       objectMetadataNameSingular: 'person',
       options: null,
     },
+    label: 'Company',
     iconName: 'IconBuildingSkyscraper',
-    type: FieldMetadataType.Relation,
+    type: FieldMetadataType.RELATION,
     position: 2,
     size: 150,
     isLabelIdentifier: false,
     isVisible: true,
-    viewFieldId: '924f4c94-cbcd-4de5-b7a2-ebae2f0b2c3b',
+    viewFieldId: '9a479a97-deaa-4ddb-9d59-96f05875ac09',
     isSortable: false,
     isFilterable: true,
     defaultValue: null,

@@ -2,7 +2,7 @@ import { errors } from '@/settings/data-model/fields/forms/utils/errorMessages';
 import { z } from 'zod';
 
 import { METADATA_LABEL_VALID_PATTERN } from '~/pages/settings/data-model/constants/MetadataLabelValidPattern';
-import { computeMetadataNameFromLabel } from '~/pages/settings/data-model/utils/compute-metadata-name-from-label.utils';
+import { computeMetadataNameFromLabel } from '~/pages/settings/data-model/utils/computeMetadataNameFromLabel';
 export const metadataLabelSchema = (existingLabels?: string[]) => {
   return z
     .string()
@@ -11,12 +11,9 @@ export const metadataLabelSchema = (existingLabels?: string[]) => {
     .regex(METADATA_LABEL_VALID_PATTERN, errors.LabelNotFormattable)
     .refine(
       (label) => {
-        try {
-          computeMetadataNameFromLabel(label);
-          return true;
-        } catch (error) {
-          return false;
-        }
+        const computedName = computeMetadataNameFromLabel(label);
+
+        return computedName !== '';
       },
       {
         message: errors.LabelNotFormattable,
@@ -24,14 +21,12 @@ export const metadataLabelSchema = (existingLabels?: string[]) => {
     )
     .refine(
       (label) => {
-        try {
-          if (!existingLabels || !label?.length) {
-            return true;
-          }
-          return !existingLabels.includes(computeMetadataNameFromLabel(label));
-        } catch (error) {
-          return false;
+        if (!existingLabels || !label?.length) {
+          return true;
         }
+        const computedName = computeMetadataNameFromLabel(label);
+
+        return computedName !== '' && !existingLabels.includes(computedName);
       },
       {
         message: errors.LabelNotUnique,

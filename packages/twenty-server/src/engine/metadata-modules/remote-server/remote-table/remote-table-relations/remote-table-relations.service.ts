@@ -1,16 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import {
+  type FieldMetadataSettings,
+  type FieldMetadataType,
+} from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
 import { In, Repository } from 'typeorm';
 
-import { FieldMetadataSettings } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-settings.interface';
-
-import {
-  FieldMetadataEntity,
-  FieldMetadataType,
-} from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
-import { createRelationForeignKeyFieldMetadataName } from 'src/engine/metadata-modules/relation-metadata/utils/create-relation-foreign-key-field-metadata-name.util';
 import { buildMigrationsToCreateRemoteTableRelations } from 'src/engine/metadata-modules/remote-server/remote-table/remote-table-relations/utils/build-migrations-to-create-remote-table-relations.util';
 import { buildMigrationsToRemoveRemoteTableRelations } from 'src/engine/metadata-modules/remote-server/remote-table/remote-table-relations/utils/build-migrations-to-remove-remote-table-relations.util';
 import { mapUdtNameToFieldType } from 'src/engine/metadata-modules/remote-server/remote-table/utils/udt-name-mapper.util';
@@ -26,10 +25,10 @@ import { createForeignKeyDeterministicUuid } from 'src/engine/workspace-manager/
 @Injectable()
 export class RemoteTableRelationsService {
   constructor(
-    @InjectRepository(ObjectMetadataEntity, 'metadata')
+    @InjectRepository(ObjectMetadataEntity)
     private readonly objectMetadataRepository: Repository<ObjectMetadataEntity>,
 
-    @InjectRepository(FieldMetadataEntity, 'metadata')
+    @InjectRepository(FieldMetadataEntity)
     private readonly fieldMetadataRepository: Repository<FieldMetadataEntity>,
     private readonly workspaceMigrationService: WorkspaceMigrationService,
   ) {}
@@ -38,7 +37,7 @@ export class RemoteTableRelationsService {
     workspaceId: string,
     remoteObjectMetadata: ObjectMetadataEntity,
     objectPrimaryKeyFieldSettings:
-      | FieldMetadataSettings<FieldMetadataType | 'default'>
+      | FieldMetadataSettings<FieldMetadataType>
       | undefined,
     objectPrimaryKeyColumnType?: string,
   ) {
@@ -110,9 +109,7 @@ export class RemoteTableRelationsService {
       });
 
     // compute the target column name
-    const targetColumnName = createRelationForeignKeyFieldMetadataName(
-      remoteObjectMetadata.nameSingular,
-    );
+    const targetColumnName = `${remoteObjectMetadata.nameSingular}Id`;
 
     // find the foreign key fields to delete
     const foreignKeyFieldsToDelete = await this.fieldMetadataRepository.find({
@@ -152,7 +149,7 @@ export class RemoteTableRelationsService {
     createdObjectMetadata: ObjectMetadataEntity,
     objectPrimaryKeyType: FieldMetadataType,
     objectPrimaryKeyFieldSettings:
-      | FieldMetadataSettings<FieldMetadataType | 'default'>
+      | FieldMetadataSettings<FieldMetadataType>
       | undefined,
   ) {
     const attachmentObjectMetadata =
@@ -180,7 +177,14 @@ export class RemoteTableRelationsService {
         isNullable: true,
         isSystem: true,
         defaultValue: undefined,
-        settings: { ...objectPrimaryKeyFieldSettings, isForeignKey: true },
+        ...(isDefined(objectPrimaryKeyFieldSettings)
+          ? {
+              settings: {
+                ...objectPrimaryKeyFieldSettings,
+                isForeignKey: true,
+              },
+            }
+          : {}),
       },
     );
 
@@ -192,7 +196,7 @@ export class RemoteTableRelationsService {
     createdObjectMetadata: ObjectMetadataEntity,
     objectPrimaryKeyType: FieldMetadataType,
     objectPrimaryKeyFieldSettings:
-      | FieldMetadataSettings<FieldMetadataType | 'default'>
+      | FieldMetadataSettings<FieldMetadataType>
       | undefined,
   ) {
     const timelineActivityObjectMetadata =
@@ -206,7 +210,7 @@ export class RemoteTableRelationsService {
       {
         standardId: createForeignKeyDeterministicUuid({
           objectId: createdObjectMetadata.id,
-          standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.custom,
+          standardId: TIMELINE_ACTIVITY_STANDARD_FIELD_IDS.targetCustom,
         }),
         objectMetadataId: timelineActivityObjectMetadata.id,
         workspaceId: workspaceId,
@@ -220,7 +224,14 @@ export class RemoteTableRelationsService {
         isNullable: true,
         isSystem: true,
         defaultValue: undefined,
-        settings: { ...objectPrimaryKeyFieldSettings, isForeignKey: true },
+        ...(isDefined(objectPrimaryKeyFieldSettings)
+          ? {
+              settings: {
+                ...objectPrimaryKeyFieldSettings,
+                isForeignKey: true,
+              },
+            }
+          : {}),
       },
     );
 
@@ -232,7 +243,7 @@ export class RemoteTableRelationsService {
     createdObjectMetadata: ObjectMetadataEntity,
     objectPrimaryKeyType: FieldMetadataType,
     objectPrimaryKeyFieldSettings:
-      | FieldMetadataSettings<FieldMetadataType | 'default'>
+      | FieldMetadataSettings<FieldMetadataType>
       | undefined,
   ) {
     const favoriteObjectMetadata =
@@ -260,7 +271,14 @@ export class RemoteTableRelationsService {
         isNullable: true,
         isSystem: true,
         defaultValue: undefined,
-        settings: { ...objectPrimaryKeyFieldSettings, isForeignKey: true },
+        ...(isDefined(objectPrimaryKeyFieldSettings)
+          ? {
+              settings: {
+                ...objectPrimaryKeyFieldSettings,
+                isForeignKey: true,
+              },
+            }
+          : {}),
       },
     );
 

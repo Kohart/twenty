@@ -2,7 +2,7 @@ import { PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS } from '@/object-record/hooks/
 import { gql } from '@apollo/client';
 
 export const query = gql`
-  mutation UpdateOnePerson($idToUpdate: ID!, $input: PersonUpdateInput!) {
+  mutation UpdateOnePerson($idToUpdate: UUID!, $input: PersonUpdateInput!) {
     updatePerson(id: $idToUpdate, data: $input) {
       ${PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS}
     }
@@ -57,7 +57,6 @@ const connectedObjects = {
 export const variables = {
   idToUpdate: '36abbb63-34ed-4a16-89f5-f549ac55d0f9',
   input: {
-    ...basePerson,
     name: { firstName: 'John', lastName: 'Doe' },
   },
 };

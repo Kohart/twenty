@@ -1,42 +1,44 @@
-import { InMemoryCache, NormalizedCacheObject } from '@apollo/client';
+import { InMemoryCache, type NormalizedCacheObject } from '@apollo/client';
 import { useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useRecoilState, useSetRecoilState } from 'recoil';
+import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
 
 import { currentUserState } from '@/auth/states/currentUserState';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { previousUrlState } from '@/auth/states/previousUrlState';
 import { tokenPairState } from '@/auth/states/tokenPairState';
-import { workspacesState } from '@/auth/states/workspaces';
-import { isDebugModeState } from '@/client-config/states/isDebugModeState';
 import { REACT_APP_SERVER_BASE_URL } from '~/config';
-import { useIsMatchingLocation } from '~/hooks/useIsMatchingLocation';
 import { useUpdateEffect } from '~/hooks/useUpdateEffect';
-import { isDefined } from '~/utils/isDefined';
+import { isMatchingLocation } from '~/utils/isMatchingLocation';
 
-import { AppPath } from '@/types/AppPath';
-import { ApolloFactory, Options } from '../services/apollo.factory';
+import { currentUserWorkspaceState } from '@/auth/states/currentUserWorkspaceState';
+import { appVersionState } from '@/client-config/states/appVersionState';
+import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
+import { AppPath } from 'twenty-shared/types';
+import { isDefined } from 'twenty-shared/utils';
+import { ApolloFactory, type Options } from '@/apollo/services/apollo.factory';
 
 export const useApolloFactory = (options: Partial<Options<any>> = {}) => {
   // eslint-disable-next-line @nx/workspace-no-state-useref
   const apolloRef = useRef<ApolloFactory<NormalizedCacheObject> | null>(null);
-  const [isDebugMode] = useRecoilState(isDebugModeState);
 
   const navigate = useNavigate();
-  const isMatchingLocation = useIsMatchingLocation();
-  const [tokenPair, setTokenPair] = useRecoilState(tokenPairState);
+  const setTokenPair = useSetRecoilState(tokenPairState);
   const [currentWorkspace, setCurrentWorkspace] = useRecoilState(
     currentWorkspaceState,
   );
-  const setCurrentUser = useSetRecoilState(currentUserState);
-  const setCurrentWorkspaceMember = useSetRecoilState(
+  const appVersion = useRecoilValue(appVersionState);
+  const [currentWorkspaceMember, setCurrentWorkspaceMember] = useRecoilState(
     currentWorkspaceMemberState,
   );
+  const setCurrentUser = useSetRecoilState(currentUserState);
+  const setCurrentUserWorkspace = useSetRecoilState(currentUserWorkspaceState);
 
-  const setWorkspaces = useSetRecoilState(workspacesState);
-  const [, setPreviousUrl] = useRecoilState(previousUrlState);
+  const setPreviousUrl = useSetRecoilState(previousUrlState);
   const location = useLocation();
+
+  const { enqueueErrorSnackBar } = useSnackBar();
 
   const apolloClient = useMemo(() => {
     apolloRef.current = new ApolloFactory({
@@ -48,40 +50,47 @@ export const useApolloFactory = (options: Partial<Options<any>> = {}) => {
           },
         },
       }),
-      headers: {
-        ...(currentWorkspace?.metadataVersion && {
-          'X-Schema-Version': `${currentWorkspace.metadataVersion}`,
-        }),
-      },
+
       defaultOptions: {
-        query: {
-          fetchPolicy: 'cache-first',
+        watchQuery: {
+          fetchPolicy: 'cache-and-network',
         },
       },
-      connectToDevTools: isDebugMode,
-      // We don't want to re-create the client on token change or it will cause infinite loop
-      initialTokenPair: tokenPair,
+      connectToDevTools: process.env.IS_DEBUG_MODE === 'true',
+      currentWorkspaceMember: currentWorkspaceMember,
+      currentWorkspace: currentWorkspace,
+      appVersion,
       onTokenPairChange: (tokenPair) => {
         setTokenPair(tokenPair);
       },
       onUnauthenticatedError: () => {
+        // eslint-disable-next-line no-console
+        console.log('onUnauthenticatedError, resetting state');
         setTokenPair(null);
         setCurrentUser(null);
         setCurrentWorkspaceMember(null);
         setCurrentWorkspace(null);
-        setWorkspaces(null);
+        setCurrentUserWorkspace(null);
         if (
-          !isMatchingLocation(AppPath.Verify) &&
-          !isMatchingLocation(AppPath.SignInUp) &&
-          !isMatchingLocation(AppPath.Invite) &&
-          !isMatchingLocation(AppPath.ResetPassword)
+          !isMatchingLocation(location, AppPath.Verify) &&
+          !isMatchingLocation(location, AppPath.SignInUp) &&
+          !isMatchingLocation(location, AppPath.Invite) &&
+          !isMatchingLocation(location, AppPath.ResetPassword)
         ) {
           setPreviousUrl(`${location.pathname}${location.search}`);
           navigate(AppPath.SignInUp);
         }
       },
+      onAppVersionMismatch: (message) => {
+        enqueueErrorSnackBar({
+          message,
+          options: {
+            dedupeKey: 'app-version-mismatch',
+          },
+        });
+      },
       extraLinks: [],
-      isDebugMode,
+      isDebugMode: process.env.IS_DEBUG_MODE === 'true',
       // Override options
       ...options,
     });
@@ -93,17 +102,27 @@ export const useApolloFactory = (options: Partial<Options<any>> = {}) => {
     setCurrentUser,
     setCurrentWorkspaceMember,
     setCurrentWorkspace,
-    setWorkspaces,
-    isDebugMode,
-    currentWorkspace?.metadataVersion,
     setPreviousUrl,
+    enqueueErrorSnackBar,
   ]);
 
   useUpdateEffect(() => {
     if (isDefined(apolloRef.current)) {
-      apolloRef.current.updateTokenPair(tokenPair);
+      apolloRef.current.updateWorkspaceMember(currentWorkspaceMember);
     }
-  }, [tokenPair]);
+  }, [currentWorkspaceMember]);
+
+  useUpdateEffect(() => {
+    if (isDefined(apolloRef.current)) {
+      apolloRef.current.updateCurrentWorkspace(currentWorkspace);
+    }
+  }, [currentWorkspace]);
+
+  useUpdateEffect(() => {
+    if (isDefined(apolloRef.current)) {
+      apolloRef.current.updateAppVersion(appVersion);
+    }
+  }, [appVersion]);
 
   return apolloClient;
 };

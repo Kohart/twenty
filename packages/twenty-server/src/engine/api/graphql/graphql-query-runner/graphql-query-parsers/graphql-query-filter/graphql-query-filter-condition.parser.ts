@@ -1,32 +1,36 @@
-import {
-  Brackets,
-  NotBrackets,
-  SelectQueryBuilder,
-  WhereExpressionBuilder,
-} from 'typeorm';
+import { Brackets, NotBrackets, type WhereExpressionBuilder } from 'typeorm';
 
-import { ObjectRecordFilter } from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
+import { type ObjectRecordFilter } from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
 
-import { FieldMetadataMap } from 'src/engine/metadata-modules/types/field-metadata-map';
+import { type FlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-maps.type';
+import { type FlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/types/flat-field-metadata.type';
+import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object-metadata/types/flat-object-metadata.type';
+import { type WorkspaceSelectQueryBuilder } from 'src/engine/twenty-orm/repository/workspace-select-query-builder';
 
 import { GraphqlQueryFilterFieldParser } from './graphql-query-filter-field.parser';
 
 export class GraphqlQueryFilterConditionParser {
-  private fieldMetadataMapByName: FieldMetadataMap;
+  private flatObjectMetadata: FlatObjectMetadata;
   private queryFilterFieldParser: GraphqlQueryFilterFieldParser;
 
-  constructor(fieldMetadataMapByName: FieldMetadataMap) {
-    this.fieldMetadataMapByName = fieldMetadataMapByName;
+  constructor(
+    flatObjectMetadata: FlatObjectMetadata,
+    flatFieldMetadataMaps: FlatEntityMaps<FlatFieldMetadata>,
+  ) {
+    this.flatObjectMetadata = flatObjectMetadata;
     this.queryFilterFieldParser = new GraphqlQueryFilterFieldParser(
-      this.fieldMetadataMapByName,
+      this.flatObjectMetadata,
+      flatFieldMetadataMaps,
     );
   }
 
   public parse(
-    queryBuilder: SelectQueryBuilder<any>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    queryBuilder: WorkspaceSelectQueryBuilder<any>,
     objectNameSingular: string,
     filter: Partial<ObjectRecordFilter>,
-  ): SelectQueryBuilder<any> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): WorkspaceSelectQueryBuilder<any> {
     if (!filter || Object.keys(filter).length === 0) {
       return queryBuilder;
     }
@@ -44,6 +48,7 @@ export class GraphqlQueryFilterConditionParser {
     queryBuilder: WhereExpressionBuilder,
     objectNameSingular: string,
     key: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     value: any,
     isFirst = false,
   ): void {

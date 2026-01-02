@@ -1,33 +1,23 @@
 import { Injectable } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 
-import { DataSource, EntityManager } from 'typeorm';
+import { msg } from '@lingui/core/macro';
+import { type DataSource, type EntityManager } from 'typeorm';
 
 import { DataSourceService } from 'src/engine/metadata-modules/data-source/data-source.service';
-import { TypeORMService } from 'src/database/typeorm/typeorm.service';
-import { DataSourceEntity } from 'src/engine/metadata-modules/data-source/data-source.entity';
+import {
+  PermissionsException,
+  PermissionsExceptionCode,
+} from 'src/engine/metadata-modules/permissions/permissions.exception';
+import { getWorkspaceSchemaName } from 'src/engine/workspace-datasource/utils/get-workspace-schema-name.util';
 
 @Injectable()
 export class WorkspaceDataSourceService {
   constructor(
     private readonly dataSourceService: DataSourceService,
-    private readonly typeormService: TypeORMService,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
   ) {}
-
-  /**
-   *
-   * Connect to the workspace data source
-   *
-   * @param workspaceId
-   * @returns
-   */
-  public async connectToWorkspaceDataSource(
-    workspaceId: string,
-  ): Promise<DataSource> {
-    const { dataSource } =
-      await this.connectedToWorkspaceDataSourceAndReturnMetadata(workspaceId);
-
-    return dataSource;
-  }
 
   public async checkSchemaExists(workspaceId: string) {
     const dataSource =
@@ -38,26 +28,6 @@ export class WorkspaceDataSourceService {
     return dataSource.length > 0;
   }
 
-  public async connectedToWorkspaceDataSourceAndReturnMetadata(
-    workspaceId: string,
-  ): Promise<{ dataSource: DataSource; dataSourceMetadata: DataSourceEntity }> {
-    const dataSourceMetadata =
-      await this.dataSourceService.getLastDataSourceMetadataFromWorkspaceIdOrFail(
-        workspaceId,
-      );
-
-    const dataSource =
-      await this.typeormService.connectToDataSource(dataSourceMetadata);
-
-    if (!dataSource) {
-      throw new Error(
-        `Could not connect to workspace data source for workspace ${workspaceId}`,
-      );
-    }
-
-    return { dataSource, dataSourceMetadata };
-  }
-
   /**
    *
    * Create a new DB schema for a workspace
@@ -66,9 +36,16 @@ export class WorkspaceDataSourceService {
    * @returns
    */
   public async createWorkspaceDBSchema(workspaceId: string): Promise<string> {
-    const schemaName = this.getSchemaName(workspaceId);
+    const schemaName = getWorkspaceSchemaName(workspaceId);
+    const queryRunner = this.coreDataSource.createQueryRunner();
 
-    return await this.typeormService.createSchema(schemaName);
+    try {
+      await queryRunner.createSchema(schemaName, true);
+
+      return schemaName;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   /**
@@ -79,63 +56,30 @@ export class WorkspaceDataSourceService {
    * @returns
    */
   public async deleteWorkspaceDBSchema(workspaceId: string): Promise<void> {
-    const schemaName = this.getSchemaName(workspaceId);
+    const schemaName = getWorkspaceSchemaName(workspaceId);
+    const queryRunner = this.coreDataSource.createQueryRunner();
 
-    return await this.typeormService.deleteSchema(schemaName);
-  }
-
-  /**
-   *
-   * Get the schema name for a workspace
-   * Note: This is assuming that the workspace only has one schema but we should prefer querying the metadata table instead.
-   *
-   * @param workspaceId
-   * @returns string
-   */
-  public getSchemaName(workspaceId: string): string {
-    return `workspace_${this.uuidToBase36(workspaceId)}`;
-  }
-
-  /**
-   *
-   * Convert a uuid to base36
-   *
-   * @param uuid
-   * @returns string
-   */
-  private uuidToBase36(uuid: string): string {
-    let devId = false;
-
-    if (uuid.startsWith('twenty-')) {
-      devId = true;
-      // Clean dev uuids (twenty-)
-      uuid = uuid.replace('twenty-', '');
+    try {
+      await queryRunner.dropSchema(schemaName, true, true);
+    } finally {
+      await queryRunner.release();
     }
-    const hexString = uuid.replace(/-/g, '');
-    const base10Number = BigInt('0x' + hexString);
-    const base36String = base10Number.toString(36);
-
-    return `${devId ? 'twenty_' : ''}${base36String}`;
   }
 
   public async executeRawQuery(
-    query: string,
-    parameters: any[] = [],
-    workspaceId: string,
-    transactionManager?: EntityManager,
+    _query: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    _parameters: any[] = [],
+    _workspaceId: string,
+    _transactionManager?: EntityManager,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<any> {
-    try {
-      if (transactionManager) {
-        return await transactionManager.query(query, parameters);
-      }
-      const workspaceDataSource =
-        await this.connectToWorkspaceDataSource(workspaceId);
-
-      return await workspaceDataSource.query(query, parameters);
-    } catch (error) {
-      throw new Error(
-        `Error executing raw query for workspace ${workspaceId}: ${error.message}`,
-      );
-    }
+    throw new PermissionsException(
+      'Method not allowed as permissions are not handled at datasource level.',
+      PermissionsExceptionCode.METHOD_NOT_ALLOWED,
+      {
+        userFriendlyMessage: msg`This operation is not allowed. Please try a different approach or contact support if you need assistance.`,
+      },
+    );
   }
 }

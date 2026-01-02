@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { WorkspaceSyncStorage } from 'src/engine/workspace-manager/workspace-sync-metadata/storage/workspace-sync.storage';
-import { WorkspaceMigrationEntity } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
 import { CommandLogger } from 'src/command/command-logger';
+import { type WorkspaceMigrationEntity } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
+import { type WorkspaceSyncStorage } from 'src/engine/workspace-manager/workspace-sync-metadata/storage/workspace-sync.storage';
 
 @Injectable()
 export class SyncWorkspaceLoggerService {
@@ -60,24 +60,6 @@ export class SyncWorkspaceLoggerService {
     await this.commandLogger.writeLog(
       `${workspaceId}/field-metadata-delete-collection`,
       storage.fieldMetadataDeleteCollection,
-    );
-
-    // Save relation metadata create collection
-    await this.commandLogger.writeLog(
-      `${workspaceId}/relation-metadata-create-collection`,
-      storage.relationMetadataCreateCollection,
-    );
-
-    // Save relation metadata update collection
-    await this.commandLogger.writeLog(
-      `${workspaceId}/relation-metadata-update-collection`,
-      storage.relationMetadataUpdateCollection,
-    );
-
-    // Save relation metadata delete collection
-    await this.commandLogger.writeLog(
-      `${workspaceId}/relation-metadata-delete-collection`,
-      storage.relationMetadataDeleteCollection,
     );
   }
 }

@@ -1,4 +1,5 @@
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { FieldMetadataType } from 'twenty-shared/types';
+
 import { validateDefaultValueForType } from 'src/engine/metadata-modules/field-metadata/utils/validate-default-value-for-type.util';
 
 describe('validateDefaultValueForType', () => {
@@ -77,7 +78,6 @@ describe('validateDefaultValueForType', () => {
   it('should return false for invalid CURRENCY default value', () => {
     expect(
       validateDefaultValueForType(
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error Just for testing purposes
         { amountMicros: 100, currencyCode: "'USD'" },
         FieldMetadataType.CURRENCY,

@@ -1,11 +1,11 @@
 import { EventRowMainObjectUpdated } from '@/activities/timeline-activities/rows/main-object/components/EventRowMainObjectUpdated';
-import { TimelineActivity } from '@/activities/timeline-activities/types/TimelineActivity';
-import { Meta, StoryObj } from '@storybook/react';
-import { ComponentDecorator, RouterDecorator } from 'twenty-ui';
+import { type TimelineActivity } from '@/activities/timeline-activities/types/TimelineActivity';
+import { type Meta, type StoryObj } from '@storybook/react';
 
+import { ComponentDecorator, RouterDecorator } from 'twenty-ui/testing';
 import { ObjectMetadataItemsDecorator } from '~/testing/decorators/ObjectMetadataItemsDecorator';
 import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 
 const meta: Meta<typeof EventRowMainObjectUpdated> = {
   title: 'Modules/TimelineActivities/Rows/MainObject/EventRowMainObjectUpdated',

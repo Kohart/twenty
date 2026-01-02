@@ -1,58 +1,55 @@
-import { ReactNode, useContext } from 'react';
+import { type RecordField } from '@/object-record/record-field/types/RecordField';
+import { RecordFieldComponentInstanceContext } from '@/object-record/record-field/ui/states/contexts/RecordFieldComponentInstanceContext';
+import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
+import { RECORD_TABLE_CELL_INPUT_ID_PREFIX } from '@/object-record/record-table/constants/RecordTableCellInputIdPrefix';
+import { useRecordTableRowContextOrThrow } from '@/object-record/record-table/contexts/RecordTableRowContext';
+import { RecordTableCellFieldContextGeneric } from '@/object-record/record-table/record-table-cell/components/RecordTableCellFieldContextGeneric';
+import { RecordTableCellFieldContextLabelIdentifier } from '@/object-record/record-table/record-table-cell/components/RecordTableCellFieldContextLabelIdentifier';
+import { getRecordFieldInputInstanceId } from '@/object-record/utils/getRecordFieldInputId';
+import { type ReactNode } from 'react';
 
-import { isLabelIdentifierField } from '@/object-metadata/utils/isLabelIdentifierField';
-import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
-import { isFieldRelation } from '@/object-record/record-field/types/guards/isFieldRelation';
-import { isFieldSelect } from '@/object-record/record-field/types/guards/isFieldSelect';
-import { RecordUpdateContext } from '@/object-record/record-table/contexts/EntityUpdateMutationHookContext';
-import { RecordTableCellContext } from '@/object-record/record-table/contexts/RecordTableCellContext';
-import { RecordTableContext } from '@/object-record/record-table/contexts/RecordTableContext';
-import { RecordTableRowContext } from '@/object-record/record-table/contexts/RecordTableRowContext';
-import { TableHotkeyScope } from '@/object-record/record-table/types/TableHotkeyScope';
-import { RelationPickerHotkeyScope } from '@/object-record/relation-picker/types/RelationPickerHotkeyScope';
-import { SelectFieldHotkeyScope } from '@/object-record/select/types/SelectFieldHotkeyScope';
-import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
+type RecordTableCellFieldContextWrapperProps = {
+  children: ReactNode;
+  recordField: RecordField;
+};
 
 export const RecordTableCellFieldContextWrapper = ({
+  recordField,
   children,
-}: {
-  children: ReactNode;
-}) => {
-  const { objectMetadataItem } = useContext(RecordTableContext);
-  const { columnDefinition } = useContext(RecordTableCellContext);
-  const { recordId, pathToShowPage } = useContext(RecordTableRowContext);
+}: RecordTableCellFieldContextWrapperProps) => {
+  const { recordId } = useRecordTableRowContextOrThrow();
 
-  const updateRecord = useContext(RecordUpdateContext);
+  const {
+    fieldMetadataItemByFieldMetadataItemId,
+    labelIdentifierFieldMetadataItem,
+  } = useRecordIndexContextOrThrow();
 
-  if (isUndefinedOrNull(columnDefinition)) {
-    return null;
-  }
+  const fieldMetadataItem =
+    fieldMetadataItemByFieldMetadataItemId[recordField.fieldMetadataItemId];
 
-  const customHotkeyScope = isFieldRelation(columnDefinition)
-    ? RelationPickerHotkeyScope.RelationPicker
-    : isFieldSelect(columnDefinition)
-      ? SelectFieldHotkeyScope.SelectField
-      : TableHotkeyScope.CellEditMode;
+  const instanceId = getRecordFieldInputInstanceId({
+    recordId,
+    fieldName: fieldMetadataItem.name,
+    prefix: RECORD_TABLE_CELL_INPUT_ID_PREFIX,
+  });
+
+  const isLabelIdentifier =
+    labelIdentifierFieldMetadataItem?.id === recordField.fieldMetadataItemId;
 
   return (
-    <FieldContext.Provider
-      value={{
-        recoilScopeId: recordId + columnDefinition.label,
-        recordId,
-        fieldDefinition: columnDefinition,
-        useUpdateRecord: () => [updateRecord, {}],
-        hotkeyScope: customHotkeyScope,
-        basePathToShowPage: pathToShowPage,
-        isLabelIdentifier: isLabelIdentifierField({
-          fieldMetadataItem: {
-            id: columnDefinition.fieldMetadataId,
-            name: columnDefinition.metadata.fieldName,
-          },
-          objectMetadataItem,
-        }),
-      }}
-    >
-      {children}
-    </FieldContext.Provider>
+    <RecordFieldComponentInstanceContext.Provider value={{ instanceId }}>
+      {isLabelIdentifier ? (
+        <RecordTableCellFieldContextLabelIdentifier key={instanceId}>
+          {children}
+        </RecordTableCellFieldContextLabelIdentifier>
+      ) : (
+        <RecordTableCellFieldContextGeneric
+          key={instanceId}
+          recordField={recordField}
+        >
+          {children}
+        </RecordTableCellFieldContextGeneric>
+      )}
+    </RecordFieldComponentInstanceContext.Provider>
   );
 };

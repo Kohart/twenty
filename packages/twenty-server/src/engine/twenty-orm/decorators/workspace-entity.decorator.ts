@@ -1,3 +1,5 @@
+import { type MessageDescriptor } from '@lingui/core';
+
 import { metadataArgsStorage } from 'src/engine/twenty-orm/storage/metadata-args.storage';
 import { BASE_OBJECT_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { convertClassNameToObjectMetadataName } from 'src/engine/workspace-manager/workspace-sync-metadata/utils/convert-class-to-object-metadata-name.util';
@@ -6,9 +8,9 @@ import { TypedReflect } from 'src/utils/typed-reflect';
 interface WorkspaceEntityOptions {
   standardId: string;
   namePlural: string;
-  labelSingular: string;
-  labelPlural: string;
-  description?: string;
+  labelSingular: MessageDescriptor;
+  labelPlural: MessageDescriptor;
+  description?: MessageDescriptor;
   icon?: string;
   shortcut?: string;
   labelIdentifierStandardId?: string;
@@ -31,6 +33,21 @@ export function WorkspaceEntity(
       'workspace:gate-metadata-args',
       target,
     );
+    const duplicateCriteria = TypedReflect.getMetadata(
+      'workspace:duplicate-criteria-metadata-args',
+      target,
+    );
+    const isSearchable =
+      TypedReflect.getMetadata(
+        'workspace:is-searchable-metadata-args',
+        target,
+      ) ?? false;
+    const isUIReadOnly =
+      TypedReflect.getMetadata(
+        'workspace:is-object-ui-readonly-metadata-args',
+        target,
+      ) ?? false;
+
     const objectName = convertClassNameToObjectMetadataName(target.name);
 
     metadataArgsStorage.addEntities({
@@ -38,9 +55,9 @@ export function WorkspaceEntity(
       standardId: options.standardId,
       nameSingular: objectName,
       namePlural: options.namePlural,
-      labelSingular: options.labelSingular,
-      labelPlural: options.labelPlural,
-      description: options.description,
+      labelSingular: options.labelSingular?.message ?? '',
+      labelPlural: options.labelPlural?.message ?? '',
+      description: options.description?.message ?? '',
       labelIdentifierStandardId:
         options.labelIdentifierStandardId ?? BASE_OBJECT_STANDARD_FIELD_IDS.id,
       imageIdentifierStandardId: options.imageIdentifierStandardId ?? null,
@@ -48,7 +65,10 @@ export function WorkspaceEntity(
       shortcut: options.shortcut,
       isAuditLogged,
       isSystem,
+      isUIReadOnly,
       gate,
+      duplicateCriteria,
+      isSearchable,
     });
   };
 }

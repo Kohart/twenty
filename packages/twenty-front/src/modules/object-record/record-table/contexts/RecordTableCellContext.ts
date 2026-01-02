@@ -1,16 +1,12 @@
 import { createContext } from 'react';
 
-import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
-import { ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
-import { TableCellPosition } from '@/object-record/record-table/types/TableCellPosition';
+import { type RecordField } from '@/object-record/record-field/types/RecordField';
+import { type TableCellPosition } from '@/object-record/record-table/types/TableCellPosition';
 
-export type RecordTableCellContextProps = {
-  columnDefinition: ColumnDefinition<FieldMetadata>;
-  columnIndex: number;
-  isInEditMode: boolean;
-  hasSoftFocus: boolean;
+export type RecordTableCellContextValue = {
+  recordField: RecordField;
   cellPosition: TableCellPosition;
 };
 
 export const RecordTableCellContext =
-  createContext<RecordTableCellContextProps>({} as RecordTableCellContextProps);
+  createContext<RecordTableCellContextValue>({} as RecordTableCellContextValue);

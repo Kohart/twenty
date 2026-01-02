@@ -1,31 +1,27 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource } from '@nestjs/typeorm';
 
-import { EntityManager, Repository } from 'typeorm';
+import { DataSource, type EntityManager } from 'typeorm';
 import { v4 } from 'uuid';
 
 import {
-  RemoteServerEntity,
+  type RemoteServerEntity,
   RemoteServerType,
 } from 'src/engine/metadata-modules/remote-server/remote-server.entity';
-import { WorkspaceDataSourceService } from 'src/engine/workspace-datasource/workspace-datasource.service';
-import { DistantTables } from 'src/engine/metadata-modules/remote-server/remote-table/distant-table/types/distant-table';
-import { STRIPE_DISTANT_TABLES } from 'src/engine/metadata-modules/remote-server/remote-table/distant-table/utils/stripe-distant-tables.util';
-import { PostgresTableSchemaColumn } from 'src/engine/metadata-modules/remote-server/types/postgres-table-schema-column';
-import { isQueryTimeoutError } from 'src/engine/utils/query-timeout.util';
 import {
   DistantTableException,
   DistantTableExceptionCode,
 } from 'src/engine/metadata-modules/remote-server/remote-table/distant-table/distant-table.exception';
+import { type DistantTables } from 'src/engine/metadata-modules/remote-server/remote-table/distant-table/types/distant-table';
+import { STRIPE_DISTANT_TABLES } from 'src/engine/metadata-modules/remote-server/remote-table/distant-table/utils/stripe-distant-tables.util';
+import { type PostgresTableSchemaColumn } from 'src/engine/metadata-modules/remote-server/types/postgres-table-schema-column';
+import { isQueryTimeoutError } from 'src/engine/utils/query-timeout.util';
 
 @Injectable()
 export class DistantTableService {
   constructor(
-    private readonly workspaceDataSourceService: WorkspaceDataSourceService,
-    @InjectRepository(RemoteServerEntity, 'metadata')
-    private readonly remoteServerRepository: Repository<
-      RemoteServerEntity<RemoteServerType>
-    >,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
   ) {}
 
   public async fetchDistantTables(
@@ -73,13 +69,8 @@ export class DistantTableService {
     const tmpSchemaId = v4();
     const tmpSchemaName = `${workspaceId}_${remoteServer.id}_${tmpSchemaId}`;
 
-    const workspaceDataSource =
-      await this.workspaceDataSourceService.connectToWorkspaceDataSource(
-        workspaceId,
-      );
-
     try {
-      const distantTables = await workspaceDataSource.transaction(
+      const distantTables = await this.coreDataSource.transaction(
         async (entityManager: EntityManager) => {
           await entityManager.query(`CREATE SCHEMA "${tmpSchemaName}"`);
 
@@ -98,6 +89,7 @@ export class DistantTableService {
           await entityManager.query(`DROP SCHEMA "${tmpSchemaName}" CASCADE`);
 
           return createdForeignTableNames.reduce(
+            // @ts-expect-error legacy noImplicitAny
             (acc, { table_name, column_name, data_type, udt_name }) => {
               if (!acc[table_name]) {
                 acc[table_name] = [];

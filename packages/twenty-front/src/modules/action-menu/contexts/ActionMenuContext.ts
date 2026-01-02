@@ -1,11 +1,21 @@
+import { type ActionConfig } from '@/action-menu/actions/types/ActionConfig';
 import { createContext } from 'react';
 
-type ActionMenuContextType = {
+export type ActionMenuContextType = {
   isInRightDrawer: boolean;
-  onActionExecutedCallback: () => void;
+  displayType: 'button' | 'listItem' | 'dropdownItem';
+  actionMenuType:
+    | 'command-menu'
+    | 'show-page-action-menu'
+    | 'index-page-action-menu'
+    | 'index-page-action-menu-dropdown'
+    | 'command-menu-show-page-action-menu-dropdown';
+  actions: ActionConfig[];
 };
 
 export const ActionMenuContext = createContext<ActionMenuContextType>({
   isInRightDrawer: false,
-  onActionExecutedCallback: () => {},
+  actionMenuType: 'command-menu',
+  displayType: 'button',
+  actions: [],
 });

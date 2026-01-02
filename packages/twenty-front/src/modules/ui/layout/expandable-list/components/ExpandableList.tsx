@@ -1,11 +1,18 @@
 import styled from '@emotion/styled';
-import { ReactElement, useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatedContainer, Chip, ChipVariant } from 'twenty-ui';
+import {
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { ExpandedListDropdown } from '@/ui/layout/expandable-list/components/ExpandedListDropdown';
 import { isFirstOverflowingChildElement } from '@/ui/layout/expandable-list/utils/isFirstOverflowingChildElement';
-import { useListenClickOutside } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared/utils';
+import { ChipSize } from 'twenty-ui/components';
+import { OverflowingTextWithTooltip } from 'twenty-ui/display';
+import { AnimatedContainer } from 'twenty-ui/utilities';
 
 const StyledContainer = styled.div`
   align-items: center;
@@ -35,13 +42,15 @@ const StyledChildContainer = styled.div`
   }
 `;
 
-const StyledChipCount = styled(Chip)`
+const StyledUnShrinkableContainer = styled.div`
+  color: ${({ theme }) => theme.font.color.primary};
   flex-shrink: 0;
+
+  width: 24px;
 `;
 
 export type ExpandableListProps = {
   isChipCountDisplayed?: boolean;
-  withExpandedListBorder?: boolean;
 };
 
 export type ChildrenProperty = {
@@ -52,7 +61,6 @@ export type ChildrenProperty = {
 export const ExpandableList = ({
   children,
   isChipCountDisplayed: isChipCountDisplayedFromProps,
-  withExpandedListBorder = false,
 }: {
   children: ReactElement[];
 } & ExpandableListProps) => {
@@ -101,20 +109,18 @@ export const ExpandableList = ({
     resetFirstHiddenChildIndex();
   }, [isChipCountDisplayed, children.length, resetFirstHiddenChildIndex]);
 
-  useListenClickOutside({
-    refs: [containerRef],
-    callback: () => {
-      // Handle container resize
-      if (
-        childrenContainerElement?.clientWidth !== previousChildrenContainerWidth
-      ) {
-        resetFirstHiddenChildIndex();
-        setPreviousChildrenContainerWidth(
-          childrenContainerElement?.clientWidth ?? 0,
-        );
-      }
-    },
-  });
+  const handleClickOutside = () => {
+    setIsListExpanded(false);
+
+    if (
+      childrenContainerElement?.clientWidth !== previousChildrenContainerWidth
+    ) {
+      resetFirstHiddenChildIndex();
+      setPreviousChildrenContainerWidth(
+        childrenContainerElement?.clientWidth ?? 0,
+      );
+    }
+  };
 
   return (
     <StyledContainer
@@ -153,21 +159,18 @@ export const ExpandableList = ({
       </StyledChildrenContainer>
       {canDisplayChipCount && (
         <AnimatedContainer>
-          <StyledChipCount
-            label={`+${hiddenChildrenCount}`}
-            variant={ChipVariant.Highlighted}
-            onClick={handleChipCountClick}
-          />
+          <StyledUnShrinkableContainer onClick={handleChipCountClick}>
+            <OverflowingTextWithTooltip
+              text={`+${hiddenChildrenCount}`}
+              size={ChipSize.Small}
+            />
+          </StyledUnShrinkableContainer>
         </AnimatedContainer>
       )}
       {isListExpanded && (
         <ExpandedListDropdown
           anchorElement={containerRef.current ?? undefined}
-          onClickOutside={() => {
-            resetFirstHiddenChildIndex();
-            setIsListExpanded(false);
-          }}
-          withBorder={withExpandedListBorder}
+          onClickOutside={handleClickOutside}
         >
           {children}
         </ExpandedListDropdown>

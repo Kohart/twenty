@@ -1,23 +1,24 @@
 import { Injectable } from '@nestjs/common';
 
-import { ObjectRecordCreateEvent } from 'src/engine/core-modules/event-emitter/types/object-record-create.event';
-import { ObjectRecordUpdateEvent } from 'src/engine/core-modules/event-emitter/types/object-record-update.event';
+import { isDefined } from 'twenty-shared/utils';
+import {
+  type ObjectRecordCreateEvent,
+  type ObjectRecordDeleteEvent,
+  type ObjectRecordUpdateEvent,
+} from 'twenty-shared/database-events';
+
+import { OnDatabaseBatchEvent } from 'src/engine/api/graphql/graphql-query-runner/decorators/on-database-batch-event.decorator';
+import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
 import { objectRecordChangedProperties as objectRecordUpdateEventChangedProperties } from 'src/engine/core-modules/event-emitter/utils/object-record-changed-properties.util';
 import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
-import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/types/workspace-event.type';
+import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/types/workspace-event-batch.type';
 import {
   MessageParticipantMatchParticipantJob,
-  MessageParticipantMatchParticipantJobData,
+  type MessageParticipantMatchParticipantJobData,
 } from 'src/modules/messaging/message-participant-manager/jobs/message-participant-match-participant.job';
-import {
-  MessageParticipantUnmatchParticipantJob,
-  MessageParticipantUnmatchParticipantJobData,
-} from 'src/modules/messaging/message-participant-manager/jobs/message-participant-unmatch-participant.job';
-import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
-import { OnDatabaseBatchEvent } from 'src/engine/api/graphql/graphql-query-runner/decorators/on-database-batch-event.decorator';
-import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
+import { type PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 
 @Injectable()
 export class MessageParticipantPersonListener {
@@ -32,20 +33,34 @@ export class MessageParticipantPersonListener {
       ObjectRecordCreateEvent<PersonWorkspaceEntity>
     >,
   ) {
-    for (const eventPayload of payload.events) {
-      if (!eventPayload.properties.after.emails?.primaryEmail) {
-        continue;
-      }
+    const personWithEmails = payload.events.filter(
+      (eventPayload) =>
+        isDefined(eventPayload.properties.after.emails?.primaryEmail) ||
+        isDefined(eventPayload.properties.after.emails?.additionalEmails),
+    );
 
-      await this.messageQueueService.add<MessageParticipantMatchParticipantJobData>(
-        MessageParticipantMatchParticipantJob.name,
-        {
-          workspaceId: payload.workspaceId,
-          email: eventPayload.properties.after.emails?.primaryEmail,
-          personId: eventPayload.recordId,
+    const personIds = personWithEmails.map(
+      (eventPayload) => eventPayload.recordId,
+    );
+    const personEmails = personWithEmails
+      .flatMap((eventPayload) => [
+        eventPayload.properties.after.emails.primaryEmail,
+        ...((eventPayload.properties.after.emails?.additionalEmails ??
+          []) as string[]),
+      ])
+      .filter(isDefined);
+
+    await this.messageQueueService.add<MessageParticipantMatchParticipantJobData>(
+      MessageParticipantMatchParticipantJob.name,
+      {
+        workspaceId: payload.workspaceId,
+        participantMatching: {
+          personIds,
+          personEmails,
+          workspaceMemberIds: [],
         },
-      );
-    }
+      },
+    );
   }
 
   @OnDatabaseBatchEvent('person', DatabaseEventAction.UPDATED)
@@ -54,31 +69,65 @@ export class MessageParticipantPersonListener {
       ObjectRecordUpdateEvent<PersonWorkspaceEntity>
     >,
   ) {
-    for (const eventPayload of payload.events) {
-      if (
-        objectRecordUpdateEventChangedProperties(
-          eventPayload.properties.before,
-          eventPayload.properties.after,
-        ).includes('emails')
-      ) {
-        await this.messageQueueService.add<MessageParticipantUnmatchParticipantJobData>(
-          MessageParticipantUnmatchParticipantJob.name,
-          {
-            workspaceId: payload.workspaceId,
-            email: eventPayload.properties.before.emails?.primaryEmail,
-            personId: eventPayload.recordId,
-          },
-        );
+    const personWithEmails = payload.events.filter((eventPayload) =>
+      objectRecordUpdateEventChangedProperties(
+        eventPayload.properties.before,
+        eventPayload.properties.after,
+      ).includes('emails'),
+    );
 
-        await this.messageQueueService.add<MessageParticipantMatchParticipantJobData>(
-          MessageParticipantMatchParticipantJob.name,
-          {
-            workspaceId: payload.workspaceId,
-            email: eventPayload.properties.after.emails?.primaryEmail,
-            personId: eventPayload.recordId,
-          },
-        );
-      }
-    }
+    const personIds = personWithEmails.map(
+      (eventPayload) => eventPayload.recordId,
+    );
+    const personEmails = personWithEmails
+      .flatMap((eventPayload) => [
+        eventPayload.properties.after.emails.primaryEmail,
+        ...((eventPayload.properties.after.emails?.additionalEmails ??
+          []) as string[]),
+      ])
+      .filter(isDefined);
+
+    await this.messageQueueService.add<MessageParticipantMatchParticipantJobData>(
+      MessageParticipantMatchParticipantJob.name,
+      {
+        workspaceId: payload.workspaceId,
+        participantMatching: {
+          personIds,
+          personEmails,
+          workspaceMemberIds: [],
+        },
+      },
+    );
+  }
+
+  @OnDatabaseBatchEvent('person', DatabaseEventAction.DESTROYED)
+  async handleDestroyedEvent(
+    payload: WorkspaceEventBatch<
+      ObjectRecordDeleteEvent<PersonWorkspaceEntity>
+    >,
+  ) {
+    const personWithEmails = payload.events.filter(
+      (eventPayload) =>
+        isDefined(eventPayload.properties.before.emails?.primaryEmail) ||
+        isDefined(eventPayload.properties.before.emails?.additionalEmails),
+    );
+
+    await this.messageQueueService.add<MessageParticipantMatchParticipantJobData>(
+      MessageParticipantMatchParticipantJob.name,
+      {
+        workspaceId: payload.workspaceId,
+        participantMatching: {
+          personIds: [],
+          personEmails: personWithEmails
+            .flatMap((eventPayload) => [
+              eventPayload.properties.before.emails.primaryEmail,
+              ...((eventPayload.properties.before.emails?.additionalEmails ??
+                []) as string[]),
+            ])
+            .filter(isDefined),
+          workspaceMemberIds: [],
+        },
+      },
+    );
   }
 }

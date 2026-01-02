@@ -2,19 +2,17 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { WorkspaceQueryBuilderModule } from 'src/engine/api/graphql/workspace-query-builder/workspace-query-builder.module';
-import { RecordPositionBackfillCommand } from 'src/engine/api/graphql/workspace-query-runner/commands/0-20-record-position-backfill.command';
-import { workspaceQueryRunnerFactories } from 'src/engine/api/graphql/workspace-query-runner/factories';
 import { TelemetryListener } from 'src/engine/api/graphql/workspace-query-runner/listeners/telemetry.listener';
 import { WorkspaceQueryHookModule } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/workspace-query-hook.module';
-import { AnalyticsModule } from 'src/engine/core-modules/analytics/analytics.module';
+import { AuditModule } from 'src/engine/core-modules/audit/audit.module';
 import { AuthModule } from 'src/engine/core-modules/auth/auth.module';
 import { FeatureFlagEntity } from 'src/engine/core-modules/feature-flag/feature-flag.entity';
-import { FeatureFlagModule } from 'src/engine/core-modules/feature-flag/feature-flag.module';
 import { FileModule } from 'src/engine/core-modules/file/file.module';
+import { RecordPositionModule } from 'src/engine/core-modules/record-position/record-position.module';
+import { RecordTransformerModule } from 'src/engine/core-modules/record-transformer/record-transformer.module';
 import { TelemetryModule } from 'src/engine/core-modules/telemetry/telemetry.module';
-import { ObjectMetadataRepositoryModule } from 'src/engine/object-metadata-repository/object-metadata-repository.module';
+import { SubscriptionsModule } from 'src/engine/subscriptions/subscriptions.module';
 import { WorkspaceDataSourceModule } from 'src/engine/workspace-datasource/workspace-datasource.module';
-import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
 
 import { EntityEventsToDbListener } from './listeners/entity-events-to-db.listener';
 
@@ -24,19 +22,14 @@ import { EntityEventsToDbListener } from './listeners/entity-events-to-db.listen
     WorkspaceQueryBuilderModule,
     WorkspaceDataSourceModule,
     WorkspaceQueryHookModule,
-    ObjectMetadataRepositoryModule.forFeature([WorkspaceMemberWorkspaceEntity]),
-    TypeOrmModule.forFeature([FeatureFlagEntity], 'core'),
-    AnalyticsModule,
+    TypeOrmModule.forFeature([FeatureFlagEntity]),
+    AuditModule,
     TelemetryModule,
     FileModule,
-    FeatureFlagModule,
+    RecordTransformerModule,
+    RecordPositionModule,
+    SubscriptionsModule,
   ],
-  providers: [
-    ...workspaceQueryRunnerFactories,
-    EntityEventsToDbListener,
-    TelemetryListener,
-    RecordPositionBackfillCommand,
-  ],
-  exports: [...workspaceQueryRunnerFactories],
+  providers: [EntityEventsToDbListener, TelemetryListener],
 })
 export class WorkspaceQueryRunnerModule {}

@@ -1,58 +1,63 @@
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
-import { buildShowPageURL } from '@/object-record/record-show/utils/buildShowPageURL';
 import {
   ConfirmationModal,
   StyledCenteredButton,
 } from '@/ui/layout/modal/components/ConfirmationModal';
-import { openOverrideWorkflowDraftConfirmationModalState } from '@/workflow/states/openOverrideWorkflowDraftConfirmationModalState';
-import { WorkflowVersion } from '@/workflow/types/Workflow';
-import { useRecoilState } from 'recoil';
+import { useModal } from '@/ui/layout/modal/hooks/useModal';
+import { OVERRIDE_WORKFLOW_DRAFT_CONFIRMATION_MODAL_ID } from '@/workflow/constants/OverrideWorkflowDraftConfirmationModalId';
+import { useCreateDraftFromWorkflowVersion } from '@/workflow/hooks/useCreateDraftFromWorkflowVersion';
+import { useLingui } from '@lingui/react/macro';
+import { AppPath } from 'twenty-shared/types';
+import { getAppPath } from 'twenty-shared/utils';
+import { useNavigateApp } from '~/hooks/useNavigateApp';
 
 export const OverrideWorkflowDraftConfirmationModal = ({
-  draftWorkflowVersionId,
-  workflowVersionUpdateInput,
+  workflowId,
+  workflowVersionIdToCopy,
 }: {
-  draftWorkflowVersionId: string;
-  workflowVersionUpdateInput: Pick<WorkflowVersion, 'trigger' | 'steps'>;
+  workflowId: string;
+  workflowVersionIdToCopy: string;
 }) => {
-  const [
-    openOverrideWorkflowDraftConfirmationModal,
-    setOpenOverrideWorkflowDraftConfirmationModal,
-  ] = useRecoilState(openOverrideWorkflowDraftConfirmationModalState);
+  const { closeModal } = useModal();
 
-  const { updateOneRecord: updateOneWorkflowVersion } =
-    useUpdateOneRecord<WorkflowVersion>({
-      objectNameSingular: CoreObjectNameSingular.WorkflowVersion,
-    });
+  const { createDraftFromWorkflowVersion } =
+    useCreateDraftFromWorkflowVersion();
+
+  const navigate = useNavigateApp();
 
   const handleOverrideDraft = async () => {
-    await updateOneWorkflowVersion({
-      idToUpdate: draftWorkflowVersionId,
-      updateOneRecordInput: workflowVersionUpdateInput,
+    await createDraftFromWorkflowVersion({
+      workflowId,
+      workflowVersionIdToCopy,
+    });
+
+    navigate(AppPath.RecordShowPage, {
+      objectNameSingular: CoreObjectNameSingular.Workflow,
+      objectRecordId: workflowId,
     });
   };
+
+  const { t } = useLingui();
 
   return (
     <>
       <ConfirmationModal
-        isOpen={openOverrideWorkflowDraftConfirmationModal}
-        setIsOpen={setOpenOverrideWorkflowDraftConfirmationModal}
-        title="A draft already exists"
-        subtitle="A draft already exists for this workflow. Are you sure you want to erase it?"
+        modalId={OVERRIDE_WORKFLOW_DRAFT_CONFIRMATION_MODAL_ID}
+        title={t`A draft already exists`}
+        subtitle={t`A draft already exists for this workflow. Are you sure you want to erase it?`}
         onConfirmClick={handleOverrideDraft}
-        deleteButtonText={'Override Draft'}
+        confirmButtonText={t`Override Draft`}
         AdditionalButtons={
           <StyledCenteredButton
-            to={buildShowPageURL(
-              CoreObjectNameSingular.WorkflowVersion,
-              draftWorkflowVersionId,
-            )}
+            to={getAppPath(AppPath.RecordShowPage, {
+              objectNameSingular: CoreObjectNameSingular.Workflow,
+              objectRecordId: workflowId,
+            })}
             onClick={() => {
-              setOpenOverrideWorkflowDraftConfirmationModal(false);
+              closeModal(OVERRIDE_WORKFLOW_DRAFT_CONFIRMATION_MODAL_ID);
             }}
             variant="secondary"
-            title="Go to Draft"
+            title={t`Go to Draft`}
             fullWidth
           />
         }

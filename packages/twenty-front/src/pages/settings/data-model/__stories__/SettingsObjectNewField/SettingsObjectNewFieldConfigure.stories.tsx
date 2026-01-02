@@ -1,10 +1,10 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { userEvent, within } from '@storybook/test';
-import { SettingsObjectNewFieldConfigure } from '~/pages/settings/data-model/SettingsObjectNewField/SettingsObjectNewFieldConfigure';
+import { SettingsObjectNewFieldConfigure } from '~/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure';
 
 import {
   PageDecorator,
-  PageDecoratorArgs,
+  type PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 
@@ -14,8 +14,8 @@ const meta: Meta<PageDecoratorArgs> = {
   component: SettingsObjectNewFieldConfigure,
   decorators: [PageDecorator],
   args: {
-    routePath: '/settings/objects/:objectSlug/new-field/configure',
-    routeParams: { ':objectSlug': 'companies' },
+    routePath: '/settings/objects/:objectNamePlural/new-field/configure',
+    routeParams: { ':objectNamePlural': 'companies' },
   },
   parameters: {
     msw: graphqlMocks,
@@ -34,11 +34,6 @@ export const Default: Story = {
 
     const employeeInput = await canvas.findByPlaceholderText('Employees');
     await userEvent.type(employeeInput, 'Test');
-
-    const descriptionInput = await canvas.findByPlaceholderText(
-      'Write a description',
-    );
-    await userEvent.type(descriptionInput, 'Test description');
 
     const saveButton = await canvas.findByText('Save');
     await new Promise((resolve) => setTimeout(resolve, 5000));

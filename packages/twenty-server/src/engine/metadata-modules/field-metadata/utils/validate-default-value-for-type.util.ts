@@ -1,9 +1,10 @@
 import { plainToInstance } from 'class-transformer';
-import { ValidationError, validateSync } from 'class-validator';
+import { type ValidationError, validateSync } from 'class-validator';
+import { FieldMetadataType } from 'twenty-shared/types';
 
 import {
-  FieldMetadataClassValidation,
-  FieldMetadataDefaultValue,
+  type FieldMetadataClassValidation,
+  type FieldMetadataDefaultValue,
 } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-default-value.interface';
 
 import {
@@ -20,11 +21,11 @@ import {
   FieldMetadataDefaultValueNumber,
   FieldMetadataDefaultValuePhones,
   FieldMetadataDefaultValueRawJson,
+  FieldMetadataDefaultValueRichTextV2,
   FieldMetadataDefaultValueString,
   FieldMetadataDefaultValueStringArray,
   FieldMetadataDefaultValueUuidFunction,
 } from 'src/engine/metadata-modules/field-metadata/dtos/default-value.input';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { isCompositeFieldMetadataType } from 'src/engine/metadata-modules/field-metadata/utils/is-composite-field-metadata-type.util';
 
 export const defaultValueValidatorsMap = {
@@ -47,6 +48,7 @@ export const defaultValueValidatorsMap = {
   [FieldMetadataType.SELECT]: [FieldMetadataDefaultValueString],
   [FieldMetadataType.MULTI_SELECT]: [FieldMetadataDefaultValueStringArray],
   [FieldMetadataType.ADDRESS]: [FieldMetadataDefaultValueAddress],
+  [FieldMetadataType.RICH_TEXT_V2]: [FieldMetadataDefaultValueRichTextV2],
   [FieldMetadataType.RICH_TEXT]: [FieldMetadataDefaultValueString],
   [FieldMetadataType.RAW_JSON]: [FieldMetadataDefaultValueRawJson],
   [FieldMetadataType.LINKS]: [FieldMetadataDefaultValueLinks],
@@ -71,6 +73,8 @@ export const validateDefaultValueForType = (
     };
   }
 
+  // @ts-expect-error legacy noImplicitAny
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const validators = defaultValueValidatorsMap[type] as any[];
 
   if (!validators) {
@@ -81,14 +85,15 @@ export const validateDefaultValueForType = (
   }
 
   const validationResults = validators.map((validator) => {
-    const conputedDefaultValue = isCompositeFieldMetadataType(type)
+    const computedDefaultValue = isCompositeFieldMetadataType(type)
       ? defaultValue
       : { value: defaultValue };
 
     const defaultValueInstance = plainToInstance<
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       any,
       FieldMetadataClassValidation
-    >(validator, conputedDefaultValue as FieldMetadataClassValidation);
+    >(validator, computedDefaultValue as FieldMetadataClassValidation);
 
     const errors = validateSync(defaultValueInstance, {
       whitelist: true,

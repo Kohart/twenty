@@ -1,4 +1,6 @@
-import { IconButton, IconHeart } from 'twenty-ui';
+import { t } from '@lingui/core/macro';
+import { IconHeart, IconHeartOff } from 'twenty-ui/display';
+import { Button } from 'twenty-ui/input';
 
 type PageFavoriteButtonProps = {
   isFavorite: boolean;
@@ -8,13 +10,19 @@ type PageFavoriteButtonProps = {
 export const PageFavoriteButton = ({
   isFavorite,
   onClick,
-}: PageFavoriteButtonProps) => (
-  <IconButton
-    Icon={IconHeart}
-    size="medium"
-    variant="secondary"
-    data-testid="add-button"
-    accent={isFavorite ? 'danger' : 'default'}
-    onClick={onClick}
-  />
-);
+}: PageFavoriteButtonProps) => {
+  const title = isFavorite ? t`Remove from favorites` : t`Add to favorites`;
+
+  return (
+    <Button
+      Icon={isFavorite ? IconHeartOff : IconHeart}
+      dataTestId="favorite-button"
+      size="small"
+      variant="secondary"
+      accent="default"
+      title={title}
+      onClick={onClick}
+      ariaLabel={title}
+    />
+  );
+};

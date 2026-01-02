@@ -1,17 +1,17 @@
 import { useQuery } from '@apollo/client';
-import { useApolloMetadataClient } from '@/object-metadata/hooks/useApolloMetadataClient';
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { FIND_ONE_SERVERLESS_FUNCTION } from '@/settings/serverless-functions/graphql/queries/findOneServerlessFunction';
 import {
-  ServerlessFunctionIdInput,
-  GetOneServerlessFunctionQuery,
-  GetOneServerlessFunctionQueryVariables,
+  type ServerlessFunctionIdInput,
+  type GetOneServerlessFunctionQuery,
+  type GetOneServerlessFunctionQueryVariables,
 } from '~/generated-metadata/graphql';
 
 export const useGetOneServerlessFunction = (
   input: ServerlessFunctionIdInput,
 ) => {
-  const apolloMetadataClient = useApolloMetadataClient();
-  const { data } = useQuery<
+  const apolloMetadataClient = useApolloCoreClient();
+  const { data, loading } = useQuery<
     GetOneServerlessFunctionQuery,
     GetOneServerlessFunctionQueryVariables
   >(FIND_ONE_SERVERLESS_FUNCTION, {
@@ -22,5 +22,6 @@ export const useGetOneServerlessFunction = (
   });
   return {
     serverlessFunction: data?.findOneServerlessFunction || null,
+    loading,
   };
 };

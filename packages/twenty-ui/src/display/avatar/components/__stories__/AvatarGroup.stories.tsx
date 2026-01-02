@@ -1,15 +1,16 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 
-import { Avatar, AvatarProps } from '@ui/display/avatar/components/Avatar';
-import { AvatarSize } from '@ui/display/avatar/types/AvatarSize';
-import { AvatarType } from '@ui/display/avatar/types/AvatarType';
+import { Avatar, type AvatarProps } from '@ui/display/avatar/components/Avatar';
+import { type AvatarSize } from '@ui/display/avatar/types/AvatarSize';
+import { type AvatarType } from '@ui/display/avatar/types/AvatarType';
 import {
   AVATAR_URL_MOCK,
   CatalogDecorator,
   ComponentDecorator,
+  RecoilRootDecorator,
 } from '@ui/testing';
 
-import { AvatarGroup, AvatarGroupProps } from '../AvatarGroup';
+import { AvatarGroup, type AvatarGroupProps } from '../AvatarGroup';
 
 const makeAvatar = (userName: string, props: Partial<AvatarProps> = {}) => (
   // eslint-disable-next-line react/jsx-props-no-spreading
@@ -38,7 +39,7 @@ export default meta;
 type Story = StoryObj<typeof AvatarGroup>;
 
 export const Default: Story = {
-  decorators: [ComponentDecorator],
+  decorators: [ComponentDecorator, RecoilRootDecorator],
 };
 
 export const Catalog: Story = {
@@ -63,5 +64,5 @@ export const Catalog: Story = {
       ],
     },
   },
-  decorators: [CatalogDecorator],
+  decorators: [CatalogDecorator, RecoilRootDecorator],
 };

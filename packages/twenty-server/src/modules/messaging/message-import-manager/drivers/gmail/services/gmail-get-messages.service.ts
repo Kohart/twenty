@@ -1,49 +1,45 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import { AxiosResponse } from 'axios';
-import { gmail_v1 as gmailV1 } from 'googleapis';
+import { type AxiosResponse } from 'axios';
+import { type gmail_v1 as gmailV1 } from 'googleapis';
+import { isDefined } from 'twenty-shared/utils';
 
-import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
+import { type ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
+import {
+  MessageImportDriverException,
+  MessageImportDriverExceptionCode,
+} from 'src/modules/messaging/message-import-manager/drivers/exceptions/message-import-driver.exception';
 import { GmailFetchByBatchService } from 'src/modules/messaging/message-import-manager/drivers/gmail/services/gmail-fetch-by-batch.service';
-import { GmailHandleErrorService } from 'src/modules/messaging/message-import-manager/drivers/gmail/services/gmail-handle-error.service';
+import { GmailMessagesImportErrorHandler } from 'src/modules/messaging/message-import-manager/drivers/gmail/services/gmail-messages-import-error-handler.service';
 import { parseAndFormatGmailMessage } from 'src/modules/messaging/message-import-manager/drivers/gmail/utils/parse-and-format-gmail-message.util';
-import { MessageWithParticipants } from 'src/modules/messaging/message-import-manager/types/message';
-import { isDefined } from 'src/utils/is-defined';
+import { type MessageWithParticipants } from 'src/modules/messaging/message-import-manager/types/message';
 
 @Injectable()
 export class GmailGetMessagesService {
-  private readonly logger = new Logger(GmailGetMessagesService.name);
-
   constructor(
     private readonly fetchByBatchesService: GmailFetchByBatchService,
-    private readonly gmailHandleErrorService: GmailHandleErrorService,
+    private readonly gmailMessagesImportErrorHandler: GmailMessagesImportErrorHandler,
   ) {}
 
   async getMessages(
     messageIds: string[],
     connectedAccount: Pick<
       ConnectedAccountWorkspaceEntity,
-      'accessToken' | 'refreshToken' | 'id' | 'handle' | 'handleAliases'
+      'accessToken' | 'id' | 'handle' | 'handleAliases'
     >,
-    workspaceId: string,
   ): Promise<MessageWithParticipants[]> {
-    let startTime = Date.now();
-
+    if (!isDefined(connectedAccount.accessToken)) {
+      throw new MessageImportDriverException(
+        'Access token is required',
+        MessageImportDriverExceptionCode.ACCESS_TOKEN_MISSING,
+      );
+    }
     const { messageIdsByBatch, batchResponses } =
       await this.fetchByBatchesService.fetchAllByBatches(
         messageIds,
         connectedAccount.accessToken,
         'batch_gmail_messages',
       );
-    let endTime = Date.now();
-
-    this.logger.log(
-      `Messaging import for workspace ${workspaceId} and account ${connectedAccount.id} fetching ${
-        messageIds.length
-      } messages in ${endTime - startTime}ms`,
-    );
-
-    startTime = Date.now();
 
     const messages = batchResponses.flatMap((response, index) => {
       return this.formatBatchResponseAsMessage(
@@ -53,19 +49,13 @@ export class GmailGetMessagesService {
       );
     });
 
-    endTime = Date.now();
-
-    this.logger.log(
-      `Messaging import for workspace ${workspaceId} and account ${connectedAccount.id} formatting ${
-        messageIds.length
-      } messages in ${endTime - startTime}ms`,
-    );
-
     return messages;
   }
 
   private formatBatchResponseAsMessage(
     messageIds: string[],
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     responseCollection: AxiosResponse<any, any>,
     connectedAccount: Pick<
       ConnectedAccountWorkspaceEntity,
@@ -77,14 +67,12 @@ export class GmailGetMessagesService {
 
     const messages = parsedResponses.map((response, index) => {
       if ('error' in response) {
-        if (response.error.code === 404) {
-          return null;
-        }
-
-        this.gmailHandleErrorService.handleError(
+        this.gmailMessagesImportErrorHandler.handleError(
           response.error,
           messageIds[index],
         );
+
+        return undefined;
       }
 
       return parseAndFormatGmailMessage(

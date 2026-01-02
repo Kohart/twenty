@@ -1,41 +1,77 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
+import { expect, within } from '@storybook/test';
+import { useEffect } from 'react';
+import { useSetRecoilState } from 'recoil';
+
+import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
+import { SettingsPath } from 'twenty-shared/types';
+import { ComponentWithRouterDecorator } from '~/testing/decorators/ComponentWithRouterDecorator';
+import { ObjectMetadataItemsDecorator } from '~/testing/decorators/ObjectMetadataItemsDecorator';
+import { PrefetchLoadedDecorator } from '~/testing/decorators/PrefetchLoadedDecorator';
+import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
+import { graphqlMocks } from '~/testing/graphqlMocks';
+import { mockedWorkspaceMemberData } from '~/testing/mock-data/users';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
+
+import { CurrentWorkspaceMemberFavoritesFolders } from '@/favorites/components/CurrentWorkspaceMemberFavoritesFolders';
+import { NavigationDrawerFixedContent } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerFixedContent';
+import { NavigationDrawerSubItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSubItem';
+import { getSettingsPath } from 'twenty-shared/utils';
 import {
-  GithubVersionLink,
   IconAt,
   IconBell,
   IconBuildingSkyscraper,
   IconCalendarEvent,
   IconCheckbox,
   IconColorSwatch,
-  IconDoorEnter,
   IconMail,
   IconSearch,
+  IconServer,
   IconSettings,
   IconTargetArrow,
   IconUser,
   IconUserCircle,
   IconUsers,
-} from 'twenty-ui';
+} from 'twenty-ui/display';
+import { AdvancedSettingsToggle } from 'twenty-ui/navigation';
+import { getOsControlSymbol } from 'twenty-ui/utilities';
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
 
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
-import { SettingsPath } from '@/types/SettingsPath';
-import { ComponentWithRouterDecorator } from '~/testing/decorators/ComponentWithRouterDecorator';
-import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
+import { NavigationDrawer } from '@/ui/navigation/navigation-drawer/components/NavigationDrawer';
+import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
+import { NavigationDrawerItemGroup } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItemGroup';
+import { NavigationDrawerSection } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSection';
+import { NavigationDrawerSectionTitle } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSectionTitle';
 
-import { CurrentWorkspaceMemberFavoritesFolders } from '@/favorites/components/CurrentWorkspaceMemberFavoritesFolders';
-import { NavigationDrawerSubItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSubItem';
-import jsonPage from '../../../../../../../package.json';
-import { NavigationDrawer } from '../NavigationDrawer';
-import { NavigationDrawerItem } from '../NavigationDrawerItem';
-import { NavigationDrawerItemGroup } from '../NavigationDrawerItemGroup';
-import { NavigationDrawerSection } from '../NavigationDrawerSection';
-import { NavigationDrawerSectionTitle } from '../NavigationDrawerSectionTitle';
 const meta: Meta<typeof NavigationDrawer> = {
   title: 'UI/Navigation/NavigationDrawer/NavigationDrawer',
   component: NavigationDrawer,
-  decorators: [ComponentWithRouterDecorator, SnackBarDecorator],
-  parameters: { layout: 'fullscreen' },
-  argTypes: { children: { control: false }, footer: { control: false } },
+  decorators: [
+    ComponentWithRouterDecorator,
+    SnackBarDecorator,
+    ObjectMetadataItemsDecorator,
+    PrefetchLoadedDecorator,
+    I18nFrontDecorator,
+    (Story) => {
+      const setCurrentWorkspaceMember = useSetRecoilState(
+        currentWorkspaceMemberState,
+      );
+      const setObjectMetadataItems = useSetRecoilState(
+        objectMetadataItemsState,
+      );
+      useEffect(() => {
+        setObjectMetadataItems(generatedMockObjectMetadataItems);
+        setCurrentWorkspaceMember(mockedWorkspaceMemberData);
+      }, [setObjectMetadataItems, setCurrentWorkspaceMember]);
+      return <Story />;
+    },
+  ],
+  parameters: {
+    layout: 'fullscreen',
+    msw: graphqlMocks,
+  },
+  argTypes: { children: { control: false } },
 };
 
 export default meta;
@@ -43,6 +79,7 @@ type Story = StoryObj<typeof NavigationDrawer>;
 
 export const Default: Story = {
   args: {
+    title: 'Default',
     children: (
       <>
         <NavigationDrawerSection>
@@ -56,7 +93,7 @@ export const Default: Story = {
           <NavigationDrawerItem
             label="Search"
             Icon={IconSearch}
-            keyboard={['⌘', 'K']}
+            keyboard={[`${getOsControlSymbol()}`, 'K']}
           />
           <NavigationDrawerItem
             label="Settings"
@@ -85,7 +122,11 @@ export const Default: Story = {
         </NavigationDrawerSection>
       </>
     ),
-    footer: null,
+  },
+  play: async () => {
+    const canvas = within(document.body);
+
+    expect(await canvas.findByText('Workspace')).toBeInTheDocument();
   },
 };
 
@@ -98,30 +139,30 @@ export const Settings: Story = {
           <NavigationDrawerSectionTitle label="User" />
           <NavigationDrawerItem
             label="Profile"
-            to={getSettingsPagePath(SettingsPath.ProfilePage)}
+            to={getSettingsPath(SettingsPath.ProfilePage)}
             Icon={IconUserCircle}
             active
           />
           <NavigationDrawerItem
             label="Appearance"
-            to={getSettingsPagePath(SettingsPath.Appearance)}
+            to={getSettingsPath(SettingsPath.Experience)}
             Icon={IconColorSwatch}
           />
           <NavigationDrawerItemGroup>
             <NavigationDrawerItem
               label="Accounts"
-              to={getSettingsPagePath(SettingsPath.Accounts)}
+              to={getSettingsPath(SettingsPath.Accounts)}
               Icon={IconAt}
             />
             <NavigationDrawerSubItem
               label="Emails"
-              to={getSettingsPagePath(SettingsPath.AccountsEmails)}
+              to={getSettingsPath(SettingsPath.AccountsEmails)}
               Icon={IconMail}
               subItemState="intermediate-before-selected"
             />
             <NavigationDrawerSubItem
               label="Calendar"
-              to={getSettingsPagePath(SettingsPath.AccountsCalendars)}
+              to={getSettingsPath(SettingsPath.AccountsCalendars)}
               Icon={IconCalendarEvent}
               subItemState="last-selected"
             />
@@ -132,22 +173,38 @@ export const Settings: Story = {
           <NavigationDrawerSectionTitle label="Workspace" />
           <NavigationDrawerItem
             label="General"
-            to={getSettingsPagePath(SettingsPath.Workspace)}
+            to={getSettingsPath(SettingsPath.Workspace)}
             Icon={IconSettings}
           />
           <NavigationDrawerItem
             label="Members"
-            to={getSettingsPagePath(SettingsPath.WorkspaceMembersPage)}
+            to={getSettingsPath(SettingsPath.WorkspaceMembersPage)}
             Icon={IconUsers}
           />
         </NavigationDrawerSection>
 
         <NavigationDrawerSection>
           <NavigationDrawerSectionTitle label="Other" />
-          <NavigationDrawerItem label="Logout" Icon={IconDoorEnter} />
+          <NavigationDrawerItem
+            label="Admin Panel"
+            to={getSettingsPath(SettingsPath.AdminPanel)}
+            Icon={IconServer}
+          />
         </NavigationDrawerSection>
+
+        <NavigationDrawerFixedContent>
+          <AdvancedSettingsToggle
+            isAdvancedModeEnabled={false}
+            setIsAdvancedModeEnabled={() => {}}
+            label="Advanced:"
+          />
+        </NavigationDrawerFixedContent>
       </>
     ),
-    footer: <GithubVersionLink version={jsonPage.version} />,
+  },
+  play: async () => {
+    const canvas = within(document.body);
+
+    expect(await canvas.findByText('User')).toBeInTheDocument();
   },
 };

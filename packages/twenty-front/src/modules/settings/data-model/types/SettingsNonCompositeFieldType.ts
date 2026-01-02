@@ -1,8 +1,7 @@
-import { NonCompositeFieldType } from '@/settings/data-model/types/NonCompositeFieldType';
-import { SettingsExcludedFieldType } from '@/settings/data-model/types/SettingsExcludedFieldType';
-import { ExcludeLiteral } from '~/types/ExcludeLiteral';
+import { type NonCompositeFieldType } from '@/settings/data-model/types/NonCompositeFieldType';
+import { type SettingsFieldType } from '@/settings/data-model/types/SettingsFieldType';
 
-export type SettingsNonCompositeFieldType = ExcludeLiteral<
+export type SettingsNonCompositeFieldType = Extract<
   NonCompositeFieldType,
-  SettingsExcludedFieldType
+  SettingsFieldType
 >;

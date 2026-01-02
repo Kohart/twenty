@@ -1,5 +1,4 @@
-import { ThemeColor } from 'twenty-ui';
-
+import { type ThemeColor } from 'twenty-ui/theme';
 export const enum RecordGroupDefinitionType {
   Value = 'value',
   NoValue = 'no-value',
@@ -7,7 +6,6 @@ export const enum RecordGroupDefinitionType {
 
 export type RecordGroupDefinition = {
   id: string;
-  fieldMetadataId: string;
   type: RecordGroupDefinitionType;
   title: string;
   value: string | null;

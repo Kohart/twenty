@@ -1,10 +1,3 @@
-declare global {
-  interface Window {
-    _env_?: Record<string, string>;
-    __APOLLO_CLIENT__?: any;
-  }
-}
-
 const getDefaultUrl = () => {
   if (
     window.location.hostname === 'localhost' ||
@@ -12,12 +5,12 @@ const getDefaultUrl = () => {
   ) {
     // In development environment front and backend usually run on separate ports
     // we set the default value to localhost:3000.
-    // It dev context, we use env vars to overwrite it
+    // In dev context, we use env vars to overwrite it
     return 'http://localhost:3000';
   } else {
     // Outside of localhost we assume that they run on the same port
     // because the backend will serve the frontend
-    // It prod context, we use env-config.js + window var to ovewrite it
+    // In prod context, we use index.html + window var to ovewrite it
     return `${window.location.protocol}//${window.location.hostname}${
       window.location.port ? `:${window.location.port}` : ''
     }`;

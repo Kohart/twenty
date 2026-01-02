@@ -1,25 +1,28 @@
 import { Field, ObjectType, registerEnumType } from '@nestjs/graphql';
 
 import { IDField } from '@ptc-org/nestjs-query-graphql';
+import { APP_LOCALES, SOURCE_LOCALE } from 'twenty-shared/translations';
 import {
+  BeforeInsert,
+  BeforeUpdate,
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
-  ManyToOne,
+  Index,
   OneToMany,
   PrimaryGeneratedColumn,
   Relation,
-  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
-import { AppToken } from 'src/engine/core-modules/app-token/app-token.entity';
-import { KeyValuePair } from 'src/engine/core-modules/key-value-pair/key-value-pair.entity';
+import { AppTokenEntity } from 'src/engine/core-modules/app-token/app-token.entity';
+import { KeyValuePairEntity } from 'src/engine/core-modules/key-value-pair/key-value-pair.entity';
 import { OnboardingStatus } from 'src/engine/core-modules/onboarding/enums/onboarding-status.enum';
-import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
-import { WorkspaceMember } from 'src/engine/core-modules/user/dtos/workspace-member.dto';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
+import { WorkspaceMemberDTO } from 'src/engine/core-modules/user/dtos/workspace-member.dto';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 
 registerEnumType(OnboardingStatus, {
   name: 'OnboardingStatus',
@@ -28,8 +31,11 @@ registerEnumType(OnboardingStatus, {
 
 @Entity({ name: 'user', schema: 'core' })
 @ObjectType('User')
-@Unique('UQ_USER_EMAIL', ['email', 'deletedAt'])
-export class User {
+@Index('UQ_USER_EMAIL', ['email'], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
+export class UserEntity {
   @IDField(() => UUIDScalarType)
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -42,6 +48,12 @@ export class User {
   @Column({ default: '' })
   lastName: string;
 
+  @BeforeInsert()
+  @BeforeUpdate()
+  formatEmail?() {
+    this.email = this.email.toLowerCase();
+  }
+
   @Field()
   @Column()
   email: string;
@@ -52,7 +64,7 @@ export class User {
 
   @Field()
   @Column({ default: false })
-  emailVerified: boolean;
+  isEmailVerified: boolean;
 
   @Field({ nullable: true })
   @Column({ default: false })
@@ -67,6 +79,10 @@ export class User {
   canImpersonate: boolean;
 
   @Field()
+  @Column({ default: false })
+  canAccessFullAdminPanel: boolean;
+
+  @Field()
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
@@ -75,36 +91,39 @@ export class User {
   updatedAt: Date;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, type: 'timestamptz' })
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date;
 
-  @Field(() => Workspace, { nullable: false })
-  @ManyToOne(() => Workspace, (workspace) => workspace.users, {
-    onDelete: 'RESTRICT',
-  })
-  defaultWorkspace: Relation<Workspace>;
+  @Field(() => String, { nullable: false })
+  @Column({ nullable: false, default: SOURCE_LOCALE, type: 'varchar' })
+  locale: keyof typeof APP_LOCALES;
 
-  @Field()
-  @Column()
-  defaultWorkspaceId: string;
-
-  @OneToMany(() => AppToken, (appToken) => appToken.user, {
+  @OneToMany(() => AppTokenEntity, (appToken) => appToken.user, {
     cascade: true,
   })
-  appTokens: Relation<AppToken[]>;
+  appTokens: Relation<AppTokenEntity[]>;
 
-  @OneToMany(() => KeyValuePair, (keyValuePair) => keyValuePair.user, {
+  @OneToMany(() => KeyValuePairEntity, (keyValuePair) => keyValuePair.user, {
     cascade: true,
   })
-  keyValuePairs: Relation<KeyValuePair[]>;
+  keyValuePairs: Relation<KeyValuePairEntity[]>;
 
-  @Field(() => WorkspaceMember, { nullable: true })
-  workspaceMember: Relation<WorkspaceMember>;
+  @Field(() => WorkspaceMemberDTO, { nullable: true })
+  workspaceMember: Relation<WorkspaceMemberDTO>;
 
-  @Field(() => [UserWorkspace])
-  @OneToMany(() => UserWorkspace, (userWorkspace) => userWorkspace.user)
-  workspaces: Relation<UserWorkspace[]>;
+  @Field(() => [UserWorkspaceEntity])
+  @OneToMany(
+    () => UserWorkspaceEntity,
+    (userWorkspace: UserWorkspaceEntity) => userWorkspace.user,
+  )
+  userWorkspaces: Relation<UserWorkspaceEntity[]>;
 
   @Field(() => OnboardingStatus, { nullable: true })
   onboardingStatus: OnboardingStatus;
+
+  @Field(() => WorkspaceEntity, { nullable: true })
+  currentWorkspace?: Relation<WorkspaceEntity>;
+
+  @Field(() => UserWorkspaceEntity, { nullable: true })
+  currentUserWorkspace?: Relation<UserWorkspaceEntity>;
 }

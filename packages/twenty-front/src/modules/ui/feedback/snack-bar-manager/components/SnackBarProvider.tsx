@@ -1,31 +1,36 @@
 import styled from '@emotion/styled';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MOBILE_VIEWPORT } from 'twenty-ui';
 
-import { useSnackBarManagerScopedStates } from '@/ui/feedback/snack-bar-manager/hooks/internal/useSnackBarManagerScopedStates';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 
+import { snackBarInternalComponentState } from '@/ui/feedback/snack-bar-manager/states/snackBarInternalComponentState';
+import { RootStackingContextZIndices } from '@/ui/layout/constants/RootStackingContextZIndices';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { MOBILE_VIEWPORT } from 'twenty-ui/theme';
 import { SnackBar } from './SnackBar';
 
 const StyledSnackBarContainer = styled.div`
+  bottom: ${({ theme }) => theme.spacing(3)};
   display: flex;
   flex-direction: column;
   position: fixed;
   right: ${({ theme }) => theme.spacing(3)};
-  bottom: ${({ theme }) => theme.spacing(3)};
-  z-index: ${({ theme }) => theme.lastLayerZIndex};
+  z-index: ${RootStackingContextZIndices.SnackBar};
 
   @media (max-width: ${MOBILE_VIEWPORT}px) {
-    top: 0;
     bottom: auto;
     left: 0;
     right: 0;
+    top: 0;
   }
 `;
 
 export const SnackBarProvider = ({ children }: React.PropsWithChildren) => {
-  const { snackBarInternal } = useSnackBarManagerScopedStates();
+  const snackBarInternal = useRecoilComponentValue(
+    snackBarInternalComponentState,
+  );
+
   const { handleSnackBarClose } = useSnackBar();
   const isMobile = useIsMobile();
 
@@ -46,7 +51,17 @@ export const SnackBarProvider = ({ children }: React.PropsWithChildren) => {
       <StyledSnackBarContainer>
         <AnimatePresence>
           {snackBarInternal.queue.map(
-            ({ duration, icon, id, message, title, variant }) => (
+            ({
+              duration,
+              icon,
+              id,
+              message,
+              detailedMessage,
+              variant,
+              actionText,
+              actionOnClick,
+              actionTo,
+            }) => (
               <motion.div
                 key={id}
                 variants={variants}
@@ -57,7 +72,16 @@ export const SnackBarProvider = ({ children }: React.PropsWithChildren) => {
                 layout
               >
                 <SnackBar
-                  {...{ duration, icon, message, title, variant }}
+                  {...{
+                    duration,
+                    icon,
+                    message,
+                    detailedMessage,
+                    variant,
+                    actionText,
+                    actionOnClick,
+                    actionTo,
+                  }}
                   onClose={() => handleSnackBarClose(id)}
                 />
               </motion.div>

@@ -1,26 +1,45 @@
-import { useApolloClient } from '@apollo/client';
 import { v4 } from 'uuid';
 
 import { triggerCreateRecordsOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerCreateRecordsOptimisticEffect';
 import { triggerDestroyRecordsOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerDestroyRecordsOptimisticEffect';
+import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
+import { hasObjectMetadataItemFieldCreatedBy } from '@/object-metadata/utils/hasObjectMetadataItemFieldCreatedBy';
 import { useCreateOneRecordInCache } from '@/object-record/cache/hooks/useCreateOneRecordInCache';
 import { deleteRecordFromCache } from '@/object-record/cache/utils/deleteRecordFromCache';
 import { getObjectTypename } from '@/object-record/cache/utils/getObjectTypename';
-import { RecordGqlOperationGqlRecordFields } from '@/object-record/graphql/types/RecordGqlOperationGqlRecordFields';
-import { generateDepthOneRecordGqlFields } from '@/object-record/graphql/utils/generateDepthOneRecordGqlFields';
+import { getRecordNodeFromRecord } from '@/object-record/cache/utils/getRecordNodeFromRecord';
+import { useGenerateDepthRecordGqlFieldsFromObject } from '@/object-record/graphql/record-gql-fields/hooks/useGenerateDepthRecordGqlFieldsFromObject';
+import { type RecordGqlOperationGqlRecordFields } from '@/object-record/graphql/types/RecordGqlOperationGqlRecordFields';
 import { useCreateManyRecordsMutation } from '@/object-record/hooks/useCreateManyRecordsMutation';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
+import { useRefetchAggregateQueries } from '@/object-record/hooks/useRefetchAggregateQueries';
+import { useRegisterObjectOperation } from '@/object-record/hooks/useRegisterObjectOperation';
+import { type FieldActorForInputValue } from '@/object-record/record-field/ui/types/FieldMetadata';
+import { useUpsertRecordsInStore } from '@/object-record/record-store/hooks/useUpsertRecordsInStore';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { computeOptimisticRecordFromInput } from '@/object-record/utils/computeOptimisticRecordFromInput';
 import { getCreateManyRecordsMutationResponseField } from '@/object-record/utils/getCreateManyRecordsMutationResponseField';
 import { sanitizeRecordInput } from '@/object-record/utils/sanitizeRecordInput';
-import { isDefined } from '~/utils/isDefined';
+import { useRecoilValue } from 'recoil';
+import { isDefined } from 'twenty-shared/utils';
 
-type useCreateManyRecordsProps = {
+type PartialObjectRecordWithId = Partial<ObjectRecord> & {
+  id: string;
+};
+
+type PartialObjectRecordWithOptionalId = Partial<ObjectRecord> & {
+  id?: string;
+};
+
+export type useCreateManyRecordsProps = {
   objectNameSingular: string;
   recordGqlFields?: RecordGqlOperationGqlRecordFields;
-  skipPostOptmisticEffect?: boolean;
+  skipPostOptimisticEffect?: boolean;
   shouldMatchRootQueryFilter?: boolean;
+  shouldRefetchAggregateQueries?: boolean;
 };
 
 export const useCreateManyRecords = <
@@ -28,17 +47,28 @@ export const useCreateManyRecords = <
 >({
   objectNameSingular,
   recordGqlFields,
-  skipPostOptmisticEffect = false,
+  skipPostOptimisticEffect = false,
   shouldMatchRootQueryFilter,
+  shouldRefetchAggregateQueries = true,
 }: useCreateManyRecordsProps) => {
-  const apolloClient = useApolloClient();
+  const { registerObjectOperation } = useRegisterObjectOperation();
+  const { upsertRecordsInStore } = useUpsertRecordsInStore();
+
+  const apolloCoreClient = useApolloCoreClient();
 
   const { objectMetadataItem } = useObjectMetadataItem({
     objectNameSingular,
   });
+  const { recordGqlFields: depthOneRecordGqlFields } =
+    useGenerateDepthRecordGqlFieldsFromObject({
+      objectNameSingular,
+      depth: 1,
+    });
 
-  const computedRecordGqlFields =
-    recordGqlFields ?? generateDepthOneRecordGqlFields({ objectMetadataItem });
+  const objectMetadataHasCreatedByField =
+    hasObjectMetadataItemFieldCreatedBy(objectMetadataItem);
+
+  const computedRecordGqlFields = recordGqlFields ?? depthOneRecordGqlFields;
 
   const { createManyRecordsMutation } = useCreateManyRecordsMutation({
     objectNameSingular,
@@ -49,50 +79,101 @@ export const useCreateManyRecords = <
     objectMetadataItem,
   });
 
+  const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
+
   const { objectMetadataItems } = useObjectMetadataItems();
+  const { objectPermissionsByObjectMetadataId } = useObjectPermissions();
+  const { refetchAggregateQueries } = useRefetchAggregateQueries({
+    objectMetadataNamePlural: objectMetadataItem.namePlural,
+  });
 
-  const createManyRecords = async (
-    recordsToCreate: Partial<CreatedObjectRecord>[],
-    upsert?: boolean,
-  ) => {
-    const sanitizedCreateManyRecordsInput = recordsToCreate.map(
-      (recordToCreate) => {
-        const idForCreation = recordToCreate?.id ?? (upsert ? undefined : v4());
+  type createManyRecordsProps = {
+    recordsToCreate: Partial<CreatedObjectRecord>[];
+    upsert?: boolean;
+    abortController?: AbortController;
+  };
 
-        return {
-          ...sanitizeRecordInput({
+  const createManyRecords = async ({
+    recordsToCreate,
+    upsert,
+    abortController,
+  }: createManyRecordsProps) => {
+    const sanitizedCreateManyRecordsInput: PartialObjectRecordWithOptionalId[] =
+      [];
+    const shouldPerformOptimisticEffect = upsert !== true;
+    const recordOptimisticRecordsInput: PartialObjectRecordWithId[] = [];
+    recordsToCreate.forEach((recordToCreate) => {
+      const idForCreation = shouldPerformOptimisticEffect
+        ? (recordToCreate?.id ?? v4())
+        : undefined;
+      const sanitizedRecord = {
+        ...sanitizeRecordInput({
+          objectMetadataItem,
+          recordInput: recordToCreate,
+        }),
+        ...(isDefined(idForCreation) ? { id: idForCreation } : {}),
+      };
+      const baseOptimisticRecordInputCreatedBy:
+        | { createdBy: FieldActorForInputValue }
+        | undefined = objectMetadataHasCreatedByField
+        ? {
+            createdBy: {
+              source: 'MANUAL',
+              context: {},
+            },
+          }
+        : undefined;
+
+      sanitizedCreateManyRecordsInput.push(sanitizedRecord);
+
+      if (shouldPerformOptimisticEffect) {
+        const optimisticRecordInput = {
+          ...computeOptimisticRecordFromInput({
+            cache: apolloCoreClient.cache,
             objectMetadataItem,
-            recordInput: recordToCreate,
+            objectMetadataItems,
+            currentWorkspaceMember: currentWorkspaceMember,
+            recordInput: {
+              ...baseOptimisticRecordInputCreatedBy,
+              ...recordToCreate,
+            },
+            objectPermissionsByObjectMetadataId,
           }),
-          id: idForCreation,
+          id: idForCreation as string,
         };
-      },
-    );
-
-    const recordsCreatedInCache: ObjectRecord[] = [];
-
-    for (const recordToCreate of sanitizedCreateManyRecordsInput) {
-      if (recordToCreate.id === null) {
-        continue;
+        recordOptimisticRecordsInput.push(optimisticRecordInput);
       }
+    });
 
-      const recordCreatedInCache = createOneRecordInCache({
-        ...(recordToCreate as { id: string }),
-        __typename: getObjectTypename(objectMetadataItem.nameSingular),
-      });
-
-      if (isDefined(recordCreatedInCache)) {
-        recordsCreatedInCache.push(recordCreatedInCache);
-      }
-    }
+    const recordsCreatedInCache = recordOptimisticRecordsInput
+      .map((recordToCreate) =>
+        createOneRecordInCache({
+          ...recordToCreate,
+          __typename: getObjectTypename(objectMetadataItem.nameSingular),
+        }),
+      )
+      .filter(isDefined);
 
     if (recordsCreatedInCache.length > 0) {
+      const recordNodeCreatedInCache = recordsCreatedInCache
+        .map((record) =>
+          getRecordNodeFromRecord({
+            objectMetadataItem,
+            objectMetadataItems,
+            record: record,
+            computeReferences: false,
+          }),
+        )
+        .filter(isDefined);
+
       triggerCreateRecordsOptimisticEffect({
-        cache: apolloClient.cache,
+        cache: apolloCoreClient.cache,
         objectMetadataItem,
-        recordsToCreate: recordsCreatedInCache,
+        recordsToCreate: recordNodeCreatedInCache,
         objectMetadataItems,
         shouldMatchRootQueryFilter,
+        objectPermissionsByObjectMetadataId,
+        upsertRecordsInStore,
       });
     }
 
@@ -100,17 +181,27 @@ export const useCreateManyRecords = <
       objectMetadataItem.namePlural,
     );
 
-    const createdObjects = await apolloClient
+    const createdObjects = await apolloCoreClient
       .mutate({
         mutation: createManyRecordsMutation,
         variables: {
           data: sanitizedCreateManyRecordsInput,
           upsert: upsert,
         },
+        context: {
+          fetchOptions: {
+            signal: abortController?.signal,
+          },
+        },
         update: (cache, { data }) => {
           const records = data?.[mutationResponseField];
 
-          if (!records?.length || skipPostOptmisticEffect) return;
+          if (
+            !isDefined(records?.length) ||
+            skipPostOptimisticEffect ||
+            !shouldPerformOptimisticEffect
+          )
+            return;
 
           triggerCreateRecordsOptimisticEffect({
             cache,
@@ -118,6 +209,9 @@ export const useCreateManyRecords = <
             recordsToCreate: records,
             objectMetadataItems,
             shouldMatchRootQueryFilter,
+            checkForRecordInCache: true,
+            objectPermissionsByObjectMetadataId,
+            upsertRecordsInStore,
           });
         },
       })
@@ -126,20 +220,30 @@ export const useCreateManyRecords = <
           deleteRecordFromCache({
             objectMetadataItems,
             objectMetadataItem,
-            cache: apolloClient.cache,
+            cache: apolloCoreClient.cache,
             recordToDestroy,
+            upsertRecordsInStore,
+            objectPermissionsByObjectMetadataId,
           });
         });
 
         triggerDestroyRecordsOptimisticEffect({
-          cache: apolloClient.cache,
+          cache: apolloCoreClient.cache,
           objectMetadataItem,
           recordsToDestroy: recordsCreatedInCache,
           objectMetadataItems,
+          upsertRecordsInStore,
+          objectPermissionsByObjectMetadataId,
         });
 
         throw error;
       });
+
+    if (shouldRefetchAggregateQueries) {
+      await refetchAggregateQueries();
+    }
+
+    registerObjectOperation(objectMetadataItem, { type: 'create-many' });
 
     return createdObjects.data?.[mutationResponseField] ?? [];
   };

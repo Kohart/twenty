@@ -1,22 +1,30 @@
 import { useEffect } from 'react';
 
-import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
+import { DIALOG_FOCUS_ID } from '@/ui/feedback/dialog-manager/constants/DialogFocusId';
+import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
+import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
 
-import { useDialogManagerScopedStates } from '../hooks/internal/useDialogManagerScopedStates';
-import { DialogHotkeyScope } from '../types/DialogHotkeyScope';
+import { dialogInternalComponentState } from '@/ui/feedback/dialog-manager/states/dialogInternalComponentState';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 
 export const DialogManagerEffect = () => {
-  const { dialogInternal } = useDialogManagerScopedStates();
+  const dialogInternal = useRecoilComponentValue(dialogInternalComponentState);
 
-  const { setHotkeyScopeAndMemorizePreviousScope } = usePreviousHotkeyScope();
+  const { pushFocusItemToFocusStack } = usePushFocusItemToFocusStack();
 
   useEffect(() => {
     if (dialogInternal.queue.length === 0) {
       return;
     }
 
-    setHotkeyScopeAndMemorizePreviousScope(DialogHotkeyScope.Dialog);
-  }, [dialogInternal.queue, setHotkeyScopeAndMemorizePreviousScope]);
+    pushFocusItemToFocusStack({
+      focusId: DIALOG_FOCUS_ID,
+      component: {
+        type: FocusComponentType.DIALOG,
+        instanceId: DIALOG_FOCUS_ID,
+      },
+    });
+  }, [dialogInternal.queue, pushFocusItemToFocusStack]);
 
   return <></>;
 };

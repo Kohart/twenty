@@ -1,15 +1,15 @@
-import { useContext } from 'react';
-
-import { RecordTableRowContext } from '@/object-record/record-table/contexts/RecordTableRowContext';
-import { RecordTableTd } from '@/object-record/record-table/record-table-cell/components/RecordTableTd';
+import { RECORD_TABLE_COLUMN_LAST_EMPTY_COLUMN_WIDTH_CLASS_NAME } from '@/object-record/record-table/constants/RecordTableColumnLastEmptyColumnWidthClassName';
+import { useRecordTableRowContextOrThrow } from '@/object-record/record-table/contexts/RecordTableRowContext';
+import { RecordTableCellStyleWrapper } from '@/object-record/record-table/record-table-cell/components/RecordTableCellStyleWrapper';
 
 export const RecordTableLastEmptyCell = () => {
-  const { isSelected } = useContext(RecordTableRowContext);
+  const { isSelected } = useRecordTableRowContextOrThrow();
 
   return (
-    <>
-      <RecordTableTd isSelected={isSelected} hasRightBorder={false} />
-      <RecordTableTd isSelected={isSelected} hasRightBorder={false} />
-    </>
+    <RecordTableCellStyleWrapper
+      isSelected={isSelected}
+      hasRightBorder={false}
+      widthClassName={RECORD_TABLE_COLUMN_LAST_EMPTY_COLUMN_WIDTH_CLASS_NAME}
+    />
   );
 };

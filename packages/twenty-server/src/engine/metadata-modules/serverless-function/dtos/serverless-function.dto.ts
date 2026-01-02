@@ -1,9 +1,4 @@
-import {
-  Field,
-  HideField,
-  ObjectType,
-  registerEnumType,
-} from '@nestjs/graphql';
+import { Field, HideField, ObjectType } from '@nestjs/graphql';
 
 import {
   Authorize,
@@ -13,24 +8,20 @@ import {
 import {
   IsArray,
   IsDateString,
-  IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsString,
   IsUUID,
 } from 'class-validator';
-import GraphQLJSON from 'graphql-type-json';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
-import { ServerlessFunctionSyncStatus } from 'src/engine/metadata-modules/serverless-function/serverless-function.entity';
-import { InputSchema } from 'src/modules/code-introspection/types/input-schema.type';
-
-registerEnumType(ServerlessFunctionSyncStatus, {
-  name: 'ServerlessFunctionSyncStatus',
-  description: 'SyncStatus of the serverlessFunction',
-});
+import { CronTriggerDTO } from 'src/engine/metadata-modules/cron-trigger/dtos/cron-trigger.dto';
+import { DatabaseEventTriggerDTO } from 'src/engine/metadata-modules/database-event-trigger/dtos/database-event-trigger.dto';
+import { RouteTriggerDTO } from 'src/engine/metadata-modules/route-trigger/dtos/route-trigger.dto';
 
 @ObjectType('ServerlessFunction')
 @Authorize({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authorize: (context: any) => ({
     workspaceId: { eq: context?.req?.workspace?.id },
   }),
@@ -51,28 +42,41 @@ export class ServerlessFunctionDTO {
 
   @IsString()
   @Field({ nullable: true })
-  description: string;
+  description?: string;
 
   @IsString()
   @IsNotEmpty()
   @Field()
   runtime: string;
 
+  @IsNumber()
+  @Field()
+  timeoutSeconds: number;
+
   @IsString()
   @Field({ nullable: true })
-  latestVersion: string;
+  latestVersion?: string;
+
+  @IsString()
+  @Field()
+  handlerPath: string;
+
+  @IsString()
+  @Field()
+  handlerName: string;
 
   @IsArray()
   @Field(() => [String], { nullable: false })
   publishedVersions: string[];
 
-  @Field(() => GraphQLJSON, { nullable: true })
-  latestVersionInputSchema: InputSchema;
+  @Field(() => [CronTriggerDTO], { nullable: true })
+  cronTriggers?: CronTriggerDTO[];
 
-  @IsEnum(ServerlessFunctionSyncStatus)
-  @IsNotEmpty()
-  @Field(() => ServerlessFunctionSyncStatus)
-  syncStatus: ServerlessFunctionSyncStatus;
+  @Field(() => [DatabaseEventTriggerDTO], { nullable: true })
+  databaseEventTriggers?: DatabaseEventTriggerDTO[];
+
+  @Field(() => [RouteTriggerDTO], { nullable: true })
+  routeTriggers?: RouteTriggerDTO[];
 
   @HideField()
   workspaceId: string;

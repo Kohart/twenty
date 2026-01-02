@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+
+import { DataSource } from 'typeorm';
 
 import {
-  RemoteServerEntity,
+  type RemoteServerEntity,
   RemoteServerType,
 } from 'src/engine/metadata-modules/remote-server/remote-server.entity';
 import { RemoteTableStatus } from 'src/engine/metadata-modules/remote-server/remote-table/dtos/remote-table.dto';
@@ -10,18 +13,17 @@ import {
   ForeignTableExceptionCode,
 } from 'src/engine/metadata-modules/remote-server/remote-table/foreign-table/foreign-table.exception';
 import { getForeignTableColumnName } from 'src/engine/metadata-modules/remote-server/remote-table/foreign-table/utils/get-foreign-table-column-name.util';
-import { PostgresTableSchemaColumn } from 'src/engine/metadata-modules/remote-server/types/postgres-table-schema-column';
+import { type PostgresTableSchemaColumn } from 'src/engine/metadata-modules/remote-server/types/postgres-table-schema-column';
 import { WorkspaceMetadataVersionService } from 'src/engine/metadata-modules/workspace-metadata-version/services/workspace-metadata-version.service';
 import { generateMigrationName } from 'src/engine/metadata-modules/workspace-migration/utils/generate-migration-name.util';
 import {
-  ReferencedTable,
-  WorkspaceMigrationColumnAction,
-  WorkspaceMigrationForeignColumnDefinition,
-  WorkspaceMigrationForeignTable,
+  type ReferencedTable,
+  type WorkspaceMigrationColumnAction,
+  type WorkspaceMigrationForeignColumnDefinition,
+  type WorkspaceMigrationForeignTable,
   WorkspaceMigrationTableActionType,
 } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
 import { WorkspaceMigrationService } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.service';
-import { WorkspaceDataSourceService } from 'src/engine/workspace-datasource/workspace-datasource.service';
 import { WorkspaceMigrationRunnerService } from 'src/engine/workspace-manager/workspace-migration-runner/workspace-migration-runner.service';
 
 @Injectable()
@@ -29,25 +31,25 @@ export class ForeignTableService {
   constructor(
     private readonly workspaceMigrationService: WorkspaceMigrationService,
     private readonly workspaceMigrationRunnerService: WorkspaceMigrationRunnerService,
-    private readonly workspaceDataSourceService: WorkspaceDataSourceService,
     private readonly workspaceMetadataVersionService: WorkspaceMetadataVersionService,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
   ) {}
 
   public async fetchForeignTableNamesWithinWorkspace(
-    workspaceId: string,
+    _workspaceId: string,
     foreignDataWrapperId: string,
   ): Promise<string[]> {
-    const workspaceDataSource =
-      await this.workspaceDataSourceService.connectToWorkspaceDataSource(
-        workspaceId,
-      );
-
     return (
-      await workspaceDataSource.query(
-        `SELECT foreign_table_name, foreign_server_name FROM information_schema.foreign_tables WHERE foreign_server_name = $1`,
-        [foreignDataWrapperId],
+      (
+        await this.coreDataSource.query(
+          `SELECT foreign_table_name, foreign_server_name FROM information_schema.foreign_tables WHERE foreign_server_name = $1`,
+          [foreignDataWrapperId],
+        )
       )
-    ).map((foreignTable) => foreignTable.foreign_table_name);
+        // @ts-expect-error legacy noImplicitAny
+        .map((foreignTable) => foreignTable.foreign_table_name)
+    );
   }
 
   public async createForeignTable(
@@ -93,7 +95,7 @@ export class ForeignTableService {
       await this.workspaceMigrationRunnerService.executeMigrationFromPendingMigrations(
         workspaceId,
       );
-    } catch (exception) {
+    } catch {
       this.workspaceMigrationService.deleteById(workspaceMigration.id);
 
       throw new ForeignTableException(
@@ -136,7 +138,7 @@ export class ForeignTableService {
         status: RemoteTableStatus.SYNCED,
         schemaPendingUpdates: [],
       };
-    } catch (exception) {
+    } catch {
       this.workspaceMigrationService.deleteById(workspaceMigration.id);
 
       throw new ForeignTableException(

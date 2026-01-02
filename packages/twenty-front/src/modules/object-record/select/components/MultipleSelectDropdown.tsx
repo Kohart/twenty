@@ -1,31 +1,22 @@
-import styled from '@emotion/styled';
-import { useEffect, useState } from 'react';
-import { useRecoilValue } from 'recoil';
 import { Key } from 'ts-key-enum';
-import { AvatarChip, MenuItem, MenuItemMultiSelectAvatar } from 'twenty-ui';
 
-import { SelectableItem } from '@/object-record/select/types/SelectableItem';
+import { type SelectableItem } from '@/object-record/select/types/SelectableItem';
 import { DropdownMenuSkeletonItem } from '@/ui/input/relation-picker/components/skeletons/DropdownMenuSkeletonItem';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
-import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
+import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
 import { SelectableList } from '@/ui/layout/selectable-list/components/SelectableList';
-import { useSelectableListStates } from '@/ui/layout/selectable-list/hooks/internal/useSelectableListStates';
+import { SelectableListItem } from '@/ui/layout/selectable-list/components/SelectableListItem';
 import { useSelectableList } from '@/ui/layout/selectable-list/hooks/useSelectableList';
-import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
-
-const StyledAvatarChip = styled(AvatarChip)`
-  &.avatar-icon-container {
-    color: ${({ theme }) => theme.font.color.secondary};
-    gap: ${({ theme }) => theme.spacing(2)};
-    padding-left: 0px;
-    padding-right: 0px;
-    font-size: ${({ theme }) => theme.font.size.md};
-  }
-`;
+import { selectedItemIdComponentState } from '@/ui/layout/selectable-list/states/selectedItemIdComponentState';
+import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
+import { t } from '@lingui/core/macro';
+import { Avatar } from 'twenty-ui/display';
+import { MenuItem, MenuItemMultiSelectAvatar } from 'twenty-ui/navigation';
 
 export const MultipleSelectDropdown = ({
   selectableListId,
-  hotkeyScope,
+  focusId,
   itemsToSelect,
   loadingItems,
   filteredSelectedItems,
@@ -33,7 +24,7 @@ export const MultipleSelectDropdown = ({
   searchFilter,
 }: {
   selectableListId: string;
-  hotkeyScope: string;
+  focusId: string;
   itemsToSelect: SelectableItem[];
   filteredSelectedItems: SelectableItem[];
   selectedItems: SelectableItem[];
@@ -44,14 +35,14 @@ export const MultipleSelectDropdown = ({
   ) => void;
   loadingItems: boolean;
 }) => {
-  const { closeDropdown } = useDropdown();
-  const { selectedItemIdState } = useSelectableListStates({
-    selectableListScopeId: selectableListId,
-  });
+  const { closeDropdown } = useCloseDropdown();
 
   const { resetSelectedItem } = useSelectableList(selectableListId);
 
-  const selectedItemId = useRecoilValue(selectedItemIdState);
+  const selectedItemId = useRecoilComponentValue(
+    selectedItemIdComponentState,
+    selectableListId,
+  );
 
   const handleItemSelectChange = (
     itemToSelect: SelectableItem,
@@ -66,29 +57,20 @@ export const MultipleSelectDropdown = ({
     );
   };
 
-  const [itemsInDropdown, setItemInDropdown] = useState([
+  const itemsInDropdown = [
     ...(filteredSelectedItems ?? []),
     ...(itemsToSelect ?? []),
-  ]);
+  ];
 
-  useEffect(() => {
-    if (!loadingItems) {
-      setItemInDropdown([
-        ...(filteredSelectedItems ?? []),
-        ...(itemsToSelect ?? []),
-      ]);
-    }
-  }, [itemsToSelect, filteredSelectedItems, loadingItems]);
-
-  useScopedHotkeys(
-    [Key.Escape],
-    () => {
+  useHotkeysOnFocusedElement({
+    keys: [Key.Escape],
+    callback: () => {
       closeDropdown();
       resetSelectedItem();
     },
-    hotkeyScope,
-    [closeDropdown, resetSelectedItem],
-  );
+    focusId,
+    dependencies: [closeDropdown, resetSelectedItem],
+  });
 
   const showNoResult =
     itemsToSelect?.length === 0 &&
@@ -100,49 +82,43 @@ export const MultipleSelectDropdown = ({
 
   return (
     <SelectableList
-      selectableListId={selectableListId}
+      selectableListInstanceId={selectableListId}
       selectableItemIdArray={selectableItemIds}
-      hotkeyScope={hotkeyScope}
-      onEnter={(itemId) => {
-        const item = itemsInDropdown.findIndex(
-          (entity) => entity.id === itemId,
-        );
-        const itemIsSelectedInDropwdown = filteredSelectedItems.find(
-          (entity) => entity.id === itemId,
-        );
-        handleItemSelectChange(
-          itemsInDropdown[item],
-          !itemIsSelectedInDropwdown,
-        );
-        resetSelectedItem();
-      }}
+      focusId={focusId}
     >
       <DropdownMenuItemsContainer hasMaxHeight>
         {itemsInDropdown?.map((item) => {
           return (
-            <MenuItemMultiSelectAvatar
-              key={item.id}
-              selected={item.isSelected}
-              isKeySelected={item.id === selectedItemId}
-              onSelectChange={(newCheckedValue) => {
+            <SelectableListItem
+              itemId={item.id}
+              onEnter={() => {
                 resetSelectedItem();
-                handleItemSelectChange(item, newCheckedValue);
+                handleItemSelectChange(item, !item.isSelected);
               }}
-              avatar={
-                <StyledAvatarChip
-                  className="avatar-icon-container"
-                  name={item.name}
-                  avatarUrl={item.avatarUrl}
-                  LeftIcon={item.AvatarIcon}
-                  avatarType={item.avatarType}
-                  isIconInverted={item.isIconInverted}
-                  placeholderColorSeed={item.id}
-                />
-              }
-            />
+            >
+              <MenuItemMultiSelectAvatar
+                key={item.id}
+                selected={item.isSelected}
+                isKeySelected={item.id === selectedItemId}
+                onSelectChange={(newCheckedValue) => {
+                  resetSelectedItem();
+                  handleItemSelectChange(item, newCheckedValue);
+                }}
+                text={item.name}
+                avatar={
+                  <Avatar
+                    avatarUrl={item.avatarUrl}
+                    placeholderColorSeed={item.id}
+                    placeholder={item.name}
+                    size="md"
+                    type={item.avatarType}
+                  />
+                }
+              />
+            </SelectableListItem>
           );
         })}
-        {showNoResult && <MenuItem text="No result" />}
+        {showNoResult && <MenuItem text={t`No results`} />}
         {loadingItems && <DropdownMenuSkeletonItem />}
       </DropdownMenuItemsContainer>
     </SelectableList>

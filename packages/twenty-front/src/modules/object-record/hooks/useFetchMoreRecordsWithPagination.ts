@@ -1,34 +1,34 @@
 import {
-  ApolloError,
-  ApolloQueryResult,
-  FetchMoreQueryOptions,
-  OperationVariables,
-  WatchQueryFetchPolicy,
+  type ApolloError,
+  type ApolloQueryResult,
+  type FetchMoreQueryOptions,
+  type OperationVariables,
+  type WatchQueryFetchPolicy,
 } from '@apollo/client';
+import { type Unmasked } from '@apollo/client/masking';
 import { isNonEmptyArray } from '@apollo/client/utilities';
 import { isNonEmptyString } from '@sniptt/guards';
 import { useMemo } from 'react';
 import { useRecoilCallback, useRecoilState, useSetRecoilState } from 'recoil';
 
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { ObjectMetadataItemIdentifier } from '@/object-metadata/types/ObjectMetadataItemIdentifier';
+import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { type ObjectMetadataItemIdentifier } from '@/object-metadata/types/ObjectMetadataItemIdentifier';
 import { isAggregationEnabled } from '@/object-metadata/utils/isAggregationEnabled';
 import { getRecordsFromRecordConnection } from '@/object-record/cache/utils/getRecordsFromRecordConnection';
-import { RecordGqlEdge } from '@/object-record/graphql/types/RecordGqlEdge';
-import { RecordGqlOperationFindManyResult } from '@/object-record/graphql/types/RecordGqlOperationFindManyResult';
-import { RecordGqlOperationGqlRecordFields } from '@/object-record/graphql/types/RecordGqlOperationGqlRecordFields';
-import { RecordGqlOperationVariables } from '@/object-record/graphql/types/RecordGqlOperationVariables';
+import { type RecordGqlEdge } from '@/object-record/graphql/types/RecordGqlEdge';
+import { type RecordGqlOperationFindManyResult } from '@/object-record/graphql/types/RecordGqlOperationFindManyResult';
+import { type RecordGqlOperationGqlRecordFields } from '@/object-record/graphql/types/RecordGqlOperationGqlRecordFields';
+import { type RecordGqlOperationVariables } from '@/object-record/graphql/types/RecordGqlOperationVariables';
 import { useHandleFindManyRecordsError } from '@/object-record/hooks/useHandleFindManyRecordsError';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { OnFindManyRecordsCompleted } from '@/object-record/types/OnFindManyRecordsCompleted';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type OnFindManyRecordsCompleted } from '@/object-record/types/OnFindManyRecordsCompleted';
 import { filterUniqueRecordEdgesByCursor } from '@/object-record/utils/filterUniqueRecordEdgesByCursor';
 import { getQueryIdentifier } from '@/object-record/utils/getQueryIdentifier';
-import { isDefined } from '~/utils/isDefined';
-import { capitalize } from '~/utils/string/capitalize';
 
-import { cursorFamilyState } from '../states/cursorFamilyState';
-import { hasNextPageFamilyState } from '../states/hasNextPageFamilyState';
-import { isFetchingMoreRecordsFamilyState } from '../states/isFetchingMoreRecordsFamilyState';
+import { capitalize, isDefined } from 'twenty-shared/utils';
+import { cursorFamilyState } from '@/object-record/states/cursorFamilyState';
+import { hasNextPageFamilyState } from '@/object-record/states/hasNextPageFamilyState';
+import { isFetchingMoreRecordsFamilyState } from '@/object-record/states/isFetchingMoreRecordsFamilyState';
 
 export type UseFindManyRecordsParams<T> = ObjectMetadataItemIdentifier &
   RecordGqlOperationVariables & {
@@ -55,7 +55,7 @@ type UseFindManyRecordsStateParams<
       updateQuery?: (
         previousQueryResult: TData,
         options: {
-          fetchMoreResult: TFetchData;
+          fetchMoreResult: Unmasked<TFetchData>;
           variables: TFetchVars;
         },
       ) => TData;
@@ -128,7 +128,6 @@ export const useFetchMoreRecordsWithPagination = <
                   prev?.[objectMetadataItem.namePlural]?.edges;
                 const nextEdges =
                   fetchMoreResult?.[objectMetadataItem.namePlural]?.edges;
-
                 let newEdges: RecordGqlEdge[] = previousEdges ?? [];
 
                 if (isNonEmptyArray(nextEdges)) {
@@ -142,7 +141,7 @@ export const useFetchMoreRecordsWithPagination = <
                 const pageInfo =
                   fetchMoreResult?.[objectMetadataItem.namePlural]?.pageInfo;
 
-                if (isDefined(data?.[objectMetadataItem.namePlural])) {
+                if (isDefined(pageInfo)) {
                   set(
                     cursorFamilyState(queryIdentifier),
                     pageInfo.endCursor ?? '',
@@ -188,6 +187,7 @@ export const useFetchMoreRecordsWithPagination = <
             };
           } catch (error) {
             handleFindManyRecordsError(error as ApolloError);
+            return { error: error as ApolloError };
           } finally {
             setIsFetchingMoreObjects(false);
           }
@@ -200,7 +200,6 @@ export const useFetchMoreRecordsWithPagination = <
       fetchMore,
       filter,
       orderBy,
-      data,
       onCompleted,
       handleFindManyRecordsError,
       queryIdentifier,

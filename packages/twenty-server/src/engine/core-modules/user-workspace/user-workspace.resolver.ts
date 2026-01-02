@@ -1,58 +1,47 @@
 import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Resolver } from '@nestjs/graphql';
-import { InjectRepository } from '@nestjs/typeorm';
 
-import { Repository } from 'typeorm';
+import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
 
-import { WorkspaceInviteHashValidInput } from 'src/engine/core-modules/auth/dto/workspace-invite-hash.input';
-import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
-import { UserWorkspaceService } from 'src/engine/core-modules/user-workspace/user-workspace.service';
-import { User } from 'src/engine/core-modules/user/user.entity';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
-import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
+import { FileFolder } from 'src/engine/core-modules/file/interfaces/file-folder.interface';
+
+import type { FileUpload } from 'graphql-upload/processRequest.mjs';
+
+import { SignedFileDTO } from 'src/engine/core-modules/file/file-upload/dtos/signed-file.dto';
+import { FileUploadService } from 'src/engine/core-modules/file/file-upload/services/file-upload.service';
+import { UploadProfilePicturePermissionGuard } from 'src/engine/core-modules/user-workspace/guards/upload-profile-picture-permission.guard';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
-import { WorkspaceInvitationService } from 'src/engine/core-modules/workspace-invitation/services/workspace-invitation.service';
-import { WorkspaceInviteTokenInput } from 'src/engine/core-modules/auth/dto/workspace-invite-token.input';
+import { streamToBuffer } from 'src/utils/stream-to-buffer';
 
-@UseGuards(WorkspaceAuthGuard)
-@Resolver(() => UserWorkspace)
+@Resolver()
 export class UserWorkspaceResolver {
-  constructor(
-    @InjectRepository(Workspace, 'core')
-    private readonly workspaceRepository: Repository<Workspace>,
-    private readonly userWorkspaceService: UserWorkspaceService,
-    private readonly workspaceInvitationService: WorkspaceInvitationService,
-  ) {}
+  constructor(private readonly fileUploadService: FileUploadService) {}
 
-  @Mutation(() => User)
-  async addUserToWorkspace(
-    @AuthUser() user: User,
-    @Args() workspaceInviteHashValidInput: WorkspaceInviteHashValidInput,
-  ) {
-    const workspace = await this.workspaceRepository.findOneBy({
-      inviteHash: workspaceInviteHashValidInput.inviteHash,
+  @Mutation(() => SignedFileDTO)
+  @UseGuards(WorkspaceAuthGuard, UploadProfilePicturePermissionGuard)
+  async uploadWorkspaceMemberProfilePicture(
+    @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Args({ name: 'file', type: () => GraphQLUpload })
+    { createReadStream, filename, mimetype }: FileUpload,
+  ): Promise<SignedFileDTO> {
+    const stream = createReadStream();
+    const buffer = await streamToBuffer(stream);
+    const fileFolder = FileFolder.ProfilePicture;
+
+    const { files } = await this.fileUploadService.uploadImage({
+      file: buffer,
+      filename,
+      mimeType: mimetype,
+      fileFolder,
+      workspaceId,
     });
 
-    if (!workspace) {
-      return;
+    if (!files.length) {
+      throw new Error('Failed to upload profile picture');
     }
 
-    await this.workspaceInvitationService.invalidateWorkspaceInvitation(
-      workspace.id,
-      user.email,
-    );
-
-    return await this.userWorkspaceService.addUserToWorkspace(user, workspace);
-  }
-
-  @Mutation(() => User)
-  async addUserToWorkspaceByInviteToken(
-    @AuthUser() user: User,
-    @Args() workspaceInviteTokenInput: WorkspaceInviteTokenInput,
-  ) {
-    return this.userWorkspaceService.addUserToWorkspaceByInviteToken(
-      workspaceInviteTokenInput.inviteToken,
-      user,
-    );
+    return files[0];
   }
 }

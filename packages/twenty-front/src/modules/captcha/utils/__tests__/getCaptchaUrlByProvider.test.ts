@@ -1,13 +1,11 @@
-import { expect } from '@storybook/test';
-
 import { CaptchaDriverType } from '~/generated/graphql';
 
-import { getCaptchaUrlByProvider } from '../getCaptchaUrlByProvider';
+import { getCaptchaUrlByProvider } from '@/captcha/utils/getCaptchaUrlByProvider';
 
 describe('getCaptchaUrlByProvider', () => {
   it('handles GoogleRecaptcha', async () => {
     const captchaUrl = getCaptchaUrlByProvider(
-      CaptchaDriverType.GoogleRecaptcha,
+      CaptchaDriverType.GOOGLE_RECAPTCHA,
       'siteKey',
     );
 
@@ -16,14 +14,14 @@ describe('getCaptchaUrlByProvider', () => {
     );
 
     expect(() =>
-      getCaptchaUrlByProvider(CaptchaDriverType.GoogleRecaptcha, ''),
+      getCaptchaUrlByProvider(CaptchaDriverType.GOOGLE_RECAPTCHA, ''),
     ).toThrow(
       'SiteKey must be provided while generating url for GoogleRecaptcha provider',
     );
   });
 
   it('handles Turnstile', async () => {
-    const captchaUrl = getCaptchaUrlByProvider(CaptchaDriverType.Turnstile, '');
+    const captchaUrl = getCaptchaUrlByProvider(CaptchaDriverType.TURNSTILE, '');
 
     expect(captchaUrl).toEqual(
       'https://challenges.cloudflare.com/turnstile/v0/api.js',

@@ -1,6 +1,7 @@
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
-import { In, Repository } from 'typeorm';
+import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
+import { DataSource, Repository } from 'typeorm';
 
 import { SentryCronMonitor } from 'src/engine/core-modules/cron/sentry-cron-monitor.decorator';
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
@@ -9,30 +10,25 @@ import { Process } from 'src/engine/core-modules/message-queue/decorators/proces
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
-import {
-  Workspace,
-  WorkspaceActivationStatus,
-} from 'src/engine/core-modules/workspace/workspace.entity';
-import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
-import {
-  MessageChannelSyncStage,
-  MessageChannelWorkspaceEntity,
-} from 'src/modules/messaging/common/standard-objects/message-channel.workspace-entity';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { getWorkspaceSchemaName } from 'src/engine/workspace-datasource/utils/get-workspace-schema-name.util';
+import { MessageChannelSyncStage } from 'src/modules/messaging/common/standard-objects/message-channel.workspace-entity';
 import {
   MessagingMessageListFetchJob,
-  MessagingMessageListFetchJobData,
+  type MessagingMessageListFetchJobData,
 } from 'src/modules/messaging/message-import-manager/jobs/messaging-message-list-fetch.job';
 
-export const MESSAGING_MESSAGE_LIST_FETCH_CRON_PATTERN = '*/5 * * * *';
+export const MESSAGING_MESSAGE_LIST_FETCH_CRON_PATTERN = '2-59/5 * * * *';
 
 @Processor(MessageQueue.cronQueue)
 export class MessagingMessageListFetchCronJob {
   constructor(
-    @InjectRepository(Workspace, 'core')
-    private readonly workspaceRepository: Repository<Workspace>,
+    @InjectRepository(WorkspaceEntity)
+    private readonly workspaceRepository: Repository<WorkspaceEntity>,
     @InjectMessageQueue(MessageQueue.messagingQueue)
     private readonly messageQueueService: MessageQueueService,
-    private readonly twentyORMGlobalManager: TwentyORMGlobalManager,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
     private readonly exceptionHandlerService: ExceptionHandlerService,
   ) {}
 
@@ -42,8 +38,6 @@ export class MessagingMessageListFetchCronJob {
     MESSAGING_MESSAGE_LIST_FETCH_CRON_PATTERN,
   )
   async handle(): Promise<void> {
-    console.time('MessagingMessageListFetchCronJob time');
-
     const activeWorkspaces = await this.workspaceRepository.find({
       where: {
         activationStatus: WorkspaceActivationStatus.ACTIVE,
@@ -52,21 +46,14 @@ export class MessagingMessageListFetchCronJob {
 
     for (const activeWorkspace of activeWorkspaces) {
       try {
-        const messageChannelRepository =
-          await this.twentyORMGlobalManager.getRepositoryForWorkspace<MessageChannelWorkspaceEntity>(
-            activeWorkspace.id,
-            'messageChannel',
-          );
+        const schemaName = getWorkspaceSchemaName(activeWorkspace.id);
 
-        const messageChannels = await messageChannelRepository.find({
-          where: {
-            isSyncEnabled: true,
-            syncStage: In([
-              MessageChannelSyncStage.PARTIAL_MESSAGE_LIST_FETCH_PENDING,
-              MessageChannelSyncStage.FULL_MESSAGE_LIST_FETCH_PENDING,
-            ]),
-          },
-        });
+        const now = new Date().toISOString();
+
+        const [messageChannels] = await this.coreDataSource.query(
+          `UPDATE ${schemaName}."messageChannel" SET "syncStage" = '${MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED}', "syncStageStartedAt" = COALESCE("syncStageStartedAt", '${now}')
+           WHERE "isSyncEnabled" = true AND "syncStage" = '${MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING}' RETURNING *`,
+        );
 
         for (const messageChannel of messageChannels) {
           await this.messageQueueService.add<MessagingMessageListFetchJobData>(
@@ -79,13 +66,11 @@ export class MessagingMessageListFetchCronJob {
         }
       } catch (error) {
         this.exceptionHandlerService.captureExceptions([error], {
-          user: {
-            workspaceId: activeWorkspace.id,
+          workspace: {
+            id: activeWorkspace.id,
           },
         });
       }
     }
-
-    console.timeEnd('MessagingMessageListFetchCronJob time');
   }
 }

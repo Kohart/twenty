@@ -1,24 +1,17 @@
-import { useEffect } from 'react';
 import { ThemeProvider } from '@emotion/react';
-import { Preview } from '@storybook/react';
-import { useDarkMode } from 'storybook-dark-mode';
-
-import {
-  THEME_DARK,
-  THEME_LIGHT,
-  ThemeContextProvider,
-} from '../src/theme/index';
+import { type Preview } from '@storybook/react';
+import { THEME_LIGHT, ThemeContextProvider } from '@ui/theme';
 
 const preview: Preview = {
   decorators: [
     (Story) => {
-      const mode = useDarkMode() ? 'Dark' : 'Light';
+      // const mode = useDarkMode() ? 'Dark' : 'Light';
 
-      const theme = mode === 'Dark' ? THEME_DARK : THEME_LIGHT;
+      const theme = THEME_LIGHT;
 
-      useEffect(() => {
+    /*  useEffect(() => {
         document.documentElement.className = mode === 'Dark' ? 'dark' : 'light';
-      }, [mode]);
+      }, [mode]);*/
 
       return (
         <ThemeProvider theme={theme}>

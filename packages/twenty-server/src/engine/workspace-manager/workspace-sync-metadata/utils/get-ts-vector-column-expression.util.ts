@@ -1,5 +1,8 @@
-import { compositeTypeDefinitions } from 'src/engine/metadata-modules/field-metadata/composite-types';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import {
+  FieldMetadataType,
+  compositeTypeDefinitions,
+} from 'twenty-shared/types';
+
 import {
   computeColumnName,
   computeCompositeColumnName,
@@ -11,8 +14,9 @@ import {
 } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.exception';
 import {
   isSearchableFieldType,
-  SearchableFieldType,
+  type SearchableFieldType,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/utils/is-searchable-field.util';
+import { isSearchableSubfield } from 'src/engine/workspace-manager/workspace-sync-metadata/utils/is-searchable-subfield.util';
 
 export type FieldTypeAndNameMetadata = {
   name: string;
@@ -53,8 +57,10 @@ const getColumnExpressionsFromField = (
       );
     }
 
-    return compositeType.properties
-      .filter((property) => property.type === FieldMetadataType.TEXT)
+    const baseExpressions = compositeType.properties
+      .filter((property) =>
+        isSearchableSubfield(compositeType.type, property.type, property.name),
+      )
       .map((property) => {
         const columnName = computeCompositeColumnName(
           fieldMetadataTypeAndName,
@@ -63,6 +69,21 @@ const getColumnExpressionsFromField = (
 
         return getColumnExpression(columnName, fieldMetadataTypeAndName.type);
       });
+
+    if (fieldMetadataTypeAndName.type === FieldMetadataType.PHONES) {
+      const phoneNumberColumn = `"${fieldMetadataTypeAndName.name}PrimaryPhoneNumber"`;
+      const callingCodeColumn = `"${fieldMetadataTypeAndName.name}PrimaryPhoneCallingCode"`;
+
+      const internationalFormats = [
+        `COALESCE(${callingCodeColumn} || ${phoneNumberColumn}, '')`,
+        `COALESCE(REPLACE(${callingCodeColumn}, '+', '') || ${phoneNumberColumn}, '')`,
+        `COALESCE('0' || ${phoneNumberColumn}, '')`,
+      ];
+
+      return [...baseExpressions, ...internationalFormats];
+    }
+
+    return baseExpressions;
   }
   const columnName = computeColumnName(fieldMetadataTypeAndName.name);
 
@@ -78,16 +99,13 @@ const getColumnExpression = (
   switch (fieldType) {
     case FieldMetadataType.EMAILS:
       return `
-      COALESCE(
-        replace(
-          ${quotedColumnName},
-          '@',
-          ' '
-        ),
-        ''
-      )
-    `;
-    default:
+      COALESCE(public.unaccent_immutable(${quotedColumnName}), '') || ' ' ||
+      COALESCE(public.unaccent_immutable(SPLIT_PART(${quotedColumnName}, '@', 2)), '')`;
+
+    case FieldMetadataType.PHONES:
       return `COALESCE(${quotedColumnName}, '')`;
+
+    default:
+      return `COALESCE(public.unaccent_immutable(${quotedColumnName}), '')`;
   }
 };

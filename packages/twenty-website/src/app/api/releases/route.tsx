@@ -1,10 +1,10 @@
 import { desc } from 'drizzle-orm';
 
-import { getGithubReleaseDateFromReleaseNote } from '@/app/releases/utils/get-github-release-date-from-release-note';
-import { getReleases } from '@/app/releases/utils/get-releases';
-import { getVisibleReleases } from '@/app/releases/utils/get-visible-releases';
+import { getGithubReleaseDateFromReleaseNote } from '@/app/(public)/releases/utils/get-github-release-date-from-release-note';
+import { getReleases } from '@/app/(public)/releases/utils/get-releases';
+import { getVisibleReleases } from '@/app/(public)/releases/utils/get-visible-releases';
 import { findAll } from '@/database/database';
-import { GithubReleases, githubReleasesModel } from '@/database/model';
+import { type GithubReleases, githubReleasesModel } from '@/database/model';
 
 export const dynamic = 'force-dynamic';
 

@@ -1,10 +1,11 @@
-import { BlocklistItem } from '@/accounts/types/BlocklistItem';
+import { type BlocklistItem } from '@/accounts/types/BlocklistItem';
 import { SettingsAccountsBlocklistTableRow } from '@/settings/accounts/components/SettingsAccountsBlocklistTableRow';
 import { Table } from '@/ui/layout/table/components/Table';
 import { TableBody } from '@/ui/layout/table/components/TableBody';
 import { TableHeader } from '@/ui/layout/table/components/TableHeader';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
 import styled from '@emotion/styled';
+import { t } from '@lingui/core/macro';
 
 type SettingsAccountsBlocklistTableProps = {
   blocklist: BlocklistItem[];
@@ -31,8 +32,8 @@ export const SettingsAccountsBlocklistTable = ({
             gridAutoColumns="200px 1fr 20px"
             mobileGridAutoColumns="120px 1fr 20px"
           >
-            <TableHeader>Email/Domain</TableHeader>
-            <TableHeader>Added to blocklist</TableHeader>
+            <TableHeader>{t`Email/Domain`}</TableHeader>
+            <TableHeader>{t`Added to blocklist`}</TableHeader>
             <TableHeader></TableHeader>
           </TableRow>
           <StyledTableBody>

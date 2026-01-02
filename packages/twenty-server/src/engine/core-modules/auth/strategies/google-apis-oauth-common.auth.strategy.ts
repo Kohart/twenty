@@ -1,34 +1,36 @@
-import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 
-import { Strategy } from 'passport-google-oauth20';
+import { Strategy, type VerifyCallback } from 'passport-google-oauth20';
 
-import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
 import { getGoogleApisOauthScopes } from 'src/engine/core-modules/auth/utils/get-google-apis-oauth-scopes';
+import { type TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 
 export type GoogleAPIScopeConfig = {
   isCalendarEnabled?: boolean;
   isMessagingAliasFetchingEnabled?: boolean;
 };
 
-@Injectable()
-export class GoogleAPIsOauthCommonStrategy extends PassportStrategy(
+export abstract class GoogleAPIsOauthCommonStrategy extends PassportStrategy(
   Strategy,
   'google-apis',
 ) {
-  constructor(
-    environmentService: EnvironmentService,
-    scopeConfig: GoogleAPIScopeConfig,
-    isGmailSendEmailScopeEnabled = false,
-  ) {
-    const scopes = getGoogleApisOauthScopes(isGmailSendEmailScopeEnabled);
+  constructor(twentyConfigService: TwentyConfigService) {
+    const scopes = getGoogleApisOauthScopes();
 
     super({
-      clientID: environmentService.get('AUTH_GOOGLE_CLIENT_ID'),
-      clientSecret: environmentService.get('AUTH_GOOGLE_CLIENT_SECRET'),
-      callbackURL: environmentService.get('AUTH_GOOGLE_APIS_CALLBACK_URL'),
+      clientID: twentyConfigService.get('AUTH_GOOGLE_CLIENT_ID'),
+      clientSecret: twentyConfigService.get('AUTH_GOOGLE_CLIENT_SECRET'),
+      callbackURL: twentyConfigService.get('AUTH_GOOGLE_APIS_CALLBACK_URL'),
       scope: scopes,
       passReqToCallback: true,
     });
   }
+
+  abstract validate(
+    request: Express.Request,
+    accessToken: string,
+    refreshToken: string,
+    profile: unknown,
+    done: VerifyCallback,
+  ): Promise<void>;
 }

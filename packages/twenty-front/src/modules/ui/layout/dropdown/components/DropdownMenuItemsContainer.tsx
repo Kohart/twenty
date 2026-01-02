@@ -1,9 +1,8 @@
+import { DROPDOWN_MENU_ITEMS_CONTAINER_MAX_HEIGHT } from '@/ui/layout/dropdown/constants/DropdownMenuItemsContainerMaxHeight';
 import styled from '@emotion/styled';
 
-import { ScrollWrapper } from '@/ui/utilities/scroll/components/ScrollWrapper';
-
-const StyledDropdownMenuItemsExternalContainer = styled.div<{
-  hasMaxHeight?: boolean;
+const StyledExternalContainer = styled.div<{
+  maxHeight?: number;
 }>`
   --padding: ${({ theme }) => theme.spacing(1)};
 
@@ -11,49 +10,64 @@ const StyledDropdownMenuItemsExternalContainer = styled.div<{
   display: flex;
 
   flex-direction: column;
-  max-height: ${({ hasMaxHeight }) => (hasMaxHeight ? '188px' : 'none')};
+  max-height: ${({ maxHeight }) => (maxHeight ? `${maxHeight}px` : 'none')};
+
+  width: 100%;
+
+  height: fit-content;
 
   padding: var(--padding);
-
-  width: calc(100% - 2 * var(--padding));
+  box-sizing: border-box;
 `;
 
-const StyledScrollWrapper = styled(ScrollWrapper)`
+const StyledScrollableContainer = styled.div<{ maxHeight?: number }>`
+  box-sizing: border-box;
+
+  display: flex;
+  max-height: ${({ maxHeight }) => (maxHeight ? `${maxHeight}px` : 'none')};
   width: 100%;
+
+  overflow-y: auto;
+  scrollbar-color: ${({ theme }) => theme.border.color.medium} transparent;
+  scrollbar-width: 4px;
+
+  *::-webkit-scrollbar-thumb {
+    border-radius: ${({ theme }) => theme.border.radius.sm};
+  }
 `;
 
-const StyledDropdownMenuItemsInternalContainer = styled.div`
-  align-items: stretch;
+const StyledInternalContainer = styled.div`
   display: flex;
 
   flex-direction: column;
   gap: 2px;
+
   height: 100%;
   width: 100%;
 `;
 
-// TODO: refactor this, the dropdown should handle the max height behavior + scroll with the size middleware
-// We should instead create a DropdownMenuItemsContainerScrollable or take for granted that it is the default behavior
 export const DropdownMenuItemsContainer = ({
   children,
   hasMaxHeight,
+  scrollable = true,
 }: {
   children: React.ReactNode;
   hasMaxHeight?: boolean;
+  scrollable?: boolean;
 }) => {
-  return (
-    <StyledDropdownMenuItemsExternalContainer hasMaxHeight={hasMaxHeight}>
-      {hasMaxHeight ? (
-        <StyledScrollWrapper contextProviderName="dropdownMenuItemsContainer">
-          <StyledDropdownMenuItemsInternalContainer>
-            {children}
-          </StyledDropdownMenuItemsInternalContainer>
-        </StyledScrollWrapper>
-      ) : (
-        <StyledDropdownMenuItemsInternalContainer>
-          {children}
-        </StyledDropdownMenuItemsInternalContainer>
-      )}
-    </StyledDropdownMenuItemsExternalContainer>
+  return scrollable === true ? (
+    <StyledScrollableContainer
+      maxHeight={
+        hasMaxHeight ? DROPDOWN_MENU_ITEMS_CONTAINER_MAX_HEIGHT : undefined
+      }
+    >
+      <StyledExternalContainer role="listbox">
+        <StyledInternalContainer>{children}</StyledInternalContainer>
+      </StyledExternalContainer>
+    </StyledScrollableContainer>
+  ) : (
+    <StyledExternalContainer role="listbox">
+      <StyledInternalContainer>{children}</StyledInternalContainer>
+    </StyledExternalContainer>
   );
 };

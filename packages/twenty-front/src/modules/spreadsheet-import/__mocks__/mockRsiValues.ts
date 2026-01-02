@@ -1,37 +1,39 @@
 import { defaultSpreadsheetImportProps } from '@/spreadsheet-import/provider/components/SpreadsheetImport';
-import { Columns } from '@/spreadsheet-import/steps/components/MatchColumnsStep/MatchColumnsStep';
 import {
-  Fields,
   SpreadsheetImportDialogOptions,
+  SpreadsheetImportFields
 } from '@/spreadsheet-import/types';
+import { SpreadsheetColumns } from '@/spreadsheet-import/types/SpreadsheetColumns';
+import { FieldMetadataType } from 'twenty-shared/types';
 import { sleep } from '~/utils/sleep';
 
 const fields = [
   {
-    icon: null,
+    Icon: null,
     label: 'Name',
     key: 'name',
     alternateMatches: ['first name', 'first'],
     fieldType: {
       type: 'input',
     },
-    example: 'Stephanie',
     fieldValidationDefinitions: [
       {
         rule: 'required',
         errorMessage: 'Name is required',
       },
     ],
+    fieldMetadataType: FieldMetadataType.TEXT,
+    fieldMetadataItemId: '1',
+    isNestedField: false,
   },
   {
-    icon: null,
+    Icon: null,
     label: 'Surname',
     key: 'surname',
     alternateMatches: ['second name', 'last name', 'last'],
     fieldType: {
       type: 'input',
     },
-    example: 'McDonald',
     fieldValidationDefinitions: [
       {
         rule: 'unique',
@@ -40,16 +42,18 @@ const fields = [
       },
     ],
     description: 'Family / Last name',
+    fieldMetadataType: FieldMetadataType.TEXT,
+    fieldMetadataItemId: '2',
+    isNestedField: false,
   },
   {
-    icon: null,
+    Icon: null,
     label: 'Age',
     key: 'age',
     alternateMatches: ['years'],
     fieldType: {
       type: 'input',
     },
-    example: '23',
     fieldValidationDefinitions: [
       {
         rule: 'regex',
@@ -58,12 +62,14 @@ const fields = [
         level: 'warning',
       },
     ],
+    fieldMetadataType: FieldMetadataType.TEXT,
+    fieldMetadataItemId: '3',
+    isNestedField: false,
   },
   {
-    icon: null,
+    Icon: null,
     label: 'Team',
     key: 'team',
-    alternateMatches: ['department'],
     fieldType: {
       type: 'select',
       options: [
@@ -71,28 +77,31 @@ const fields = [
         { label: 'Team Two', value: 'two' },
       ],
     },
-    example: 'Team one',
     fieldValidationDefinitions: [
       {
         rule: 'required',
         errorMessage: 'Team is required',
       },
     ],
+    fieldMetadataType: FieldMetadataType.TEXT,
+    fieldMetadataItemId: '4',
+    isNestedField: false,
   },
   {
-    icon: null,
+    Icon: null,
     label: 'Is manager',
     key: 'is_manager',
-    alternateMatches: ['manages'],
     fieldType: {
       type: 'checkbox',
       booleanMatches: {},
     },
-    example: 'true',
+    fieldMetadataType: FieldMetadataType.TEXT,
+    fieldMetadataItemId: '5',
+    isNestedField: false,
   },
-] as Fields<string>;
+] as SpreadsheetImportFields;
 
-export const importedColums: Columns<string> = [
+export const importedColums: SpreadsheetColumns = [
   {
     header: 'Name',
     index: 0,
@@ -119,17 +128,16 @@ export const importedColums: Columns<string> = [
   },
 ];
 
-const mockComponentBehaviourForTypes = <T extends string>(
-  props: SpreadsheetImportDialogOptions<T>,
+const mockComponentBehaviourForTypes = (
+  props: SpreadsheetImportDialogOptions,
 ) => props;
 
 export const mockRsiValues = mockComponentBehaviourForTypes({
   ...defaultSpreadsheetImportProps,
-  fields: fields,
+  spreadsheetImportFields: fields,
   onSubmit: async () => {
     return;
   },
-  isOpen: true,
   onClose: () => {
     return;
   },
@@ -154,6 +162,7 @@ export const mockRsiValues = mockComponentBehaviourForTypes({
     await sleep(4000, (resolve) => resolve(data));
     return data;
   },
+  availableFieldMetadataItems: []
 });
 
 export const editableTableInitialData = [

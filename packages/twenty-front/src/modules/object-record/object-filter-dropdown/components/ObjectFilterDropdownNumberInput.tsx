@@ -1,31 +1,33 @@
-import { ChangeEvent, useCallback, useState } from 'react';
-import { useRecoilValue } from 'recoil';
-import { v4 } from 'uuid';
+import { type ChangeEvent, useCallback, useState } from 'react';
 
-import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
+import { useApplyObjectFilterDropdownFilterValue } from '@/object-record/object-filter-dropdown/hooks/useApplyObjectFilterDropdownFilterValue';
+import { useObjectFilterDropdownFilterValue } from '@/object-record/object-filter-dropdown/hooks/useObjectFilterDropdownFilterValue';
+import { fieldMetadataItemUsedInDropdownComponentSelector } from '@/object-record/object-filter-dropdown/states/fieldMetadataItemUsedInDropdownComponentSelector';
 import { DropdownMenuInput } from '@/ui/layout/dropdown/components/DropdownMenuInput';
+import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
+import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
+import { useRecoilComponentValue } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValue';
 
-export const ObjectFilterDropdownNumberInput = () => {
-  const {
-    selectedOperandInDropdownState,
-    filterDefinitionUsedInDropdownState,
-    selectedFilterState,
-    selectFilter,
-  } = useFilterDropdown();
+type ObjectFilterDropdownNumberInputProps = {
+  filterDropdownId: string;
+};
+
+export const ObjectFilterDropdownNumberInput = ({
+  filterDropdownId,
+}: ObjectFilterDropdownNumberInputProps) => {
+  const fieldMetadataItemUsedInDropdown = useRecoilComponentValue(
+    fieldMetadataItemUsedInDropdownComponentSelector,
+  );
+
+  const { objectFilterDropdownFilterValue } =
+    useObjectFilterDropdownFilterValue();
+
+  const { applyObjectFilterDropdownFilterValue } =
+    useApplyObjectFilterDropdownFilterValue();
+
+  const { closeDropdown } = useCloseDropdown();
+
   const [hasFocused, setHasFocused] = useState(false);
-
-  const filterDefinitionUsedInDropdown = useRecoilValue(
-    filterDefinitionUsedInDropdownState,
-  );
-  const selectedOperandInDropdown = useRecoilValue(
-    selectedOperandInDropdownState,
-  );
-
-  const selectedFilter = useRecoilValue(selectedFilterState);
-
-  const [inputValue, setInputValue] = useState(
-    () => selectedFilter?.value || '',
-  );
 
   const handleInputRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -37,29 +39,25 @@ export const ObjectFilterDropdownNumberInput = () => {
     },
     [hasFocused],
   );
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const newValue = event.target.value;
+
+    applyObjectFilterDropdownFilterValue(newValue);
+  };
+
   return (
-    filterDefinitionUsedInDropdown &&
-    selectedOperandInDropdown && (
+    <DropdownMenuItemsContainer>
       <DropdownMenuInput
+        instanceId={filterDropdownId}
         ref={handleInputRef}
-        value={inputValue}
+        value={objectFilterDropdownFilterValue}
         autoFocus
         type="number"
-        placeholder={filterDefinitionUsedInDropdown.label}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => {
-          const newValue = event.target.value;
-          setInputValue(newValue);
-          selectFilter?.({
-            id: selectedFilter?.id ? selectedFilter.id : v4(),
-            fieldMetadataId: filterDefinitionUsedInDropdown.fieldMetadataId,
-            value: newValue,
-            operand: selectedOperandInDropdown,
-            displayValue: newValue,
-            definition: filterDefinitionUsedInDropdown,
-            viewFilterGroupId: selectedFilter?.viewFilterGroupId,
-          });
-        }}
+        placeholder={fieldMetadataItemUsedInDropdown?.label}
+        onChange={handleInputChange}
+        onEnter={() => closeDropdown(filterDropdownId)}
       />
-    )
+    </DropdownMenuItemsContainer>
   );
 };

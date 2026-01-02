@@ -1,11 +1,16 @@
-import { Meta, StoryObj } from '@storybook/react';
+import { type Meta, type StoryObj } from '@storybook/react';
 import { IconCheckbox, IconNotes, IconTimelineEvent } from '@ui/display';
 import {
   CatalogDecorator,
-  CatalogStory,
+  type CatalogStory,
   ComponentDecorator,
 } from '@ui/testing';
-import { Button, ButtonAccent, ButtonSize, ButtonVariant } from '../Button';
+import {
+  Button,
+  type ButtonAccent,
+  type ButtonSize,
+  type ButtonVariant,
+} from '../Button/Button';
 import { ButtonGroup } from '../ButtonGroup';
 
 const meta: Meta<typeof ButtonGroup> = {

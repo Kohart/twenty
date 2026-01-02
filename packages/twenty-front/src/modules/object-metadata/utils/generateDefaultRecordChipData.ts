@@ -1,15 +1,25 @@
-import { isFieldFullNameValue } from '@/object-record/record-field/types/guards/isFieldFullNameValue';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { type RecordChipData } from '@/object-record/record-field/ui/types/RecordChipData';
+import { isFieldFullNameValue } from '@/object-record/record-field/ui/types/guards/isFieldFullNameValue';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
 
-export const generateDefaultRecordChipData = (record: ObjectRecord) => {
+type GenerateDefaultRecordChipDataArgs = {
+  record: ObjectRecord;
+  objectNameSingular: string;
+};
+export const generateDefaultRecordChipData = ({
+  objectNameSingular,
+  record,
+}: GenerateDefaultRecordChipDataArgs): RecordChipData => {
   const name = isFieldFullNameValue(record.name)
-    ? record.name.firstName + ' ' + record.name.lastName
+    ? `${record.name.firstName} ${record.name.lastName}`
     : (record.name ?? '');
 
   return {
-    name,
-    avatarUrl: name,
     avatarType: 'rounded',
-    linkToShowPage: false,
+    avatarUrl: name,
+    isLabelIdentifier: false,
+    name,
+    objectNameSingular,
+    recordId: record.id,
   };
 };

@@ -1,17 +1,19 @@
 import { SignInBackgroundMockPage } from '@/sign-in-background-mock/components/SignInBackgroundMockPage';
-import { AppPath } from '@/types/AppPath';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { AppPath } from 'twenty-shared/types';
 
+import { RootStackingContextZIndices } from '@/ui/layout/constants/RootStackingContextZIndices';
 import { PageTitle } from '@/ui/utilities/page-title/components/PageTitle';
 import styled from '@emotion/styled';
+import { MainButton } from 'twenty-ui/input';
 import {
   AnimatedPlaceholder,
   AnimatedPlaceholderEmptyTextContainer,
   AnimatedPlaceholderErrorContainer,
   AnimatedPlaceholderErrorSubTitle,
   AnimatedPlaceholderErrorTitle,
-  MainButton,
-  UndecoratedLink,
-} from 'twenty-ui';
+} from 'twenty-ui/layout';
+import { UndecoratedLink } from 'twenty-ui/navigation';
 
 const StyledBackDrop = styled.div`
   align-items: center;
@@ -25,7 +27,7 @@ const StyledBackDrop = styled.div`
   position: fixed;
   top: 0;
   width: 100%;
-  z-index: 10000;
+  z-index: ${RootStackingContextZIndices.NotFound};
 `;
 
 const StyledButtonContainer = styled.div`
@@ -33,24 +35,28 @@ const StyledButtonContainer = styled.div`
 `;
 
 export const NotFound = () => {
+  const { t } = useLingui();
+
   return (
     <>
-      <PageTitle title="Page Not Found | Twenty" />
+      <PageTitle title={t`Page Not Found | Twenty`} />
       <StyledBackDrop>
         <AnimatedPlaceholderErrorContainer>
           <AnimatedPlaceholder type="error404" />
           <AnimatedPlaceholderEmptyTextContainer>
             <AnimatedPlaceholderErrorTitle>
-              Off the beaten path
+              <Trans>Off the beaten path</Trans>
             </AnimatedPlaceholderErrorTitle>
             <AnimatedPlaceholderErrorSubTitle>
-              The page you're seeking is either gone or never was. Let's get you
-              back on track
+              <Trans>
+                The page you're seeking is either gone or never was. Let's get
+                you back on track
+              </Trans>
             </AnimatedPlaceholderErrorSubTitle>
           </AnimatedPlaceholderEmptyTextContainer>
           <StyledButtonContainer>
             <UndecoratedLink to={AppPath.Index}>
-              <MainButton title="Back to content" fullWidth />
+              <MainButton title={t`Back to content`} fullWidth />
             </UndecoratedLink>
           </StyledButtonContainer>
         </AnimatedPlaceholderErrorContainer>

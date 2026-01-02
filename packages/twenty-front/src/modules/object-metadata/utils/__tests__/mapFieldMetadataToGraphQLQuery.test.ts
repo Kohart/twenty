@@ -1,5 +1,5 @@
 import { mapFieldMetadataToGraphQLQuery } from '@/object-metadata/utils/mapFieldMetadataToGraphQLQuery';
-import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+import { generatedMockObjectMetadataItems } from '~/testing/utils/generatedMockObjectMetadataItems';
 import { normalizeGQLField } from '~/utils/normalizeGQLField';
 
 const personObjectMetadataItem = generatedMockObjectMetadataItems.find(
@@ -14,18 +14,22 @@ describe('mapFieldMetadataToGraphQLQuery', () => {
   it('should return fieldName if simpleValue', async () => {
     const res = mapFieldMetadataToGraphQLQuery({
       objectMetadataItems: generatedMockObjectMetadataItems,
-      field: personObjectMetadataItem.fields.find(
+      gqlField: 'id',
+      fieldMetadata: personObjectMetadataItem.fields.find(
         (field) => field.name === 'id',
       )!,
+      objectPermissionsByObjectMetadataId: {},
     });
     expect(normalizeGQLField(res)).toEqual(normalizeGQLField('id'));
   });
   it('should return fieldName if composite', async () => {
     const res = mapFieldMetadataToGraphQLQuery({
       objectMetadataItems: generatedMockObjectMetadataItems,
-      field: personObjectMetadataItem.fields.find(
+      gqlField: 'name',
+      fieldMetadata: personObjectMetadataItem.fields.find(
         (field) => field.name === 'name',
       )!,
+      objectPermissionsByObjectMetadataId: {},
     });
     expect(normalizeGQLField(res)).toEqual(
       normalizeGQLField(`name
@@ -39,9 +43,11 @@ describe('mapFieldMetadataToGraphQLQuery', () => {
   it('should return non relation subFields if relation', async () => {
     const res = mapFieldMetadataToGraphQLQuery({
       objectMetadataItems: generatedMockObjectMetadataItems,
-      field: personObjectMetadataItem.fields.find(
+      gqlField: 'company',
+      fieldMetadata: personObjectMetadataItem.fields.find(
         (field) => field.name === 'company',
       )!,
+      objectPermissionsByObjectMetadataId: {},
     });
     expect(normalizeGQLField(res)).toEqual(
       normalizeGQLField(`company
@@ -95,7 +101,7 @@ idealCustomerProfile
   it('should return only return relation subFields that are in recordGqlFields', async () => {
     const res = mapFieldMetadataToGraphQLQuery({
       objectMetadataItems: generatedMockObjectMetadataItems,
-      relationrecordFields: {
+      relationRecordGqlFields: {
         accountOwner: { id: true, name: true },
         people: true,
         xLink: true,
@@ -115,9 +121,11 @@ idealCustomerProfile
         id: true,
         idealCustomerProfile: true,
       },
-      field: personObjectMetadataItem.fields.find(
+      gqlField: 'company',
+      fieldMetadata: personObjectMetadataItem.fields.find(
         (field) => field.name === 'company',
       )!,
+      objectPermissionsByObjectMetadataId: {},
     });
     expect(normalizeGQLField(res)).toEqual(
       normalizeGQLField(`company
@@ -198,6 +206,7 @@ phone
 {
   primaryPhoneNumber
   primaryPhoneCountryCode
+  primaryPhoneCallingCode
 }
 linkedinLink
 {
@@ -220,3 +229,5 @@ idealCustomerProfile
     );
   });
 });
+
+// todo @guillim add a test for the morph relation

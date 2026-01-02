@@ -1,54 +1,63 @@
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
-import { useCreateManyRecords } from '@/object-record/hooks/useCreateManyRecords';
-import { useBuildAvailableFieldsForImport } from '@/object-record/spreadsheet-import/hooks/useBuildAvailableFieldsForImport';
+import { useGenerateDepthRecordGqlFieldsFromObject } from '@/object-record/graphql/record-gql-fields/hooks/useGenerateDepthRecordGqlFieldsFromObject';
+import { useBatchCreateManyRecords } from '@/object-record/hooks/useBatchCreateManyRecords';
+import { useBuildSpreadsheetImportFields } from '@/object-record/spreadsheet-import/hooks/useBuildSpreadSheetImportFields';
 import { buildRecordFromImportedStructuredRow } from '@/object-record/spreadsheet-import/utils/buildRecordFromImportedStructuredRow';
+import { spreadsheetImportFilterAvailableFieldMetadataItems } from '@/object-record/spreadsheet-import/utils/spreadsheetImportFilterAvailableFieldMetadataItems';
+import { spreadsheetImportGetUnicityTableHook } from '@/object-record/spreadsheet-import/utils/spreadsheetImportGetUnicityTableHook';
+import { SPREADSHEET_IMPORT_CREATE_RECORDS_BATCH_SIZE } from '@/spreadsheet-import/constants/SpreadsheetImportCreateRecordsBatchSize';
 import { useOpenSpreadsheetImportDialog } from '@/spreadsheet-import/hooks/useOpenSpreadsheetImportDialog';
-import { SpreadsheetImportDialogOptions } from '@/spreadsheet-import/types';
-import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
+import { spreadsheetImportCreatedRecordsProgressState } from '@/spreadsheet-import/states/spreadsheetImportCreatedRecordsProgressState';
+import { type SpreadsheetImportDialogOptions } from '@/spreadsheet-import/types';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import {
-  FieldMetadataType,
-  RelationDefinitionType,
-} from '~/generated-metadata/graphql';
+import { useSetRecoilState } from 'recoil';
 
 export const useOpenObjectRecordsSpreadsheetImportDialog = (
   objectNameSingular: string,
 ) => {
-  const { openSpreadsheetImportDialog } = useOpenSpreadsheetImportDialog<any>();
-  const { enqueueSnackBar } = useSnackBar();
+  const apolloCoreClient = useApolloCoreClient();
+  const { openSpreadsheetImportDialog } = useOpenSpreadsheetImportDialog();
+  const { buildSpreadsheetImportFields } = useBuildSpreadsheetImportFields();
+
+  const { enqueueErrorSnackBar } = useSnackBar();
 
   const { objectMetadataItem } = useObjectMetadataItem({
     objectNameSingular,
   });
 
-  const { createManyRecords } = useCreateManyRecords({
+  const setCreatedRecordsProgress = useSetRecoilState(
+    spreadsheetImportCreatedRecordsProgressState,
+  );
+
+  const abortController = new AbortController();
+
+  const { recordGqlFields } = useGenerateDepthRecordGqlFieldsFromObject({
     objectNameSingular,
+    depth: 0,
   });
 
-  const { buildAvailableFieldsForImport } = useBuildAvailableFieldsForImport();
+  const { batchCreateManyRecords } = useBatchCreateManyRecords({
+    objectNameSingular,
+    recordGqlFields,
+    mutationBatchSize: SPREADSHEET_IMPORT_CREATE_RECORDS_BATCH_SIZE,
+    setBatchedRecordsCount: setCreatedRecordsProgress,
+    abortController,
+  });
 
-  const openObjectRecordsSpreasheetImportDialog = (
+  const openObjectRecordsSpreadsheetImportDialog = (
     options?: Omit<
-      SpreadsheetImportDialogOptions<any>,
+      SpreadsheetImportDialogOptions,
       'fields' | 'isOpen' | 'onClose'
     >,
   ) => {
-    const availableFieldMetadataItems = objectMetadataItem.fields
-      .filter(
-        (fieldMetadataItem) =>
-          fieldMetadataItem.isActive &&
-          (!fieldMetadataItem.isSystem || fieldMetadataItem.name === 'id') &&
-          fieldMetadataItem.name !== 'createdAt' &&
-          (fieldMetadataItem.type !== FieldMetadataType.Relation ||
-            fieldMetadataItem.relationDefinition?.direction ===
-              RelationDefinitionType.ManyToOne),
-      )
-      .sort((fieldMetadataItemA, fieldMetadataItemB) =>
-        fieldMetadataItemA.name.localeCompare(fieldMetadataItemB.name),
+    const availableFieldMetadataItemsToImport =
+      spreadsheetImportFilterAvailableFieldMetadataItems(
+        objectMetadataItem.updatableFields,
       );
 
-    const availableFields = buildAvailableFieldsForImport(
-      availableFieldMetadataItems,
+    const spreadsheetImportFields = buildSpreadsheetImportFields(
+      availableFieldMetadataItemsToImport,
     );
 
     openSpreadsheetImportDialog({
@@ -56,27 +65,41 @@ export const useOpenObjectRecordsSpreadsheetImportDialog = (
       onSubmit: async (data) => {
         const createInputs = data.validStructuredRows.map((record) => {
           const fieldMapping: Record<string, any> =
-            buildRecordFromImportedStructuredRow(
-              record,
-              availableFieldMetadataItems,
-            );
+            buildRecordFromImportedStructuredRow({
+              importedStructuredRow: record,
+              fieldMetadataItems: availableFieldMetadataItemsToImport,
+              spreadsheetImportFields,
+            });
 
           return fieldMapping;
         });
 
         try {
-          await createManyRecords(createInputs, true);
+          await batchCreateManyRecords({
+            recordsToCreate: createInputs,
+            upsert: true,
+          });
+          await apolloCoreClient.refetchQueries({
+            updateCache: (cache) => {
+              cache.evict({ fieldName: objectMetadataItem.namePlural });
+            },
+          });
         } catch (error: any) {
-          enqueueSnackBar(error?.message || 'Something went wrong', {
-            variant: SnackBarVariant.Error,
+          enqueueErrorSnackBar({
+            apolloError: error,
           });
         }
       },
-      fields: availableFields,
+      spreadsheetImportFields,
+      availableFieldMetadataItems: availableFieldMetadataItemsToImport,
+      onAbortSubmit: () => {
+        abortController.abort();
+      },
+      tableHook: spreadsheetImportGetUnicityTableHook(objectMetadataItem),
     });
   };
 
   return {
-    openObjectRecordsSpreasheetImportDialog,
+    openObjectRecordsSpreadsheetImportDialog,
   };
 };
