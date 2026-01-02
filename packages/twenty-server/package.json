@@ -36,7 +36,7 @@
     "handlebars": "^4.7.8",
     "jsdom": "~22.1.0",
     "jwt-decode": "^4.0.0",
-    "langchain": "^0.2.6",
+    "langchain": "^1.2.3",
     "langfuse-langchain": "^3.11.2",
     "lodash.differencewith": "^4.5.0",
     "lodash.merge": "^4.6.2",
